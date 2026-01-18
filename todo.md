@@ -60,3 +60,5 @@
 - [x] Vitest tests for main routers
 - [x] S3 storage integration
 - [x] LLM integration for analysis
+- [x] Azure Video Indexer integration for advanced video analysis
+- [x] Fallback to LLM-only analysis when Video Indexer unavailable

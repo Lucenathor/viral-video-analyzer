@@ -8,6 +8,7 @@ import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
+import * as videoIndexer from "./azure-video-indexer";
 
 export const appRouter = router({
   system: systemRouter,
@@ -79,7 +80,35 @@ export const appRouter = router({
         
         // Perform AI analysis
         try {
-          const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales. Analiza este vídeo y proporciona un análisis detallado en formato JSON.
+          // Try to use Azure Video Indexer if configured
+          let videoIndexData: videoIndexer.ExtractedVideoData | null = null;
+          
+          if (videoIndexer.isVideoIndexerConfigured()) {
+            try {
+              const uploadResult = await videoIndexer.uploadVideo(
+                videoUrl,
+                input.fileName,
+                "Video uploaded for viral analysis"
+              );
+              
+              // Wait for indexing to complete (max 5 minutes)
+              const indexResult = await videoIndexer.waitForIndexing(uploadResult.videoId);
+              
+              if (indexResult) {
+                videoIndexData = videoIndexer.extractViralAnalysisData(indexResult);
+              }
+            } catch (indexError) {
+              console.warn("Video Indexer analysis failed, falling back to LLM-only analysis:", indexError);
+            }
+          }
+          
+          // Build analysis prompt with video data if available
+          let videoContext = "";
+          if (videoIndexData) {
+            videoContext = `\n\nDATOS EXTRAÍDOS DEL VÍDEO:\n- Duración: ${videoIndexData.durationSeconds} segundos\n- Transcripción: ${videoIndexData.transcript.map(t => t.text).join(" ")}\n- Escenas detectadas: ${videoIndexData.scenes.length}\n- Emociones detectadas: ${videoIndexData.emotions.map(e => e.type).join(", ")}\n- Palabras clave: ${videoIndexData.keywords.map(k => k.text).join(", ")}\n- Objetos/acciones: ${videoIndexData.labels.map(l => l.name).join(", ")}\n`;
+          }
+          
+          const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales. Analiza este vídeo y proporciona un análisis detallado en formato JSON.${videoContext}
 
 El vídeo ha sido subido y necesito que analices su potencial viral basándote en las mejores prácticas de contenido viral en Instagram Reels y TikTok.
 
@@ -421,6 +450,19 @@ Responde SOLO con el JSON.`;
       .query(async ({ input }) => {
         return db.getLibraryVideos(input.limit);
       }),
+
+    checkVideoIndexerStatus: protectedProcedure.query(async () => {
+      const isConfigured = videoIndexer.isVideoIndexerConfigured();
+      if (!isConfigured) {
+        return { configured: false, connected: false, error: "Azure Video Indexer credentials not configured" };
+      }
+      const connectionTest = await videoIndexer.testConnection();
+      return {
+        configured: true,
+        connected: connectionTest.success,
+        error: connectionTest.error,
+      };
+    }),
   }),
 
   // Support router
