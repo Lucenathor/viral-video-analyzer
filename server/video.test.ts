@@ -175,7 +175,7 @@ describe("support router", () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    const ticket = await caller.support.getTicket({ id: 1 });
+    const ticket = await caller.support.getTicketById({ id: 1 });
 
     expect(ticket).not.toBeNull();
     expect(ticket.subject).toBe("Ayuda con análisis");
@@ -185,7 +185,7 @@ describe("support router", () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.support.getTicket({ id: 999 })).rejects.toThrow("Ticket not found");
+    await expect(caller.support.getTicketById({ id: 999 })).rejects.toThrow("Ticket not found");
   });
 
   it("rejects unauthenticated access to tickets", async () => {

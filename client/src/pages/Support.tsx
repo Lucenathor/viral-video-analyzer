@@ -97,8 +97,8 @@ export default function Support() {
         message,
         category: category as "analysis_help" | "video_review" | "technical" | "general",
         videoData,
-        fileName: videoFile?.name,
-        mimeType: videoFile?.type,
+        videoFileName: videoFile?.name,
+        videoMimeType: videoFile?.type,
       });
 
       toast.success("¡Ticket enviado! Te responderemos lo antes posible.");

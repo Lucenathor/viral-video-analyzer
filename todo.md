@@ -70,3 +70,9 @@
 - [x] Implement video upload and analysis with Video Indexer
 - [x] Test video analysis with Azure Video Indexer Trial API
 - [x] All tests passing (14/14)
+
+## Bugs
+- [x] Fix video analysis error - analysis fails silently after starting
+- [x] Fix video analysis failing at 90% - investigate server-side (implemented direct S3 upload)
+- [x] Improve video upload progress indicator (added step-by-step status messages)
+- [x] Add better error messages visible to user
