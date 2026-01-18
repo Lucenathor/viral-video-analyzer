@@ -117,46 +117,46 @@ export const appRouter = router({
         });
         console.log('[Analysis] Analysis record created. ID:', analysisId);
         
-        // Perform AI analysis
+        // Perform AI analysis with actual video content
         try {
-          const videoContext = `\n\nINFORMACIÓN DEL VÍDEO:\n- Nombre del archivo: ${input.fileName}\n- Tipo: ${input.mimeType}\n`;
+          // Determine the correct mime type for the LLM
+          let llmMimeType: "video/mp4" | "audio/mp4" = "video/mp4";
+          if (input.mimeType.includes('mov') || input.mimeType.includes('quicktime')) {
+            llmMimeType = "video/mp4"; // MOV files are compatible
+          }
           
-          const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales. Analiza este vídeo y proporciona un análisis detallado en formato JSON.${videoContext}
+          const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales (Instagram Reels, TikTok, YouTube Shorts).
 
-El vídeo ha sido subido y necesito que analices su potencial viral basándote en las mejores prácticas de contenido viral en Instagram Reels y TikTok.
+ANALIZA EL VÍDEO QUE TE PROPORCIONO y proporciona un análisis detallado basándote en LO QUE VES en el vídeo.
 
-Proporciona tu análisis en el siguiente formato JSON exacto:
-{
-  "hookAnalysis": "Análisis detallado del hook (primeros 3 segundos). Describe qué técnica usa para captar atención.",
-  "structureBreakdown": {
-    "segments": [
-      { "startTime": 0, "endTime": 3, "type": "Hook", "description": "Descripción" },
-      { "startTime": 3, "endTime": 10, "type": "Desarrollo", "description": "Descripción" },
-      { "startTime": 10, "endTime": 15, "type": "Clímax/CTA", "description": "Descripción" }
-    ]
-  },
-  "viralityFactors": {
-    "factors": [
-      { "name": "Hook Efectivo", "score": 85, "description": "Explicación" },
-      { "name": "Ritmo y Pacing", "score": 78, "description": "Análisis" },
-      { "name": "Valor Emocional", "score": 90, "description": "Conexión" },
-      { "name": "Compartibilidad", "score": 82, "description": "Probabilidad" }
-    ]
-  },
-  "summary": "Resumen completo de 2-3 párrafos.",
-  "overallScore": 84,
-  "hookScore": 85,
-  "pacingScore": 78,
-  "engagementScore": 88
-}
+Debes analizar:
+1. Los primeros 3 segundos (el "hook") - ¿Qué técnica usa para captar atención?
+2. La estructura completa del vídeo - Divide en segmentos con timestamps reales
+3. Los factores de viralidad - Puntúa cada aspecto del 0 al 100
+4. Un resumen detallado de qué hace el vídeo y por qué funcionaría (o no) como contenido viral
 
-Responde SOLO con el JSON, sin texto adicional.`;
+Responde en formato JSON con esta estructura exacta.`;
 
-          console.log('[Analysis] Calling LLM for analysis...');
+          console.log('[Analysis] Calling LLM for video analysis with actual video content...');
+          console.log('[Analysis] Video URL for LLM:', videoUrl);
+          console.log('[Analysis] Mime type:', llmMimeType);
+          
           const response = await invokeLLM({
             messages: [
-              { role: "system", content: "Eres un experto analista de contenido viral. Responde siempre en español y en formato JSON válido." },
-              { role: "user", content: analysisPrompt }
+              { role: "system", content: "Eres un experto analista de contenido viral. DEBES analizar el vídeo que se te proporciona y describir exactamente lo que ves. Responde siempre en español y en formato JSON válido." },
+              { 
+                role: "user", 
+                content: [
+                  { type: "text", text: analysisPrompt },
+                  { 
+                    type: "file_url", 
+                    file_url: { 
+                      url: videoUrl,
+                      mime_type: llmMimeType
+                    } 
+                  }
+                ]
+              }
             ],
             response_format: {
               type: "json_schema",

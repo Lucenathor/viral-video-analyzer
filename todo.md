@@ -77,3 +77,4 @@
 - [x] Improve video upload progress indicator (added step-by-step status messages)
 - [x] Add better error messages visible to user
 - [x] Fix S3 upload error from frontend - implemented chunked upload through server
+- [x] Fix analysis not using actual video content - now sends video to LLM with file_url for real visual analysis
