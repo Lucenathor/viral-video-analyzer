@@ -138,7 +138,7 @@ export default function Analyzer() {
   const getUploadUrl = trpc.video.getUploadUrl.useMutation();
   const uploadChunk = trpc.video.uploadChunk.useMutation();
   const finalizeUploadAndAnalyze = trpc.video.finalizeUploadAndAnalyze.useMutation();
-  const compareVideos = trpc.video.compareVideos.useMutation();
+  // const compareVideos = trpc.video.compareVideos.useMutation(); // TODO: Implement comparison feature
 
   const handleViralVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -263,12 +263,20 @@ export default function Analyzer() {
         const base64 = reader.result as string;
         
         try {
-          const result = await compareVideos.mutateAsync({
+          // TODO: Implement comparison feature
+          toast.info("La función de comparación estará disponible próximamente");
+          const result = { // Placeholder
+            similarities: [],
+            differences: [],
+            recommendations: [],
+            matchScore: 0
+          };
+          /* const result = await compareVideos.mutateAsync({
             userVideoData: base64,
             fileName: userVideoFile.name,
             mimeType: userVideoFile.type,
             viralAnalysisId: analysisResult.id
-          });
+          }); */
           
           clearInterval(progressInterval);
           setComparisonProgress(100);

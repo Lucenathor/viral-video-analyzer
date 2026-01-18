@@ -44,11 +44,11 @@ export default function Support() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const createTicket = trpc.support.createTicket.useMutation();
-  const { data: userTickets, isLoading: ticketsLoading, refetch: refetchTickets } = trpc.support.getUserTickets.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  const submitTicket = trpc.support.submit.useMutation();
+  // Tickets are not stored in DB, just sent to owner
+  const userTickets: { id: number; subject: string; message: string; status: string; createdAt: Date; loomVideoUrl?: string; expertResponse?: string }[] = [];
+  const ticketsLoading = false;
+  const refetchTickets = () => {};
 
   const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,13 +92,11 @@ export default function Support() {
         });
       }
 
-      await createTicket.mutateAsync({
+      await submitTicket.mutateAsync({
         subject,
-        message,
-        category: category as "analysis_help" | "video_review" | "technical" | "general",
-        videoData,
-        videoFileName: videoFile?.name,
-        videoMimeType: videoFile?.type,
+        message: videoFile ? `${message}\n\n[Video adjunto: ${videoFile.name}]` : message,
+        category: (category === "analysis_help" || category === "video_review") ? "question" : 
+                  (category === "technical" ? "bug" : "other") as "bug" | "feature" | "question" | "other",
       });
 
       toast.success("¡Ticket enviado! Te responderemos lo antes posible.");

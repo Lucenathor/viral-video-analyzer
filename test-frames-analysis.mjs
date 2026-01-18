@@ -1,21 +1,19 @@
-// Test the complete video analysis flow as it happens in the app
+// Test video analysis using extracted frames
 import { config } from 'dotenv';
+import fs from 'fs';
 config();
 
 const FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 const FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
 
-console.log('=== FULL FLOW TEST ===\n');
-console.log('FORGE_API_URL:', FORGE_API_URL);
-console.log('FORGE_API_KEY set:', !!FORGE_API_KEY);
-
-// Step 1: Upload a chunk to S3
-async function uploadChunk(fileKey, chunkData, mimeType) {
+async function uploadFrame(framePath, fileKey) {
+  const buffer = fs.readFileSync(framePath);
+  
   const baseUrl = FORGE_API_URL.replace(/\/+$/, '') + '/';
   const uploadUrl = new URL('v1/storage/upload', baseUrl);
   uploadUrl.searchParams.set('path', fileKey);
   
-  const blob = new Blob([chunkData], { type: mimeType });
+  const blob = new Blob([buffer], { type: 'image/jpeg' });
   const formData = new FormData();
   formData.append('file', blob, fileKey.split('/').pop());
   
@@ -28,72 +26,49 @@ async function uploadChunk(fileKey, chunkData, mimeType) {
   });
   
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-  }
-  
-  return await response.json();
-}
-
-// Step 2: Get download URL for the uploaded file
-async function getDownloadUrl(fileKey) {
-  const baseUrl = FORGE_API_URL.replace(/\/+$/, '') + '/';
-  const downloadApiUrl = new URL('v1/storage/downloadUrl', baseUrl);
-  downloadApiUrl.searchParams.set('path', fileKey);
-  
-  const response = await fetch(downloadApiUrl.toString(), {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${FORGE_API_KEY}`,
-    },
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Get download URL failed: ${response.status} - ${errorText}`);
+    throw new Error(`Upload failed: ${response.status}`);
   }
   
   const result = await response.json();
   return result.url;
 }
 
-// Step 3: Call LLM with video URL
-async function analyzeVideo(videoUrl) {
-  const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales (Instagram Reels, TikTok, YouTube Shorts).
+async function analyzeWithFrames(frameUrls) {
+  console.log('\nAnalyzing video using', frameUrls.length, 'frames...');
+  
+  // Build content array with all frames
+  const content = [
+    { 
+      type: 'text', 
+      text: `Eres un experto en análisis de vídeos virales de redes sociales (Instagram Reels, TikTok, YouTube Shorts).
 
-ANALIZA EL VÍDEO QUE TE PROPORCIONO y proporciona un análisis detallado basándote en LO QUE VES en el vídeo.
+Te proporciono ${frameUrls.length} frames extraídos de un vídeo (1 frame por segundo). ANALIZA estos frames para entender el contenido del vídeo completo.
 
 Debes analizar:
-1. Los primeros 3 segundos (el "hook") - ¿Qué técnica usa para captar atención?
-2. La estructura completa del vídeo - Divide en segmentos con timestamps reales
+1. Los primeros 3 segundos (frames 1-3) - ¿Qué técnica usa para captar atención?
+2. La estructura completa del vídeo - Divide en segmentos basándote en los cambios visuales
 3. Los factores de viralidad - Puntúa cada aspecto del 0 al 100
 4. Un resumen detallado de qué hace el vídeo y por qué funcionaría (o no) como contenido viral
 
-Responde en formato JSON con esta estructura exacta.`;
-
+Responde en formato JSON.`
+    }
+  ];
+  
+  // Add all frames as images
+  for (let i = 0; i < frameUrls.length; i++) {
+    content.push({
+      type: 'image_url',
+      image_url: { url: frameUrls[i], detail: 'low' }
+    });
+  }
+  
   const payload = {
     model: 'gemini-2.5-flash',
     messages: [
-      { 
-        role: 'system', 
-        content: 'Eres un experto analista de contenido viral. DEBES analizar el vídeo que se te proporciona y describir exactamente lo que ves. Responde siempre en español y en formato JSON válido.' 
-      },
-      { 
-        role: 'user', 
-        content: [
-          { type: 'text', text: analysisPrompt },
-          { 
-            type: 'file_url', 
-            file_url: { 
-              url: videoUrl,
-              mime_type: 'video/mp4'
-            } 
-          }
-        ]
-      }
+      { role: 'system', content: 'Eres un experto analista de contenido viral. Analiza los frames del vídeo y describe lo que ves. Responde en español y en formato JSON.' },
+      { role: 'user', content }
     ],
-    max_tokens: 32768,
-    thinking: { budget_tokens: 128 },
+    max_tokens: 4096,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -157,9 +132,6 @@ Responde en formato JSON con esta estructura exacta.`;
     }
   };
   
-  console.log('\nCalling LLM API...');
-  console.log('Video URL:', videoUrl);
-  
   const response = await fetch(`${FORGE_API_URL.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
     headers: {
@@ -169,44 +141,63 @@ Responde en formato JSON con esta estructura exacta.`;
     body: JSON.stringify(payload),
   });
   
-  console.log('Response status:', response.status, response.statusText);
+  console.log('LLM Response status:', response.status);
   
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`LLM API failed: ${response.status} - ${errorText}`);
+    throw new Error(`LLM failed: ${response.status} - ${errorText}`);
   }
   
-  return await response.json();
+  const result = await response.json();
+  
+  if (result.error) {
+    throw new Error(`LLM error: ${result.error.message}`);
+  }
+  
+  return result.choices[0].message.content;
 }
 
 async function runTest() {
   try {
-    // Test with a public video
-    console.log('\n--- TEST 1: Using public video URL ---');
-    const publicVideoUrl = 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+    console.log('=== FRAME-BASED VIDEO ANALYSIS TEST ===\n');
     
-    const result = await analyzeVideo(publicVideoUrl);
+    // Upload frames to S3
+    const frameUrls = [];
+    const framesDir = '/tmp/frames';
+    const files = fs.readdirSync(framesDir).filter(f => f.endsWith('.jpg')).sort();
     
-    console.log('\n=== ANALYSIS RESULT ===');
-    const content = result.choices[0].message.content;
+    console.log(`Uploading ${files.length} frames to S3...`);
+    
+    for (const file of files) {
+      const framePath = `${framesDir}/${file}`;
+      const fileKey = `test/frames-${Date.now()}/${file}`;
+      const url = await uploadFrame(framePath, fileKey);
+      frameUrls.push(url);
+      console.log(`  Uploaded: ${file}`);
+    }
+    
+    // Analyze with LLM
+    const content = await analyzeWithFrames(frameUrls);
     const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
     
+    console.log('\n=== ANALYSIS RESULT ===');
     console.log('Overall Score:', analysisData.overallScore);
     console.log('Hook Score:', analysisData.hookScore);
     console.log('Pacing Score:', analysisData.pacingScore);
     console.log('Engagement Score:', analysisData.engagementScore);
-    console.log('\nHook Analysis:', analysisData.hookAnalysis?.substring(0, 200) + '...');
-    console.log('\nSegments:', analysisData.structureBreakdown?.segments?.length);
-    console.log('\nFactors:', analysisData.viralityFactors?.factors?.length);
-    console.log('\n✓ TEST 1 PASSED!\n');
     
-    return true;
+    console.log('\nHook Analysis:');
+    console.log(analysisData.hookAnalysis);
+    
+    console.log('\nSummary:');
+    console.log(analysisData.summary);
+    
+    console.log('\n✅ FRAME-BASED ANALYSIS TEST PASSED!');
+    
   } catch (error) {
-    console.error('\n✗ TEST FAILED:', error.message);
-    return false;
+    console.error('\n❌ TEST FAILED:', error.message);
+    console.error(error.stack);
   }
 }
 
-runTest().then(success => {
-  process.exit(success ? 0 : 1);
-});
+runTest();

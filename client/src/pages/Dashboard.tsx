@@ -35,10 +35,9 @@ export default function Dashboard() {
     { enabled: isAuthenticated }
   );
   
-  const { data: tickets, isLoading: ticketsLoading } = trpc.support.getUserTickets.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  // Tickets are not stored in DB, just sent to owner
+  const tickets: { id: number; status: string }[] = [];
+  const ticketsLoading = false;
 
   const isLoading = analysesLoading || videosLoading || ticketsLoading;
 
@@ -46,7 +45,7 @@ export default function Dashboard() {
   const totalAnalyses = analyses?.length || 0;
   const completedAnalyses = analyses?.filter(a => a.status === "completed").length || 0;
   const totalVideos = videos?.length || 0;
-  const openTickets = tickets?.filter(t => t.status !== "resolved" && t.status !== "closed").length || 0;
+  const openTickets = tickets?.filter((t: { status: string }) => t.status !== "resolved" && t.status !== "closed").length || 0;
 
   const getAnalysisTypeBadge = (type: string) => {
     const styles: Record<string, { bg: string; text: string; label: string }> = {

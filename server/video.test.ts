@@ -146,7 +146,7 @@ describe("video router", () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    const videos = await caller.video.getLibraryVideos({});
+    const videos = await caller.video.getLibraryVideos();
 
     expect(videos).toHaveLength(1);
     expect(videos[0]).toHaveProperty("title", "Video viral");
@@ -161,37 +161,27 @@ describe("video router", () => {
 });
 
 describe("support router", () => {
-  it("gets user tickets (authenticated)", async () => {
+  it("submits support ticket (authenticated)", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    const tickets = await caller.support.getUserTickets();
+    const result = await caller.support.submit({
+      subject: "Test ticket",
+      message: "Test message",
+      category: "question",
+    });
 
-    expect(tickets).toHaveLength(1);
-    expect(tickets[0]).toHaveProperty("subject", "Ayuda con análisis");
+    expect(result).toHaveProperty("success", true);
   });
 
-  it("gets ticket by id (authenticated, own ticket)", async () => {
-    const ctx = createAuthContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const ticket = await caller.support.getTicketById({ id: 1 });
-
-    expect(ticket).not.toBeNull();
-    expect(ticket.subject).toBe("Ayuda con análisis");
-  });
-
-  it("rejects access to non-existent ticket", async () => {
-    const ctx = createAuthContext();
-    const caller = appRouter.createCaller(ctx);
-
-    await expect(caller.support.getTicketById({ id: 999 })).rejects.toThrow("Ticket not found");
-  });
-
-  it("rejects unauthenticated access to tickets", async () => {
+  it("rejects unauthenticated support submission", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.support.getUserTickets()).rejects.toThrow();
+    await expect(caller.support.submit({
+      subject: "Test",
+      message: "Test",
+      category: "question",
+    })).rejects.toThrow();
   });
 });

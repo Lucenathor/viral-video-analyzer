@@ -7,4 +7,13 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // Azure Video Indexer
+  AZURE_TENANT_ID: process.env.AZURE_TENANT_ID ?? "",
+  AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID ?? "",
+  AZURE_CLIENT_SECRET: process.env.AZURE_CLIENT_SECRET ?? "",
+  AZURE_SUBSCRIPTION_ID: process.env.AZURE_SUBSCRIPTION_ID ?? "",
+  AZURE_RESOURCE_GROUP: process.env.AZURE_RESOURCE_GROUP ?? "",
+  AZURE_VIDEO_INDEXER_ACCOUNT_NAME: process.env.AZURE_VIDEO_INDEXER_ACCOUNT_NAME ?? "",
+  AZURE_VIDEO_INDEXER_ACCOUNT_ID: process.env.AZURE_VIDEO_INDEXER_ACCOUNT_ID ?? "",
+  AZURE_VIDEO_INDEXER_LOCATION: process.env.AZURE_VIDEO_INDEXER_LOCATION ?? "",
 };

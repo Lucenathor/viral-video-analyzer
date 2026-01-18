@@ -1,64 +1,19 @@
-// Test the complete video analysis flow as it happens in the app
+// Test exactly what the server does
 import { config } from 'dotenv';
 config();
 
 const FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 const FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
 
-console.log('=== FULL FLOW TEST ===\n');
-console.log('FORGE_API_URL:', FORGE_API_URL);
-console.log('FORGE_API_KEY set:', !!FORGE_API_KEY);
+// Use the URL from a previously uploaded video
+const videoUrl = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/test/video-test-1768778364914.mp4';
 
-// Step 1: Upload a chunk to S3
-async function uploadChunk(fileKey, chunkData, mimeType) {
-  const baseUrl = FORGE_API_URL.replace(/\/+$/, '') + '/';
-  const uploadUrl = new URL('v1/storage/upload', baseUrl);
-  uploadUrl.searchParams.set('path', fileKey);
+async function testServerExact() {
+  console.log('=== Testing exact server LLM call ===\n');
+  console.log('Video URL:', videoUrl);
   
-  const blob = new Blob([chunkData], { type: mimeType });
-  const formData = new FormData();
-  formData.append('file', blob, fileKey.split('/').pop());
+  const llmMimeType = "video/mp4";
   
-  const response = await fetch(uploadUrl.toString(), {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${FORGE_API_KEY}`,
-    },
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-  }
-  
-  return await response.json();
-}
-
-// Step 2: Get download URL for the uploaded file
-async function getDownloadUrl(fileKey) {
-  const baseUrl = FORGE_API_URL.replace(/\/+$/, '') + '/';
-  const downloadApiUrl = new URL('v1/storage/downloadUrl', baseUrl);
-  downloadApiUrl.searchParams.set('path', fileKey);
-  
-  const response = await fetch(downloadApiUrl.toString(), {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${FORGE_API_KEY}`,
-    },
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Get download URL failed: ${response.status} - ${errorText}`);
-  }
-  
-  const result = await response.json();
-  return result.url;
-}
-
-// Step 3: Call LLM with video URL
-async function analyzeVideo(videoUrl) {
   const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales (Instagram Reels, TikTok, YouTube Shorts).
 
 ANALIZA EL VÍDEO QUE TE PROPORCIONO y proporciona un análisis detallado basándote en LO QUE VES en el vídeo.
@@ -74,19 +29,16 @@ Responde en formato JSON con esta estructura exacta.`;
   const payload = {
     model: 'gemini-2.5-flash',
     messages: [
+      { role: "system", content: "Eres un experto analista de contenido viral. DEBES analizar el vídeo que se te proporciona y describir exactamente lo que ves. Responde siempre en español y en formato JSON válido." },
       { 
-        role: 'system', 
-        content: 'Eres un experto analista de contenido viral. DEBES analizar el vídeo que se te proporciona y describir exactamente lo que ves. Responde siempre en español y en formato JSON válido.' 
-      },
-      { 
-        role: 'user', 
+        role: "user", 
         content: [
-          { type: 'text', text: analysisPrompt },
+          { type: "text", text: analysisPrompt },
           { 
-            type: 'file_url', 
+            type: "file_url", 
             file_url: { 
               url: videoUrl,
-              mime_type: 'video/mp4'
+              mime_type: llmMimeType
             } 
           }
         ]
@@ -157,8 +109,7 @@ Responde en formato JSON con esta estructura exacta.`;
     }
   };
   
-  console.log('\nCalling LLM API...');
-  console.log('Video URL:', videoUrl);
+  console.log('\nCalling LLM...');
   
   const response = await fetch(`${FORGE_API_URL.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
@@ -169,44 +120,45 @@ Responde en formato JSON con esta estructura exacta.`;
     body: JSON.stringify(payload),
   });
   
-  console.log('Response status:', response.status, response.statusText);
+  console.log('Response status:', response.status);
   
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`LLM API failed: ${response.status} - ${errorText}`);
+    console.error('Error:', errorText);
+    return;
   }
   
-  return await response.json();
-}
-
-async function runTest() {
-  try {
-    // Test with a public video
-    console.log('\n--- TEST 1: Using public video URL ---');
-    const publicVideoUrl = 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
-    
-    const result = await analyzeVideo(publicVideoUrl);
-    
-    console.log('\n=== ANALYSIS RESULT ===');
-    const content = result.choices[0].message.content;
-    const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
-    
-    console.log('Overall Score:', analysisData.overallScore);
-    console.log('Hook Score:', analysisData.hookScore);
-    console.log('Pacing Score:', analysisData.pacingScore);
-    console.log('Engagement Score:', analysisData.engagementScore);
-    console.log('\nHook Analysis:', analysisData.hookAnalysis?.substring(0, 200) + '...');
-    console.log('\nSegments:', analysisData.structureBreakdown?.segments?.length);
-    console.log('\nFactors:', analysisData.viralityFactors?.factors?.length);
-    console.log('\n✓ TEST 1 PASSED!\n');
-    
-    return true;
-  } catch (error) {
-    console.error('\n✗ TEST FAILED:', error.message);
-    return false;
+  const result = await response.json();
+  const content = result.choices[0].message.content;
+  const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
+  
+  console.log('\n=== ANALYSIS RESULT ===');
+  console.log('Overall Score:', analysisData.overallScore);
+  console.log('Hook Score:', analysisData.hookScore);
+  console.log('\nHook Analysis (first 300 chars):');
+  console.log(analysisData.hookAnalysis?.substring(0, 300) + '...');
+  
+  console.log('\nSummary (first 500 chars):');
+  console.log(analysisData.summary?.substring(0, 500) + '...');
+  
+  // Check if it mentions specific content from the Chromecast video
+  const mentionsSpecific = 
+    analysisData.hookAnalysis?.toLowerCase().includes('chromecast') ||
+    analysisData.hookAnalysis?.toLowerCase().includes('hbo') ||
+    analysisData.hookAnalysis?.toLowerCase().includes('tablet') ||
+    analysisData.hookAnalysis?.toLowerCase().includes('dragon') ||
+    analysisData.summary?.toLowerCase().includes('chromecast') ||
+    analysisData.summary?.toLowerCase().includes('hbo') ||
+    analysisData.summary?.toLowerCase().includes('game of thrones');
+  
+  console.log('\n=== VERIFICATION ===');
+  console.log('Mentions specific video content:', mentionsSpecific ? '✅ YES' : '❌ NO');
+  
+  if (mentionsSpecific) {
+    console.log('\n✅ SERVER FLOW TEST PASSED!');
+  } else {
+    console.log('\n❌ SERVER FLOW TEST FAILED - LLM did not analyze the actual video');
   }
 }
 
-runTest().then(success => {
-  process.exit(success ? 0 : 1);
-});
+testServerExact();

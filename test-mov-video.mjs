@@ -1,21 +1,22 @@
-// Test the complete video analysis flow as it happens in the app
+// Test with the user's MOV video
 import { config } from 'dotenv';
+import fs from 'fs';
 config();
 
 const FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 const FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
 
-console.log('=== FULL FLOW TEST ===\n');
-console.log('FORGE_API_URL:', FORGE_API_URL);
-console.log('FORGE_API_KEY set:', !!FORGE_API_KEY);
+// Path to user's video
+const userVideoPath = '/home/ubuntu/upload/copy_21FECC20-7C64-4BDF-A1D5-A8A03A005B76.MOV';
 
-// Step 1: Upload a chunk to S3
-async function uploadChunk(fileKey, chunkData, mimeType) {
+async function uploadToS3(buffer, fileKey, mimeType) {
+  console.log(`Uploading to S3: ${fileKey} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+  
   const baseUrl = FORGE_API_URL.replace(/\/+$/, '') + '/';
   const uploadUrl = new URL('v1/storage/upload', baseUrl);
   uploadUrl.searchParams.set('path', fileKey);
   
-  const blob = new Blob([chunkData], { type: mimeType });
+  const blob = new Blob([buffer], { type: mimeType });
   const formData = new FormData();
   formData.append('file', blob, fileKey.split('/').pop());
   
@@ -32,10 +33,10 @@ async function uploadChunk(fileKey, chunkData, mimeType) {
     throw new Error(`Upload failed: ${response.status} - ${errorText}`);
   }
   
-  return await response.json();
+  const result = await response.json();
+  return result.url;
 }
 
-// Step 2: Get download URL for the uploaded file
 async function getDownloadUrl(fileKey) {
   const baseUrl = FORGE_API_URL.replace(/\/+$/, '') + '/';
   const downloadApiUrl = new URL('v1/storage/downloadUrl', baseUrl);
@@ -57,8 +58,9 @@ async function getDownloadUrl(fileKey) {
   return result.url;
 }
 
-// Step 3: Call LLM with video URL
-async function analyzeVideo(videoUrl) {
+async function analyzeWithLLM(videoUrl) {
+  console.log('\nAnalyzing video with LLM...');
+  
   const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales (Instagram Reels, TikTok, YouTube Shorts).
 
 ANALIZA EL VÍDEO QUE TE PROPORCIONO y proporciona un análisis detallado basándote en LO QUE VES en el vídeo.
@@ -74,19 +76,16 @@ Responde en formato JSON con esta estructura exacta.`;
   const payload = {
     model: 'gemini-2.5-flash',
     messages: [
+      { role: "system", content: "Eres un experto analista de contenido viral. DEBES analizar el vídeo que se te proporciona y describir exactamente lo que ves. Responde siempre en español y en formato JSON válido." },
       { 
-        role: 'system', 
-        content: 'Eres un experto analista de contenido viral. DEBES analizar el vídeo que se te proporciona y describir exactamente lo que ves. Responde siempre en español y en formato JSON válido.' 
-      },
-      { 
-        role: 'user', 
+        role: "user", 
         content: [
-          { type: 'text', text: analysisPrompt },
+          { type: "text", text: analysisPrompt },
           { 
-            type: 'file_url', 
+            type: "file_url", 
             file_url: { 
               url: videoUrl,
-              mime_type: 'video/mp4'
+              mime_type: "video/mp4"  // MOV is compatible with video/mp4
             } 
           }
         ]
@@ -157,9 +156,6 @@ Responde en formato JSON con esta estructura exacta.`;
     }
   };
   
-  console.log('\nCalling LLM API...');
-  console.log('Video URL:', videoUrl);
-  
   const response = await fetch(`${FORGE_API_URL.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
     headers: {
@@ -169,44 +165,66 @@ Responde en formato JSON con esta estructura exacta.`;
     body: JSON.stringify(payload),
   });
   
-  console.log('Response status:', response.status, response.statusText);
+  console.log('LLM Response status:', response.status);
   
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`LLM API failed: ${response.status} - ${errorText}`);
+    throw new Error(`LLM failed: ${response.status} - ${errorText}`);
   }
   
-  return await response.json();
+  const result = await response.json();
+  return result.choices[0].message.content;
 }
 
 async function runTest() {
   try {
-    // Test with a public video
-    console.log('\n--- TEST 1: Using public video URL ---');
-    const publicVideoUrl = 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+    console.log('=== USER MOV VIDEO TEST ===\n');
     
-    const result = await analyzeVideo(publicVideoUrl);
+    // Check if file exists
+    if (!fs.existsSync(userVideoPath)) {
+      console.log('User video not found at:', userVideoPath);
+      console.log('Listing /home/ubuntu/upload/...');
+      const files = fs.readdirSync('/home/ubuntu/upload/');
+      console.log('Files:', files);
+      return;
+    }
     
-    console.log('\n=== ANALYSIS RESULT ===');
-    const content = result.choices[0].message.content;
+    // Read video file
+    console.log('Reading video file...');
+    const videoBuffer = fs.readFileSync(userVideoPath);
+    console.log(`Video size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+    
+    // Upload to S3
+    const fileKey = `test/user-video-test-${Date.now()}.mov`;
+    const uploadedUrl = await uploadToS3(videoBuffer, fileKey, 'video/quicktime');
+    console.log('Uploaded URL:', uploadedUrl);
+    
+    // Get download URL
+    const downloadUrl = await getDownloadUrl(fileKey);
+    console.log('Download URL:', downloadUrl);
+    
+    // Analyze with LLM
+    const content = await analyzeWithLLM(downloadUrl);
     const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
     
+    console.log('\n=== ANALYSIS RESULT ===');
     console.log('Overall Score:', analysisData.overallScore);
     console.log('Hook Score:', analysisData.hookScore);
     console.log('Pacing Score:', analysisData.pacingScore);
     console.log('Engagement Score:', analysisData.engagementScore);
-    console.log('\nHook Analysis:', analysisData.hookAnalysis?.substring(0, 200) + '...');
-    console.log('\nSegments:', analysisData.structureBreakdown?.segments?.length);
-    console.log('\nFactors:', analysisData.viralityFactors?.factors?.length);
-    console.log('\n✓ TEST 1 PASSED!\n');
     
-    return true;
+    console.log('\nHook Analysis:');
+    console.log(analysisData.hookAnalysis);
+    
+    console.log('\nSummary:');
+    console.log(analysisData.summary);
+    
+    console.log('\n✅ USER VIDEO TEST PASSED!');
+    
   } catch (error) {
-    console.error('\n✗ TEST FAILED:', error.message);
-    return false;
+    console.error('\n❌ TEST FAILED:', error.message);
+    console.error(error.stack);
   }
 }
 
-runTest().then(success => {
-  process.exit(success ? 0 : 1);
-});
+runTest();
