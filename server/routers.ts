@@ -8,7 +8,7 @@ import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
-import * as videoIndexer from "./azure-video-indexer";
+import * as videoIndexerTrial from "./video-indexer-trial";
 
 export const appRouter = router({
   system: systemRouter,
@@ -80,32 +80,60 @@ export const appRouter = router({
         
         // Perform AI analysis
         try {
-          // Try to use Azure Video Indexer if configured
-          let videoIndexData: videoIndexer.ExtractedVideoData | null = null;
+          // Try to use Azure Video Indexer Trial API if available
+          let videoIndexData: {
+            transcript: string;
+            keywords: string[];
+            emotions: string[];
+            labels: string[];
+            duration: number;
+          } | null = null;
           
-          if (videoIndexer.isVideoIndexerConfigured()) {
-            try {
-              const uploadResult = await videoIndexer.uploadVideo(
+          try {
+            const isAvailable = await videoIndexerTrial.checkTrialApiStatus();
+            if (isAvailable) {
+              const uploadResult = await videoIndexerTrial.uploadVideoForAnalysis(
                 videoUrl,
                 input.fileName,
                 "Video uploaded for viral analysis"
               );
               
-              // Wait for indexing to complete (max 5 minutes)
-              const indexResult = await videoIndexer.waitForIndexing(uploadResult.videoId);
-              
-              if (indexResult) {
-                videoIndexData = videoIndexer.extractViralAnalysisData(indexResult);
+              if (uploadResult) {
+                // Wait for indexing to complete (poll every 10 seconds, max 5 minutes)
+                let attempts = 0;
+                const maxAttempts = 30;
+                
+                while (attempts < maxAttempts) {
+                  const status = await videoIndexerTrial.getVideoIndexingStatus(uploadResult.videoId);
+                  if (status?.state === 'Processed') {
+                    const insights = await videoIndexerTrial.getVideoInsights(uploadResult.videoId);
+                    if (insights) {
+                      videoIndexData = {
+                        transcript: insights.transcript || '',
+                        keywords: insights.keywords || [],
+                        emotions: insights.emotions?.map(e => e.type) || [],
+                        labels: insights.labels || [],
+                        duration: insights.duration || 0,
+                      };
+                    }
+                    break;
+                  } else if (status?.state === 'Failed') {
+                    console.warn('Video indexing failed');
+                    break;
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 10000));
+                  attempts++;
+                }
               }
-            } catch (indexError) {
-              console.warn("Video Indexer analysis failed, falling back to LLM-only analysis:", indexError);
             }
+          } catch (indexError) {
+            console.warn("Video Indexer analysis failed, falling back to LLM-only analysis:", indexError);
           }
           
           // Build analysis prompt with video data if available
           let videoContext = "";
           if (videoIndexData) {
-            videoContext = `\n\nDATOS EXTRAÍDOS DEL VÍDEO:\n- Duración: ${videoIndexData.durationSeconds} segundos\n- Transcripción: ${videoIndexData.transcript.map(t => t.text).join(" ")}\n- Escenas detectadas: ${videoIndexData.scenes.length}\n- Emociones detectadas: ${videoIndexData.emotions.map(e => e.type).join(", ")}\n- Palabras clave: ${videoIndexData.keywords.map(k => k.text).join(", ")}\n- Objetos/acciones: ${videoIndexData.labels.map(l => l.name).join(", ")}\n`;
+            videoContext = `\n\nDATOS EXTRAÍDOS DEL VÍDEO:\n- Duración: ${videoIndexData.duration} segundos\n- Transcripción: ${videoIndexData.transcript}\n- Emociones detectadas: ${videoIndexData.emotions.join(", ")}\n- Palabras clave: ${videoIndexData.keywords.join(", ")}\n- Objetos/acciones: ${videoIndexData.labels.join(", ")}\n`;
           }
           
           const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales. Analiza este vídeo y proporciona un análisis detallado en formato JSON.${videoContext}
@@ -452,16 +480,20 @@ Responde SOLO con el JSON.`;
       }),
 
     checkVideoIndexerStatus: protectedProcedure.query(async () => {
-      const isConfigured = videoIndexer.isVideoIndexerConfigured();
-      if (!isConfigured) {
-        return { configured: false, connected: false, error: "Azure Video Indexer credentials not configured" };
+      try {
+        const isAvailable = await videoIndexerTrial.checkTrialApiStatus();
+        return {
+          configured: true,
+          connected: isAvailable,
+          error: isAvailable ? undefined : "Azure Video Indexer Trial API not available",
+        };
+      } catch (error) {
+        return {
+          configured: false,
+          connected: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
       }
-      const connectionTest = await videoIndexer.testConnection();
-      return {
-        configured: true,
-        connected: connectionTest.success,
-        error: connectionTest.error,
-      };
     }),
   }),
 
