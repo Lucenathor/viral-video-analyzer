@@ -76,3 +76,4 @@
 - [x] Fix video analysis failing at 90% - investigate server-side (implemented direct S3 upload)
 - [x] Improve video upload progress indicator (added step-by-step status messages)
 - [x] Add better error messages visible to user
+- [x] Fix S3 upload error from frontend - implemented chunked upload through server

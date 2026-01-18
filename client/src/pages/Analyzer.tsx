@@ -69,32 +69,48 @@ interface ComparisonResult {
   overallScore: number;
 }
 
-// Upload file directly to S3 using Forge API
-async function uploadToS3(file: File, fileKey: string): Promise<string> {
-  const FORGE_API_URL = import.meta.env.VITE_FRONTEND_FORGE_API_URL;
-  const FORGE_API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+// Upload file in chunks through the server
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+
+async function uploadFileInChunks(
+  file: File,
+  uploadChunkMutation: any,
+  fileKey: string,
+  onProgress: (progress: number) => void
+): Promise<void> {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const uploadUrl = new URL('v1/storage/upload', FORGE_API_URL.replace(/\/+$/, '') + '/');
-  uploadUrl.searchParams.set('path', fileKey);
-  
-  const response = await fetch(uploadUrl.toString(), {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${FORGE_API_KEY}`,
-    },
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
+    
+    // Convert chunk to base64
+    const base64Chunk = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(chunk);
+    });
+    
+    await uploadChunkMutation.mutateAsync({
+      fileKey,
+      chunk: base64Chunk,
+      chunkIndex: i,
+      totalChunks,
+      mimeType: file.type,
+      isLastChunk: i === totalChunks - 1,
+    });
+    
+    // Update progress (upload is 0-50% of total progress)
+    const uploadProgress = ((i + 1) / totalChunks) * 50;
+    onProgress(uploadProgress);
   }
-  
-  const result = await response.json();
-  return result.url;
 }
 
 export default function Analyzer() {
@@ -120,7 +136,8 @@ export default function Analyzer() {
   const userInputRef = useRef<HTMLInputElement>(null);
 
   const getUploadUrl = trpc.video.getUploadUrl.useMutation();
-  const analyzeByUrl = trpc.video.analyzeByUrl.useMutation();
+  const uploadChunk = trpc.video.uploadChunk.useMutation();
+  const finalizeUploadAndAnalyze = trpc.video.finalizeUploadAndAnalyze.useMutation();
   const compareVideos = trpc.video.compareVideos.useMutation();
 
   const handleViralVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,38 +174,39 @@ export default function Analyzer() {
     setUploadStatus("Preparando subida...");
     
     try {
-      // Step 1: Get upload URL/key from server
-      setUploadStatus("Obteniendo URL de subida...");
-      setAnalysisProgress(5);
+      // Step 1: Get upload key from server
+      setUploadStatus("Iniciando subida...");
+      setAnalysisProgress(2);
       
       const { fileKey } = await getUploadUrl.mutateAsync({
         fileName: viralVideoFile.name,
         mimeType: viralVideoFile.type,
       });
       
-      // Step 2: Upload directly to S3
-      setUploadStatus("Subiendo vídeo a la nube...");
-      setAnalysisProgress(10);
+      // Step 2: Upload file in chunks
+      setUploadStatus("Subiendo vídeo...");
       
-      // Progress simulation for upload
-      const uploadProgressInterval = setInterval(() => {
-        setAnalysisProgress(prev => Math.min(prev + 2, 50));
-      }, 500);
+      await uploadFileInChunks(
+        viralVideoFile,
+        uploadChunk,
+        fileKey,
+        (progress) => {
+          setAnalysisProgress(progress);
+          setUploadStatus(`Subiendo vídeo... ${Math.round(progress)}%`);
+        }
+      );
       
-      const videoUrl = await uploadToS3(viralVideoFile, fileKey);
-      
-      clearInterval(uploadProgressInterval);
-      setAnalysisProgress(55);
+      // Step 3: Finalize upload and start analysis
       setUploadStatus("Vídeo subido. Analizando con IA...");
+      setAnalysisProgress(55);
       
-      // Step 3: Analyze the video
+      // Progress simulation for analysis
       const analysisProgressInterval = setInterval(() => {
-        setAnalysisProgress(prev => Math.min(prev + 3, 95));
+        setAnalysisProgress(prev => Math.min(prev + 2, 95));
       }, 1000);
       
-      const result = await analyzeByUrl.mutateAsync({
-        videoUrl,
-        videoKey: fileKey,
+      const result = await finalizeUploadAndAnalyze.mutateAsync({
+        fileKey,
         fileName: viralVideoFile.name,
         mimeType: viralVideoFile.type,
         fileSize: viralVideoFile.size,
@@ -382,7 +400,7 @@ export default function Analyzer() {
                           {isAnalyzing ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Analizando...
+                              Procesando...
                             </>
                           ) : (
                             <>
@@ -396,7 +414,7 @@ export default function Analyzer() {
                         <div className="space-y-2">
                           <Progress value={analysisProgress} className="h-2" />
                           <p className="text-sm text-muted-foreground text-center">
-                            {uploadStatus || `Analizando... ${analysisProgress}%`}
+                            {uploadStatus || `Procesando... ${analysisProgress}%`}
                           </p>
                         </div>
                       )}

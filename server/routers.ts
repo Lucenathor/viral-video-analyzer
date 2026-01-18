@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
-import { storagePut } from "./storage";
+import { storagePut, storageGet } from "./storage";
 import { nanoid } from "nanoid";
 import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
@@ -53,7 +53,7 @@ export const appRouter = router({
         return { fileKey, userId: ctx.user.id };
       }),
 
-    // New endpoint: Upload video chunk by chunk
+    // Upload video chunk by chunk
     uploadChunk: protectedProcedure
       .input(z.object({
         fileKey: z.string(),
@@ -61,11 +61,202 @@ export const appRouter = router({
         chunkIndex: z.number(),
         totalChunks: z.number(),
         mimeType: z.string(),
+        isLastChunk: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Store chunk temporarily (in real implementation, would use multipart upload)
-        // For now, we'll handle this differently
-        return { success: true, chunkIndex: input.chunkIndex };
+        // Decode base64 chunk and upload to S3
+        const chunkBuffer = Buffer.from(input.chunk, 'base64');
+        const chunkKey = `${input.fileKey}.chunk${input.chunkIndex}`;
+        
+        try {
+          await storagePut(chunkKey, chunkBuffer, input.mimeType);
+          console.log(`[Upload] Chunk ${input.chunkIndex + 1}/${input.totalChunks} uploaded for ${input.fileKey}`);
+          return { success: true, chunkIndex: input.chunkIndex };
+        } catch (error) {
+          console.error(`[Upload] Error uploading chunk ${input.chunkIndex}:`, error);
+          throw new Error(`Failed to upload chunk ${input.chunkIndex}`);
+        }
+      }),
+
+    // Finalize upload and start analysis
+    finalizeUploadAndAnalyze: protectedProcedure
+      .input(z.object({
+        fileKey: z.string(),
+        fileName: z.string(),
+        mimeType: z.string(),
+        fileSize: z.number(),
+        analysisType: z.enum(["viral_analysis", "comparison", "expert_review"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        console.log('[Analysis] ====== FINALIZING UPLOAD AND STARTING ANALYSIS ======');
+        console.log('[Analysis] User ID:', ctx.user.id);
+        console.log('[Analysis] File key:', input.fileKey);
+        
+        // Get the video URL from storage
+        const { url: videoUrl } = await storageGet(input.fileKey + '.chunk0');
+        console.log('[Analysis] Video URL:', videoUrl);
+        
+        // Create video record
+        const videoId = await db.createVideo({
+          userId: ctx.user.id,
+          title: input.fileName,
+          videoUrl: videoUrl,
+          videoKey: input.fileKey,
+          mimeType: input.mimeType,
+          fileSize: input.fileSize,
+          videoType: "viral_reference",
+        });
+        console.log('[Analysis] Video record created. ID:', videoId);
+        
+        // Create analysis record
+        const analysisId = await db.createVideoAnalysis({
+          videoId,
+          userId: ctx.user.id,
+          analysisType: input.analysisType,
+          status: "processing",
+        });
+        console.log('[Analysis] Analysis record created. ID:', analysisId);
+        
+        // Perform AI analysis
+        try {
+          const videoContext = `\n\nINFORMACIÓN DEL VÍDEO:\n- Nombre del archivo: ${input.fileName}\n- Tipo: ${input.mimeType}\n`;
+          
+          const analysisPrompt = `Eres un experto en análisis de vídeos virales de redes sociales. Analiza este vídeo y proporciona un análisis detallado en formato JSON.${videoContext}
+
+El vídeo ha sido subido y necesito que analices su potencial viral basándote en las mejores prácticas de contenido viral en Instagram Reels y TikTok.
+
+Proporciona tu análisis en el siguiente formato JSON exacto:
+{
+  "hookAnalysis": "Análisis detallado del hook (primeros 3 segundos). Describe qué técnica usa para captar atención.",
+  "structureBreakdown": {
+    "segments": [
+      { "startTime": 0, "endTime": 3, "type": "Hook", "description": "Descripción" },
+      { "startTime": 3, "endTime": 10, "type": "Desarrollo", "description": "Descripción" },
+      { "startTime": 10, "endTime": 15, "type": "Clímax/CTA", "description": "Descripción" }
+    ]
+  },
+  "viralityFactors": {
+    "factors": [
+      { "name": "Hook Efectivo", "score": 85, "description": "Explicación" },
+      { "name": "Ritmo y Pacing", "score": 78, "description": "Análisis" },
+      { "name": "Valor Emocional", "score": 90, "description": "Conexión" },
+      { "name": "Compartibilidad", "score": 82, "description": "Probabilidad" }
+    ]
+  },
+  "summary": "Resumen completo de 2-3 párrafos.",
+  "overallScore": 84,
+  "hookScore": 85,
+  "pacingScore": 78,
+  "engagementScore": 88
+}
+
+Responde SOLO con el JSON, sin texto adicional.`;
+
+          console.log('[Analysis] Calling LLM for analysis...');
+          const response = await invokeLLM({
+            messages: [
+              { role: "system", content: "Eres un experto analista de contenido viral. Responde siempre en español y en formato JSON válido." },
+              { role: "user", content: analysisPrompt }
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "viral_analysis",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    hookAnalysis: { type: "string" },
+                    structureBreakdown: {
+                      type: "object",
+                      properties: {
+                        segments: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              startTime: { type: "number" },
+                              endTime: { type: "number" },
+                              type: { type: "string" },
+                              description: { type: "string" }
+                            },
+                            required: ["startTime", "endTime", "type", "description"],
+                            additionalProperties: false
+                          }
+                        }
+                      },
+                      required: ["segments"],
+                      additionalProperties: false
+                    },
+                    viralityFactors: {
+                      type: "object",
+                      properties: {
+                        factors: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              name: { type: "string" },
+                              score: { type: "number" },
+                              description: { type: "string" }
+                            },
+                            required: ["name", "score", "description"],
+                            additionalProperties: false
+                          }
+                        }
+                      },
+                      required: ["factors"],
+                      additionalProperties: false
+                    },
+                    summary: { type: "string" },
+                    overallScore: { type: "number" },
+                    hookScore: { type: "number" },
+                    pacingScore: { type: "number" },
+                    engagementScore: { type: "number" }
+                  },
+                  required: ["hookAnalysis", "structureBreakdown", "viralityFactors", "summary", "overallScore", "hookScore", "pacingScore", "engagementScore"],
+                  additionalProperties: false
+                }
+              }
+            }
+          });
+          
+          console.log('[Analysis] LLM response received');
+          const content = response.choices[0].message.content;
+          const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
+          
+          // Update analysis record with results
+          await db.updateVideoAnalysis(analysisId, {
+            status: "completed",
+            hookAnalysis: analysisData.hookAnalysis,
+            structureBreakdown: JSON.stringify(analysisData.structureBreakdown),
+            viralityFactors: JSON.stringify(analysisData.viralityFactors),
+            summary: analysisData.summary,
+            overallScore: analysisData.overallScore,
+            hookScore: analysisData.hookScore,
+            pacingScore: analysisData.pacingScore,
+            engagementScore: analysisData.engagementScore,
+          });
+          
+          console.log('[Analysis] Analysis completed successfully');
+          
+          return {
+            id: analysisId,
+            videoId,
+            hookAnalysis: analysisData.hookAnalysis,
+            structureBreakdown: analysisData.structureBreakdown,
+            viralityFactors: analysisData.viralityFactors,
+            summary: analysisData.summary,
+            overallScore: analysisData.overallScore,
+            hookScore: analysisData.hookScore,
+            pacingScore: analysisData.pacingScore,
+            engagementScore: analysisData.engagementScore,
+          };
+        } catch (error) {
+          console.error('[Analysis] Error during analysis:', error);
+          await db.updateVideoAnalysis(analysisId, { status: "failed" });
+          throw error;
+        }
       }),
 
     // New endpoint: Analyze video by URL (after upload)
