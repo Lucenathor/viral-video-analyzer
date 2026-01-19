@@ -196,14 +196,29 @@ export default function Analyzer() {
         }
       );
       
-      // Step 3: Finalize upload and start analysis
-      setUploadStatus("Vídeo subido. Analizando con IA...");
+      // Step 3: Finalize upload and start Azure + Gemini analysis
+      setUploadStatus("Vídeo subido. Enviando a Azure Video Indexer...");
       setAnalysisProgress(55);
       
-      // Progress simulation for analysis
+      // Progress simulation with detailed messages
+      const analysisSteps = [
+        { progress: 58, message: "Azure procesando vídeo..." },
+        { progress: 62, message: "Azure extrayendo transcripción..." },
+        { progress: 68, message: "Azure detectando temas y personas..." },
+        { progress: 74, message: "Descargando frames del vídeo..." },
+        { progress: 80, message: "Enviando datos a Gemini..." },
+        { progress: 85, message: "Gemini analizando imágenes..." },
+        { progress: 90, message: "Gemini generando análisis de viralidad..." },
+        { progress: 95, message: "Finalizando análisis..." },
+      ];
+      let stepIndex = 0;
       const analysisProgressInterval = setInterval(() => {
-        setAnalysisProgress(prev => Math.min(prev + 2, 95));
-      }, 1000);
+        if (stepIndex < analysisSteps.length) {
+          setAnalysisProgress(analysisSteps[stepIndex].progress);
+          setUploadStatus(analysisSteps[stepIndex].message);
+          stepIndex++;
+        }
+      }, 3000);
       
       const result = await finalizeUploadAndAnalyze.mutateAsync({
         fileKey,

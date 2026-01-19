@@ -80,3 +80,9 @@
 - [x] Fix analysis not using actual video content - now sends video to LLM with file_url for real visual analysis
 - [x] Test video analysis flow exhaustively before delivery - all 14 tests passing
 - [x] Implement Azure Video Indexer integration for video analysis - working with user's 50MB video
+
+## Azure + Gemini Full Flow
+- [x] Update Azure Video Indexer service to download thumbnails/frames
+- [x] Update router to use Azure data + thumbnails with Gemini
+- [x] Update frontend to show analysis progress steps
+- [x] Test full flow with user's video - all tests passing
