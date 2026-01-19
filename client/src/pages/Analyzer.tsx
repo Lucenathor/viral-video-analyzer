@@ -306,19 +306,27 @@ export default function Analyzer() {
         errorMessage = error.message;
       }
       
-      // Show more specific error messages
-      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
-        errorMessage = 'El servidor tardó demasiado. Intenta de nuevo.';
+      // Show more specific error messages based on backend responses
+      if (errorMessage.includes('Error al subir el vídeo a Azure')) {
+        errorMessage = 'Error al subir el vídeo a Azure. Intenta con un vídeo más pequeño o en formato MP4.';
+      } else if (errorMessage.includes('Azure no pudo procesar')) {
+        errorMessage = 'Azure no pudo procesar el vídeo. Asegúrate de que tenga audio y sea un formato compatible.';
+      } else if (errorMessage.includes('duración') || errorMessage.includes('duration')) {
+        errorMessage = 'No se pudo leer la duración del vídeo. El archivo puede estar corrupto.';
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout') || errorMessage.includes('tardó demasiado')) {
+        errorMessage = 'El análisis tardó demasiado tiempo. Intenta con un vídeo más corto (menos de 2 minutos).';
       } else if (errorMessage.includes('413') || errorMessage.includes('too large')) {
         errorMessage = 'El vídeo es demasiado grande. Máximo 100MB.';
       } else if (errorMessage.includes('network') || errorMessage.includes('Network') || errorMessage.includes('fetch')) {
         errorMessage = 'Error de conexión. Verifica tu internet e intenta de nuevo.';
-      } else if (errorMessage.includes('Upload failed')) {
+      } else if (errorMessage.includes('Upload failed') || errorMessage.includes('Failed to upload')) {
         errorMessage = 'Error al subir el vídeo. Intenta de nuevo.';
+      } else if (errorMessage.includes('indexing failed') || errorMessage.includes('Failed')) {
+        errorMessage = 'Error al procesar el vídeo. Intenta con un formato diferente (MP4 recomendado).';
       }
       
-      toast.error(`Error: ${errorMessage}`);
-      setUploadStatus("");
+      toast.error(errorMessage);
+      setUploadStatus(`Error: ${errorMessage}`);
     } finally {
       setIsAnalyzing(false);
     }

@@ -102,3 +102,9 @@
 - [x] Include facial expressions and emotions per frame
 - [x] Detect and describe all on-screen text with timestamps (OCR)
 - [x] Identify all call-to-actions with exact timing
+
+## Bug: Azure returns duration 0
+- [x] Investigate why Azure Video Indexer returns durationInSeconds: 0 - Azure can't access Manus S3 URLs (videos show state: Failed)
+- [x] Implement direct video upload to Azure Video Indexer instead of URL (using multipart/form-data with video buffer)
+- [x] Add proper error handling to show user-friendly message instead of raw JSON
+- [x] Test direct upload to Azure - video uploaded successfully (ID: mx3rwdo7jt), processing in progress

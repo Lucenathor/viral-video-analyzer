@@ -187,11 +187,19 @@ export const appRouter = router({
           // ===== STEP 1: AZURE VIDEO INDEXER =====
           console.log('[Analysis] Step 1: Starting Azure Video Indexer...');
           
+          // Read the compressed video buffer to upload directly to Azure
+          let videoBufferForAzure: Buffer | undefined;
+          if (compressedFilePath && fs.existsSync(compressedFilePath)) {
+            videoBufferForAzure = fs.readFileSync(compressedFilePath);
+            console.log(`[Analysis] Using compressed video buffer for Azure upload: ${(videoBufferForAzure.length / 1024 / 1024).toFixed(2)} MB`);
+          }
+          
           const { videoId: azureVideoId, indexResult, azureData, thumbnailsBase64 } = 
             await analyzeVideoComplete(
               processedVideoUrl,
               `${input.fileName}-${Date.now()}`,
-              (message) => console.log(`[Azure] ${message}`)
+              (message) => console.log(`[Azure] ${message}`),
+              videoBufferForAzure // Pass buffer for direct upload
             );
           
           console.log('[Analysis] Azure completed. Video ID:', azureVideoId);
@@ -499,8 +507,22 @@ Responde en JSON. Sé EXTREMADAMENTE DETALLADO. No omitas nada de lo que ves en 
               thumbnailCount: thumbnailsBase64.length,
             }
           };
-        } catch (error) {
+        } catch (error: any) {
           console.error('[Analysis] Error during analysis:', error);
+          
+          // Determine user-friendly error message
+          let userMessage = 'Error durante el análisis del vídeo';
+          
+          if (error.message?.includes('Failed to upload video')) {
+            userMessage = 'Error al subir el vídeo a Azure. Por favor, intenta con un vídeo más pequeño o en formato MP4.';
+          } else if (error.message?.includes('Video indexing failed')) {
+            userMessage = 'Azure no pudo procesar el vídeo. Asegúrate de que el vídeo tenga audio y sea un formato compatible (MP4, MOV, AVI).';
+          } else if (error.message?.includes('Timeout')) {
+            userMessage = 'El análisis tardó demasiado tiempo. Por favor, intenta con un vídeo más corto (menos de 2 minutos).';
+          } else if (error.message?.includes('duration') || error.message?.includes('durationInSeconds')) {
+            userMessage = 'Azure no pudo leer la duración del vídeo. El archivo puede estar corrupto o en un formato no compatible.';
+          }
+          
           await db.updateVideoAnalysis(analysisId, { status: "failed" });
           
           // Cleanup compressed file if it exists
@@ -508,7 +530,7 @@ Responde en JSON. Sé EXTREMADAMENTE DETALLADO. No omitas nada de lo que ves en 
             cleanupCompressedFile(compressedFilePath);
           }
           
-          throw error;
+          throw new Error(userMessage);
         }
       }),
 

@@ -93,16 +93,58 @@ async function getVideoIndexerToken(): Promise<string> {
 }
 
 /**
- * Upload video to Azure Video Indexer
+ * Upload video to Azure Video Indexer using direct file upload (multipart)
  */
 export async function uploadVideoToIndexer(
-  videoUrl: string,
+  videoPathOrUrl: string,
   videoName: string,
-  language: string = 'Spanish'
+  language: string = 'Spanish',
+  videoBuffer?: Buffer
 ): Promise<string> {
   const viToken = await getVideoIndexerToken();
   
-  const uploadUrl = `https://api.videoindexer.ai/${AZURE_VIDEO_INDEXER_LOCATION}/Accounts/${AZURE_VIDEO_INDEXER_ACCOUNT_ID}/Videos?accessToken=${viToken}&name=${encodeURIComponent(videoName)}&videoUrl=${encodeURIComponent(videoUrl)}&language=${language}&indexingPreset=Default&streamingPreset=NoStreaming&preventDuplicates=false`;
+  // If we have a buffer, upload directly via multipart
+  if (videoBuffer) {
+    const uploadUrl = `https://api.videoindexer.ai/${AZURE_VIDEO_INDEXER_LOCATION}/Accounts/${AZURE_VIDEO_INDEXER_ACCOUNT_ID}/Videos?accessToken=${viToken}&name=${encodeURIComponent(videoName)}&language=${language}&indexingPreset=Default&streamingPreset=NoStreaming&preventDuplicates=false`;
+    
+    // Create multipart form data
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+    const fileName = videoName.endsWith('.mp4') ? videoName : videoName + '.mp4';
+    
+    const header = Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+      `Content-Type: video/mp4\r\n\r\n`
+    );
+    const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const body = Buffer.concat([header, videoBuffer, footer]);
+    
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': body.length.toString(),
+      },
+      body: body,
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      if (result.ErrorType === 'VIDEO_ALREADY_IN_PROGRESS' || result.ErrorType === 'VIDEO_ALREADY_EXISTS') {
+        const match = result.Message?.match(/video id: '([^']+)'/);
+        if (match) {
+          return match[1];
+        }
+      }
+      throw new Error(`Failed to upload video (multipart): ${response.status} - ${JSON.stringify(result)}`);
+    }
+    
+    return result.id;
+  }
+  
+  // Fallback: use URL-based upload
+  const uploadUrl = `https://api.videoindexer.ai/${AZURE_VIDEO_INDEXER_LOCATION}/Accounts/${AZURE_VIDEO_INDEXER_ACCOUNT_ID}/Videos?accessToken=${viToken}&name=${encodeURIComponent(videoName)}&videoUrl=${encodeURIComponent(videoPathOrUrl)}&language=${language}&indexingPreset=Default&streamingPreset=NoStreaming&preventDuplicates=false`;
   
   const response = await fetch(uploadUrl, {
     method: 'POST',
@@ -391,9 +433,10 @@ export function extractViralAnalysis(indexResult: any) {
  * Full video analysis pipeline with thumbnails
  */
 export async function analyzeVideoComplete(
-  videoUrl: string,
+  videoUrlOrPath: string,
   videoName: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
+  videoBuffer?: Buffer
 ): Promise<{
   videoId: string;
   indexResult: any;
@@ -402,7 +445,7 @@ export async function analyzeVideoComplete(
 }> {
   // Step 1: Upload video
   if (onProgress) onProgress('Subiendo vídeo a Azure Video Indexer...');
-  const videoId = await uploadVideoToIndexer(videoUrl, videoName);
+  const videoId = await uploadVideoToIndexer(videoUrlOrPath, videoName, 'Spanish', videoBuffer);
   
   // Step 2: Wait for indexing
   if (onProgress) onProgress('Procesando vídeo con Azure IA...');
