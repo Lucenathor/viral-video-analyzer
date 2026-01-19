@@ -86,3 +86,7 @@
 - [x] Update router to use Azure data + thumbnails with Gemini
 - [x] Update frontend to show analysis progress steps
 - [x] Test full flow with user's video - all tests passing
+
+## UX Improvements
+- [x] Add countdown timer showing estimated time remaining during analysis
+- [x] Show tips for faster analysis while waiting

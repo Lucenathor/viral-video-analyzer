@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Upload, 
   Video, 
@@ -124,6 +124,52 @@ export default function Analyzer() {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>(0);
+  const [analysisStartTime, setAnalysisStartTime] = useState<number>(0);
+  const [currentTip, setCurrentTip] = useState<string>("");
+  
+  // Tips to show while waiting
+  const analysisTips = [
+    "💡 Tip: Los vídeos más cortos (15-30s) se procesan más rápido",
+    "💡 Tip: Comprime tu vídeo antes de subirlo para acelerar el proceso",
+    "💡 Tip: Los formatos MP4 y MOV son los más rápidos de procesar",
+    "💡 Tip: Azure analiza audio, texto, caras y objetos automáticamente",
+    "💡 Tip: Gemini analiza cada frame para detectar elementos visuales",
+    "💡 Tip: El hook de los primeros 3 segundos es clave para la viralidad",
+    "💡 Tip: Los vídeos con buena iluminación se analizan mejor",
+    "💡 Tip: El análisis incluye transcripción, temas, personas y emociones",
+  ];
+  
+  // Rotate tips every 5 seconds during analysis
+  useEffect(() => {
+    if (isAnalyzing) {
+      setCurrentTip(analysisTips[0]);
+      const tipInterval = setInterval(() => {
+        setCurrentTip(prev => {
+          const currentIndex = analysisTips.indexOf(prev);
+          return analysisTips[(currentIndex + 1) % analysisTips.length];
+        });
+      }, 5000);
+      return () => clearInterval(tipInterval);
+    }
+  }, [isAnalyzing]);
+  
+  // Countdown timer
+  useEffect(() => {
+    if (isAnalyzing && analysisStartTime > 0) {
+      const countdownInterval = setInterval(() => {
+        setEstimatedTimeRemaining(prev => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(countdownInterval);
+    }
+  }, [isAnalyzing, analysisStartTime]);
+  
+  // Format seconds to mm:ss
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   
   // User video state (for comparison)
   const [userVideoFile, setUserVideoFile] = useState<File | null>(null);
@@ -172,6 +218,17 @@ export default function Analyzer() {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
     setUploadStatus("Preparando subida...");
+    
+    // Calculate estimated time based on file size
+    // Base: 60s upload + 180s Azure processing + 30s Gemini = ~270s for 50MB
+    const fileSizeMB = viralVideoFile.size / (1024 * 1024);
+    const uploadTimeEstimate = Math.ceil(fileSizeMB * 1.2); // ~1.2s per MB
+    const azureTimeEstimate = 180; // Azure processing ~3 minutes
+    const geminiTimeEstimate = 30; // Gemini ~30 seconds
+    const totalEstimate = uploadTimeEstimate + azureTimeEstimate + geminiTimeEstimate;
+    
+    setEstimatedTimeRemaining(totalEstimate);
+    setAnalysisStartTime(Date.now());
     
     try {
       // Step 1: Get upload key from server
@@ -434,11 +491,32 @@ export default function Analyzer() {
                         </Button>
                       </div>
                       {isAnalyzing && (
-                        <div className="space-y-2">
-                          <Progress value={analysisProgress} className="h-2" />
-                          <p className="text-sm text-muted-foreground text-center">
-                            {uploadStatus || `Procesando... ${analysisProgress}%`}
-                          </p>
+                        <div className="space-y-4 p-4 rounded-xl bg-secondary/20 border border-border/30">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{uploadStatus || 'Procesando...'}</span>
+                            <span className="font-mono font-semibold text-primary">
+                              {estimatedTimeRemaining > 0 ? (
+                                <>
+                                  <Clock className="w-4 h-4 inline mr-1" />
+                                  ~{formatTime(estimatedTimeRemaining)} restantes
+                                </>
+                              ) : (
+                                'Finalizando...'
+                              )}
+                            </span>
+                          </div>
+                          <Progress value={analysisProgress} className="h-3" />
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{Math.round(analysisProgress)}% completado</span>
+                            <span className="text-muted-foreground">
+                              {analysisProgress < 50 ? 'Subiendo' : analysisProgress < 80 ? 'Azure procesando' : 'Gemini analizando'}
+                            </span>
+                          </div>
+                          {currentTip && (
+                            <div className="text-sm text-center text-muted-foreground bg-secondary/30 rounded-lg p-3 animate-pulse">
+                              {currentTip}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
