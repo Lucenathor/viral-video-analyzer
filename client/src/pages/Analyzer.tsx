@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+import { useVideoCompression } from "@/hooks/useVideoCompression";
 
 interface AnalysisResult {
   id: number;
@@ -181,6 +182,10 @@ export default function Analyzer() {
   const viralInputRef = useRef<HTMLInputElement>(null);
   const userInputRef = useRef<HTMLInputElement>(null);
 
+  // Video compression hook
+  const { compressVideo, isCompressing, compressionProgress } = useVideoCompression();
+  const [compressionEnabled, setCompressionEnabled] = useState(true);
+
   const getUploadUrl = trpc.video.getUploadUrl.useMutation();
   const uploadChunk = trpc.video.uploadChunk.useMutation();
   const finalizeUploadAndAnalyze = trpc.video.finalizeUploadAndAnalyze.useMutation();
@@ -259,14 +264,16 @@ export default function Analyzer() {
       
       // Progress simulation with detailed messages
       const analysisSteps = [
-        { progress: 58, message: "Azure procesando vídeo..." },
-        { progress: 62, message: "Azure extrayendo transcripción..." },
-        { progress: 68, message: "Azure detectando temas y personas..." },
-        { progress: 74, message: "Descargando frames del vídeo..." },
-        { progress: 80, message: "Enviando datos a Gemini..." },
-        { progress: 85, message: "Gemini analizando imágenes..." },
-        { progress: 90, message: "Gemini generando análisis de viralidad..." },
-        { progress: 95, message: "Finalizando análisis..." },
+        { progress: 56, message: "Comprimiendo vídeo con FFmpeg..." },
+        { progress: 58, message: "Optimizando para análisis (esto puede tardar 1-2 min)..." },
+        { progress: 62, message: "Azure procesando vídeo..." },
+        { progress: 66, message: "Azure extrayendo transcripción..." },
+        { progress: 70, message: "Azure detectando temas y personas..." },
+        { progress: 76, message: "Descargando frames del vídeo..." },
+        { progress: 82, message: "Enviando datos a Gemini..." },
+        { progress: 87, message: "Gemini analizando imágenes..." },
+        { progress: 92, message: "Gemini generando análisis de viralidad..." },
+        { progress: 97, message: "Finalizando análisis..." },
       ];
       let stepIndex = 0;
       const analysisProgressInterval = setInterval(() => {

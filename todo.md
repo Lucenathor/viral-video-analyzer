@@ -90,3 +90,7 @@
 ## UX Improvements
 - [x] Add countdown timer showing estimated time remaining during analysis
 - [x] Show tips for faster analysis while waiting
+
+## Bugs to Fix
+- [x] Investigate why video analysis only processed 2 seconds - Azure only transcribed first 2s of audio
+- [x] Implement video compression with FFmpeg on server - compresses 50MB to ~5MB (8-9x reduction)

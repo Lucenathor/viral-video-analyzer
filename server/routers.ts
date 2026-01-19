@@ -13,6 +13,10 @@ import {
   extractFullAzureData,
   getThumbnailsBase64 
 } from "./services/azureVideoIndexer";
+import { compressVideo as ffmpegCompress, cleanupCompressedFile } from "./services/ffmpegService";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 export const appRouter = router({
   system: systemRouter,
@@ -120,13 +124,72 @@ export const appRouter = router({
         });
         console.log('[Analysis] Analysis record created. ID:', analysisId);
         
+        let compressedFilePath: string | null = null;
+        
         try {
+          // ===== STEP 0: FFMPEG VIDEO COMPRESSION =====
+          let processedVideoUrl = videoUrl;
+          
+          // Download video chunks and combine them for compression
+          console.log('[Analysis] Step 0: Preparing video for compression...');
+          
+          try {
+            // Download all chunks and combine them
+            const tempInputPath = path.join(os.tmpdir(), `input_${Date.now()}.mp4`);
+            const chunks: Buffer[] = [];
+            
+            // Get all chunks
+            let chunkIndex = 0;
+            while (true) {
+              try {
+                const chunkKey = `${input.fileKey}.chunk${chunkIndex}`;
+                const { url: chunkUrl } = await storageGet(chunkKey);
+                const chunkResponse = await fetch(chunkUrl);
+                if (!chunkResponse.ok) break;
+                const chunkData = await chunkResponse.arrayBuffer();
+                chunks.push(Buffer.from(chunkData));
+                chunkIndex++;
+              } catch {
+                break;
+              }
+            }
+            
+            if (chunks.length > 0) {
+              // Combine chunks and save to temp file
+              const combinedBuffer = Buffer.concat(chunks);
+              fs.writeFileSync(tempInputPath, combinedBuffer);
+              console.log(`[Analysis] Combined ${chunks.length} chunks, total size: ${(combinedBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+              
+              // Compress with FFmpeg
+              console.log('[Analysis] Compressing video with FFmpeg...');
+              const compressionResult = await ffmpegCompress(tempInputPath, (progress) => {
+                console.log(`[FFmpeg] Compression progress: ${progress.percent}%`);
+              });
+              
+              compressedFilePath = compressionResult.outputPath;
+              console.log(`[Analysis] FFmpeg compression complete. ${(compressionResult.inputSize / 1024 / 1024).toFixed(2)} MB -> ${(compressionResult.outputSize / 1024 / 1024).toFixed(2)} MB (${compressionResult.compressionRatio.toFixed(1)}x)`);
+              
+              // Upload compressed video to S3
+              const compressedBuffer = fs.readFileSync(compressedFilePath);
+              const compressedKey = `videos/${ctx.user.id}/compressed_${nanoid()}.mp4`;
+              const { url: compressedUrl } = await storagePut(compressedKey, compressedBuffer, 'video/mp4');
+              processedVideoUrl = compressedUrl;
+              console.log('[Analysis] Compressed video uploaded to S3:', compressedUrl);
+              
+              // Cleanup temp input file
+              fs.unlinkSync(tempInputPath);
+            }
+          } catch (compressionError) {
+            console.warn('[Analysis] FFmpeg compression failed, using original video:', compressionError);
+            // Continue with original video if compression fails
+          }
+          
           // ===== STEP 1: AZURE VIDEO INDEXER =====
           console.log('[Analysis] Step 1: Starting Azure Video Indexer...');
           
           const { videoId: azureVideoId, indexResult, azureData, thumbnailsBase64 } = 
             await analyzeVideoComplete(
-              videoUrl,
+              processedVideoUrl,
               `${input.fileName}-${Date.now()}`,
               (message) => console.log(`[Azure] ${message}`)
             );
@@ -318,6 +381,11 @@ Responde en JSON con esta estructura exacta.
           
           console.log('[Analysis] ====== ANALYSIS COMPLETED SUCCESSFULLY ======');
           
+          // Cleanup compressed file if it exists
+          if (compressedFilePath) {
+            cleanupCompressedFile(compressedFilePath);
+          }
+          
           return {
             id: analysisId,
             videoId,
@@ -355,6 +423,12 @@ Responde en JSON con esta estructura exacta.
         } catch (error) {
           console.error('[Analysis] Error during analysis:', error);
           await db.updateVideoAnalysis(analysisId, { status: "failed" });
+          
+          // Cleanup compressed file if it exists
+          if (compressedFilePath) {
+            cleanupCompressedFile(compressedFilePath);
+          }
+          
           throw error;
         }
       }),
