@@ -94,3 +94,11 @@
 ## Bugs to Fix
 - [x] Investigate why video analysis only processed 2 seconds - Azure only transcribed first 2s of audio
 - [x] Implement video compression with FFmpeg on server - compresses 50MB to ~5MB (8-9x reduction)
+
+## Ultra-Detailed Analysis
+- [x] Increase number of frames extracted from Azure (up to 30 frames with timestamps)
+- [x] Improve Gemini prompt to describe every frame, cut, CTA, text, camera movement
+- [x] Add shot detection and transition analysis
+- [x] Include facial expressions and emotions per frame
+- [x] Detect and describe all on-screen text with timestamps (OCR)
+- [x] Identify all call-to-actions with exact timing

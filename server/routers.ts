@@ -205,52 +205,62 @@ export const appRouter = router({
           // Build content array with Azure data + images
           const contentParts: any[] = [];
           
-          // Add Azure data as text
+          // Add Azure data as text with ALL available information
           const azureDataText = `
 DATOS COMPLETOS DE AZURE VIDEO INDEXER:
 
-INFORMACIÓN GENERAL:
-- Duración: ${azureData.duration} segundos
+=== INFORMACIÓN GENERAL ===
+- Duración total: ${azureData.duration} segundos
 - Idioma detectado: ${azureData.language}
 - Resolución: ${azureData.resolution}
 
-TRANSCRIPCIÓN COMPLETA:
-${azureData.transcriptWithTimestamps}
+=== TRANSCRIPCIÓN COMPLETA CON TIMESTAMPS ===
+${azureData.transcriptWithTimestamps || 'Sin transcripción'}
 
-TEMAS DETECTADOS:
+=== TEMAS DETECTADOS ===
 ${azureData.topics.join(', ') || 'Ninguno'}
 
-PALABRAS CLAVE:
+=== PALABRAS CLAVE ===
 ${azureData.keywords.join(', ') || 'Ninguna'}
 
-PERSONAS MENCIONADAS:
+=== PERSONAS MENCIONADAS ===
 ${azureData.people.join(', ') || 'Ninguna'}
 
-UBICACIONES:
+=== UBICACIONES ===
 ${azureData.locations.join(', ') || 'Ninguna'}
 
-MARCAS DETECTADAS:
+=== MARCAS DETECTADAS ===
 ${azureData.brands.join(', ') || 'Ninguna'}
 
-OBJETOS DETECTADOS:
+=== OBJETOS DETECTADOS ===
 ${azureData.objects.join(', ') || 'Ninguno'}
 
-ETIQUETAS:
+=== ETIQUETAS VISUALES ===
 ${azureData.labels.join(', ') || 'Ninguna'}
 
-SENTIMIENTOS:
-${azureData.sentiments.map(s => `${s.type}: ${s.score}`).join(', ') || 'Neutral'}
+=== SENTIMIENTOS DEL AUDIO ===
+${azureData.sentiments.map(s => `${s.type}: ${(s.score * 100).toFixed(0)}%`).join(', ') || 'Neutral'}
 
-EMOCIONES DETECTADAS:
-${azureData.emotions.map(e => `${e.type}: ${e.score}`).join(', ') || 'Ninguna'}
+=== EMOCIONES DETECTADAS ===
+${azureData.emotions.map(e => `${e.type}: ${(e.score * 100).toFixed(0)}%`).join(', ') || 'Ninguna'}
 
-NÚMERO DE HABLANTES: ${azureData.speakers}
+=== NÚMERO DE HABLANTES ===
+${azureData.speakers}
 
-EFECTOS DE AUDIO:
+=== EFECTOS DE AUDIO ===
 ${azureData.audioEffects.join(', ') || 'Ninguno'}
 
-ESCENAS/SHOTS:
-${azureData.shots.map((s, i) => `Shot ${i+1}: ${s.start} - ${s.end}`).join('\n')}
+=== TEXTO EN PANTALLA (OCR) ===
+${(azureData as any).ocr?.map((o: any) => `[${o.timestamp}] "${o.text}"`).join('\n') || 'Ninguno'}
+
+=== CARAS/PERSONAS DETECTADAS ===
+${(azureData as any).faces?.map((f: any) => `${f.name}: aparece en ${f.appearances.join(', ')}`).join('\n') || 'Ninguna'}
+
+=== ESCENAS ===
+${(azureData as any).scenes?.map((s: any, i: number) => `Escena ${i+1}: ${s.start} - ${s.end}`).join('\n') || 'Ninguna'}
+
+=== SHOTS/CORTES DE EDICIÓN ===
+${azureData.shots.map((s: any, i: number) => `Shot ${i+1}: ${s.start} - ${s.end} (duración: ${s.duration || 'N/A'})`).join('\n') || 'Ninguno'}
 `;
 
           contentParts.push({ type: 'text', text: azureDataText });
@@ -268,20 +278,58 @@ ${azureData.shots.map((s, i) => `Shot ${i+1}: ${s.start} - ${s.end}`).join('\n')
             }
           }
           
-          // Add analysis request
+          // Add analysis request with ultra-detailed instructions
           contentParts.push({
             type: 'text',
             text: `
-Basándote en TODOS los datos de Azure Video Indexer anteriores Y las ${thumbnailsBase64.length} imágenes/frames del vídeo que te he proporcionado, genera un ANÁLISIS DE VIRALIDAD COMPLETO.
+ANALIZA ESTE VÍDEO EN DETALLE EXTREMO. Tienes ${thumbnailsBase64.length} frames/imágenes del vídeo y todos los datos de Azure Video Indexer.
 
-Debes analizar:
-1. HOOK (primeros 3 segundos): ¿Qué técnica visual y auditiva usa para captar atención? Describe exactamente lo que ves en las primeras imágenes.
-2. ESTRUCTURA: Divide el vídeo en segmentos con timestamps basándote en los shots y la transcripción.
-3. ELEMENTOS VISUALES: Describe lo que ves en cada frame/imagen - colores, composición, texto en pantalla, expresiones faciales, etc.
-4. FACTORES DE VIRALIDAD: Puntúa cada aspecto del 0 al 100.
-5. RESUMEN COMPLETO: Explica por qué este vídeo funcionaría (o no) como contenido viral.
+DEBES DESCRIBIR EXACTAMENTE:
 
-Responde en JSON con esta estructura exacta.
+1. **DESCRIPCIÓN FRAME POR FRAME**: Para CADA imagen que ves, describe:
+   - Qué persona aparece y qué está haciendo exactamente
+   - Expresión facial y lenguaje corporal
+   - Posición de la cámara (primer plano, plano medio, plano general)
+   - Movimiento de cámara (estático, zoom, pan, tilt)
+   - Iluminación y colores dominantes
+   - Objetos y fondo visible
+   - Texto en pantalla (si hay)
+
+2. **CORTES DE EDICIÓN**: Identifica TODOS los cortes/transiciones:
+   - Timestamp exacto de cada corte
+   - Tipo de transición (corte seco, fade, zoom, etc.)
+   - Ritmo de edición (rápido, lento, variable)
+
+3. **CALL TO ACTION (CTA)**: 
+   - ¿Hay CTA? ¿Cuál es exactamente?
+   - ¿En qué momento aparece? (timestamp)
+   - ¿Es verbal, visual o ambos?
+   - ¿Qué acción pide al espectador?
+
+4. **HOOK (primeros 3 segundos)**:
+   - ¿Qué técnica usa para captar atención?
+   - ¿Qué se ve y se escucha exactamente?
+   - ¿Por qué funciona (o no) como gancho?
+
+5. **AUDIO Y VOZ**:
+   - Tono de voz (energético, calmado, humorístico)
+   - Velocidad del habla
+   - Música de fondo (si hay)
+   - Efectos de sonido
+
+6. **ESTRUCTURA NARRATIVA**:
+   - Introducción/Hook
+   - Desarrollo/Contenido principal
+   - Clímax/Momento clave
+   - Cierre/CTA
+
+7. **FACTORES DE VIRALIDAD**: Puntúa del 0-100 y justifica:
+   - Hook Score
+   - Pacing Score (ritmo)
+   - Engagement Score
+   - Overall Score
+
+Responde en JSON. Sé EXTREMADAMENTE DETALLADO. No omitas nada de lo que ves en las imágenes.
 `
           });
 
@@ -291,7 +339,7 @@ Responde en JSON con esta estructura exacta.
             messages: [
               { 
                 role: "system", 
-                content: "Eres un experto analista de contenido viral. Analiza TODOS los datos de Azure Video Indexer Y las imágenes proporcionadas para dar un análisis completo y detallado. Responde siempre en español y en formato JSON válido." 
+                content: "Eres un experto analista de contenido viral con experiencia en TikTok, Instagram Reels y YouTube Shorts. Tu trabajo es analizar vídeos frame por frame, identificando CADA detalle visual, cada corte de edición, cada CTA, y todo lo que ocurre en el vídeo. Debes ser EXTREMADAMENTE DETALLADO y describir exactamente lo que ves en cada imagen. Responde siempre en español y en formato JSON válido." 
               },
               { role: "user", content: contentParts }
             ],
@@ -303,8 +351,30 @@ Responde en JSON con esta estructura exacta.
                 schema: {
                   type: "object",
                   properties: {
-                    hookAnalysis: { type: "string", description: "Análisis detallado del hook basado en lo que VES en las imágenes" },
-                    visualElements: { type: "string", description: "Descripción de los elementos visuales de cada frame" },
+                    frameByFrameAnalysis: { 
+                      type: "string", 
+                      description: "Descripción DETALLADA de CADA frame/imagen: qué persona aparece, qué hace, expresión facial, posición de cámara, iluminación, colores, objetos, texto en pantalla. Debe ser muy largo y detallado." 
+                    },
+                    hookAnalysis: { 
+                      type: "string", 
+                      description: "Análisis del hook (primeros 3 segundos): qué técnica usa, qué se ve y escucha exactamente, por qué funciona" 
+                    },
+                    editingAnalysis: {
+                      type: "string",
+                      description: "Análisis de TODOS los cortes de edición: timestamp de cada corte, tipo de transición (corte seco, fade, zoom), ritmo de edición"
+                    },
+                    callToAction: {
+                      type: "string",
+                      description: "¿Hay CTA? ¿Cuál es exactamente? ¿En qué momento aparece (timestamp)? ¿Es verbal, visual o ambos? ¿Qué acción pide?"
+                    },
+                    audioAnalysis: {
+                      type: "string",
+                      description: "Análisis del audio: tono de voz, velocidad del habla, música de fondo, efectos de sonido"
+                    },
+                    visualElements: { 
+                      type: "string", 
+                      description: "Elementos visuales generales: colores dominantes, estilo visual, calidad de producción, formato (vertical/horizontal)" 
+                    },
                     structureBreakdown: {
                       type: "object",
                       properties: {
@@ -346,13 +416,13 @@ Responde en JSON con esta estructura exacta.
                       required: ["factors"],
                       additionalProperties: false
                     },
-                    summary: { type: "string" },
+                    summary: { type: "string", description: "Resumen completo de por qué este vídeo funcionaría (o no) como contenido viral" },
                     overallScore: { type: "number" },
                     hookScore: { type: "number" },
                     pacingScore: { type: "number" },
                     engagementScore: { type: "number" }
                   },
-                  required: ["hookAnalysis", "visualElements", "structureBreakdown", "viralityFactors", "summary", "overallScore", "hookScore", "pacingScore", "engagementScore"],
+                  required: ["frameByFrameAnalysis", "hookAnalysis", "editingAnalysis", "callToAction", "audioAnalysis", "visualElements", "structureBreakdown", "viralityFactors", "summary", "overallScore", "hookScore", "pacingScore", "engagementScore"],
                   additionalProperties: false
                 }
               }
@@ -390,7 +460,12 @@ Responde en JSON con esta estructura exacta.
             id: analysisId,
             videoId,
             azureVideoId,
+            // New ultra-detailed analysis fields
+            frameByFrameAnalysis: analysisData.frameByFrameAnalysis,
             hookAnalysis: analysisData.hookAnalysis,
+            editingAnalysis: analysisData.editingAnalysis,
+            callToAction: analysisData.callToAction,
+            audioAnalysis: analysisData.audioAnalysis,
             visualElements: analysisData.visualElements,
             structureBreakdown: analysisData.structureBreakdown,
             viralityFactors: analysisData.viralityFactors,
@@ -417,6 +492,10 @@ Responde en JSON con esta estructura exacta.
               sentiments: azureData.sentiments,
               emotions: azureData.emotions,
               audioEffects: azureData.audioEffects,
+              shots: azureData.shots,
+              ocr: (azureData as any).ocr,
+              faces: (azureData as any).faces,
+              scenes: (azureData as any).scenes,
               thumbnailCount: thumbnailsBase64.length,
             }
           };

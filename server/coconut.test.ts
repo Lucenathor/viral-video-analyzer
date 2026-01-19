@@ -33,5 +33,5 @@ describe('Coconut API Key Validation', () => {
       const data = await response.json();
       console.log('Coconut API metadata response:', JSON.stringify(data, null, 2));
     }
-  });
+  }, 30000); // 30 second timeout
 });

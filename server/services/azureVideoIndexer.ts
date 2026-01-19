@@ -189,7 +189,7 @@ export async function downloadThumbnailAsBase64(url: string): Promise<string | n
 /**
  * Get all thumbnails as base64
  */
-export async function getThumbnailsBase64(videoId: string, indexResult: any, maxThumbnails: number = 10): Promise<string[]> {
+export async function getThumbnailsBase64(videoId: string, indexResult: any, maxThumbnails: number = 30): Promise<string[]> {
   const thumbnailUrls = await getThumbnailUrls(videoId, indexResult);
   const thumbnailsBase64: string[] = [];
   
@@ -201,6 +201,28 @@ export async function getThumbnailsBase64(videoId: string, indexResult: any, max
   }
   
   return thumbnailsBase64;
+}
+
+/**
+ * Get thumbnails with timestamps for detailed frame-by-frame analysis
+ */
+export async function getThumbnailsWithTimestamps(videoId: string, indexResult: any, maxThumbnails: number = 30): Promise<Array<{base64: string, timestamp: string, shotIndex: number}>> {
+  const thumbnailUrls = await getThumbnailUrls(videoId, indexResult);
+  const thumbnailsWithTimestamps: Array<{base64: string, timestamp: string, shotIndex: number}> = [];
+  
+  for (let i = 0; i < Math.min(thumbnailUrls.length, maxThumbnails); i++) {
+    const thumb = thumbnailUrls[i];
+    const base64 = await downloadThumbnailAsBase64(thumb.url);
+    if (base64) {
+      thumbnailsWithTimestamps.push({
+        base64,
+        timestamp: thumb.time,
+        shotIndex: i + 1
+      });
+    }
+  }
+  
+  return thumbnailsWithTimestamps;
 }
 
 /**
@@ -256,7 +278,11 @@ export function extractFullAzureData(indexResult: any): {
   objects: string[];
   labels: string[];
   audioEffects: string[];
-  shots: { start: string; end: string }[];
+  shots: { start: string; end: string; duration: string }[];
+  ocr: { text: string; timestamp: string }[];
+  faces: { name: string; appearances: string[] }[];
+  scenes: { start: string; end: string }[];
+  visualContentModeration: string[];
 } {
   const video = indexResult.videos?.[0];
   const insights = video?.insights || {};
@@ -270,6 +296,37 @@ export function extractFullAzureData(indexResult: any): {
   const transcript = insights.transcript
     ?.map((t: any) => t.text)
     .join(' ') || '';
+  
+  // Extract OCR (on-screen text)
+  const ocr = insights.ocr?.flatMap((o: any) => 
+    o.instances?.map((inst: any) => ({
+      text: o.text,
+      timestamp: inst.start || ''
+    })) || []
+  ) || [];
+  
+  // Extract faces with appearances
+  const faces = insights.faces?.map((f: any) => ({
+    name: f.name || 'Unknown',
+    appearances: f.instances?.map((inst: any) => `${inst.start}-${inst.end}`) || []
+  })) || [];
+  
+  // Extract scenes
+  const scenes = insights.scenes?.map((s: any) => ({
+    start: s.instances?.[0]?.start || '',
+    end: s.instances?.[0]?.end || ''
+  })) || [];
+  
+  // Extract shots with duration
+  const shots = insights.shots?.map((s: any) => {
+    const start = s.keyFrames?.[0]?.instances?.[0]?.start || '';
+    const end = s.keyFrames?.[0]?.instances?.[0]?.end || '';
+    return {
+      start,
+      end,
+      duration: start && end ? calculateDuration(start, end) : ''
+    };
+  }) || [];
   
   return {
     transcript,
@@ -288,11 +345,28 @@ export function extractFullAzureData(indexResult: any): {
     objects: insights.detectedObjects?.map((o: any) => o.displayName) || [],
     labels: insights.labels?.map((l: any) => l.name) || [],
     audioEffects: insights.audioEffects?.map((a: any) => a.type) || [],
-    shots: insights.shots?.map((s: any) => ({
-      start: s.keyFrames?.[0]?.instances?.[0]?.start || '',
-      end: s.keyFrames?.[0]?.instances?.[0]?.end || ''
-    })) || []
+    shots,
+    ocr,
+    faces,
+    scenes,
+    visualContentModeration: insights.visualContentModeration?.map((v: any) => v.type) || []
   };
+}
+
+// Helper function to calculate duration between two timestamps
+function calculateDuration(start: string, end: string): string {
+  try {
+    const parseTime = (t: string) => {
+      const parts = t.split(':').map(Number);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return parts[0] || 0;
+    };
+    const diff = parseTime(end) - parseTime(start);
+    return `${diff.toFixed(2)}s`;
+  } catch {
+    return '';
+  }
 }
 
 // Legacy function for backwards compatibility
