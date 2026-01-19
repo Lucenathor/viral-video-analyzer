@@ -121,3 +121,15 @@
 - [x] Modificar router para usar análisis directo con Gemini (enviar frames)
 - [x] Eliminar dependencia de Azure Video Indexer del flujo principal
 - [x] Probar extracción de frames con FFmpeg - funciona correctamente (10 frames extraídos de vídeo de 10s)
+
+## Mejora: Análisis FFmpeg completo para máxima precisión
+- [x] Extracción de audio del vídeo (separar pista de audio)
+- [x] Transcripción de audio con Whisper API
+- [x] Detección automática de escenas/cortes
+- [x] Análisis de audio (niveles de volumen, silencios, picos)
+- [x] Generación de thumbnails en momentos clave
+- [x] Metadatos avanzados (bitrate, codec de audio, canales, etc.)
+- [x] Detección de música vs voz
+- [x] Análisis de ritmo de edición (duración de cada shot)
+- [x] Integrar todos los datos en el análisis de Gemini
+- [x] Test de pipeline completo - FUNCIONANDO

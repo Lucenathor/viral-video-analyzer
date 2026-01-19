@@ -9,7 +9,8 @@ import { nanoid } from "nanoid";
 import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
 import { compressVideo as ffmpegCompress, cleanupCompressedFile } from "./services/ffmpegService";
-import { extractFrames, getVideoMetadata, cleanupFrames, ExtractedFrame } from "./services/videoFrameExtractor";
+import { performFullAnalysis, cleanupAnalysis, FullVideoAnalysis } from "./services/ffmpegAdvancedAnalysis";
+import { transcribeAudioFile, formatTranscriptionWithTimestamps, extractKeyMoments } from "./services/audioTranscription";
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -82,7 +83,7 @@ export const appRouter = router({
         }
       }),
 
-    // Finalize upload and start analysis with FFmpeg + Gemini (NO AZURE)
+    // Finalize upload and start FULL analysis with FFmpeg + Whisper + Gemini
     finalizeUploadAndAnalyze: protectedProcedure
       .input(z.object({
         fileKey: z.string(),
@@ -92,7 +93,7 @@ export const appRouter = router({
         analysisType: z.enum(["viral_analysis", "comparison", "expert_review"]),
       }))
       .mutation(async ({ ctx, input }) => {
-        console.log('[Analysis] ====== STARTING FFMPEG + GEMINI ANALYSIS (NO AZURE) ======');
+        console.log('[Analysis] ====== STARTING FULL VIDEO ANALYSIS ======');
         console.log('[Analysis] User:', ctx.user.id, '| File:', input.fileName);
         
         // Get the video URL from storage
@@ -122,7 +123,7 @@ export const appRouter = router({
         
         let tempInputPath: string | null = null;
         let compressedFilePath: string | null = null;
-        let extractedFrames: ExtractedFrame[] = [];
+        let fullAnalysis: FullVideoAnalysis | null = null;
         
         try {
           // ===== STEP 1: DOWNLOAD AND COMBINE CHUNKS =====
@@ -154,17 +155,8 @@ export const appRouter = router({
           fs.writeFileSync(tempInputPath, combinedBuffer);
           console.log(`[Analysis] Combined ${chunks.length} chunks, total size: ${(combinedBuffer.length / 1024 / 1024).toFixed(2)} MB`);
           
-          // ===== STEP 2: GET VIDEO METADATA =====
-          console.log('[Analysis] Step 2: Getting video metadata...');
-          const metadata = await getVideoMetadata(tempInputPath);
-          console.log(`[Analysis] Video metadata: ${metadata.duration}s, ${metadata.width}x${metadata.height}, codec: ${metadata.codec}`);
-          
-          if (metadata.duration <= 0) {
-            throw new Error('No se pudo leer la duración del vídeo. El archivo puede estar corrupto.');
-          }
-          
-          // ===== STEP 3: COMPRESS VIDEO WITH FFMPEG =====
-          console.log('[Analysis] Step 3: Compressing video with FFmpeg...');
+          // ===== STEP 2: COMPRESS VIDEO WITH FFMPEG =====
+          console.log('[Analysis] Step 2: Compressing video with FFmpeg...');
           
           try {
             const compressionResult = await ffmpegCompress(tempInputPath, (progress) => {
@@ -175,68 +167,80 @@ export const appRouter = router({
             console.log(`[Analysis] FFmpeg compression complete. ${(compressionResult.inputSize / 1024 / 1024).toFixed(2)} MB -> ${(compressionResult.outputSize / 1024 / 1024).toFixed(2)} MB`);
           } catch (compressionError) {
             console.warn('[Analysis] FFmpeg compression failed, using original video:', compressionError);
-            // Use original file if compression fails
             compressedFilePath = tempInputPath;
           }
           
-          // ===== STEP 4: EXTRACT FRAMES WITH FFMPEG =====
-          console.log('[Analysis] Step 4: Extracting frames with FFmpeg...');
+          // ===== STEP 3: FULL FFMPEG ANALYSIS =====
+          console.log('[Analysis] Step 3: Performing full FFmpeg analysis...');
+          fullAnalysis = await performFullAnalysis(compressedFilePath || tempInputPath);
           
-          // Calculate frame interval based on video duration
-          // For short videos (<30s): extract every 1 second
-          // For medium videos (30-120s): extract every 2 seconds
-          // For long videos (>120s): extract every 3-4 seconds
-          let frameInterval = 1;
-          let maxFrames = 30;
+          console.log('[Analysis] Full analysis results:');
+          console.log(`  - Duration: ${fullAnalysis.metadata.duration.toFixed(1)}s`);
+          console.log(`  - Resolution: ${fullAnalysis.metadata.width}x${fullAnalysis.metadata.height}`);
+          console.log(`  - FPS: ${fullAnalysis.metadata.fps}`);
+          console.log(`  - Codec: ${fullAnalysis.metadata.codec}`);
+          console.log(`  - Has Audio: ${fullAnalysis.metadata.hasAudio}`);
+          console.log(`  - Scene Changes: ${fullAnalysis.sceneChanges.length}`);
+          console.log(`  - Shots: ${fullAnalysis.shotDurations.length}`);
+          console.log(`  - Frames Extracted: ${fullAnalysis.frames.length}`);
+          console.log(`  - Silences: ${fullAnalysis.audioAnalysis.silences.length}`);
+          console.log(`  - Loud Peaks: ${fullAnalysis.audioAnalysis.loudPeaks.length}`);
           
-          if (metadata.duration > 120) {
-            frameInterval = Math.ceil(metadata.duration / 30); // Aim for ~30 frames
-            maxFrames = 30;
-          } else if (metadata.duration > 30) {
-            frameInterval = 2;
-            maxFrames = Math.min(60, Math.ceil(metadata.duration / 2));
+          // ===== STEP 4: TRANSCRIBE AUDIO =====
+          let transcription = {
+            success: false,
+            text: '',
+            language: '',
+            duration: 0,
+            segments: [] as Array<{ id: number; start: number; end: number; text: string }>,
+            formattedTranscript: '',
+            keyMoments: [] as Array<{ timestamp: number; text: string; type: string }>
+          };
+          
+          if (fullAnalysis.audioPath && fullAnalysis.metadata.hasAudio) {
+            console.log('[Analysis] Step 4: Transcribing audio with Whisper...');
+            const transcriptionResult = await transcribeAudioFile(fullAnalysis.audioPath);
+            
+            if (transcriptionResult.success) {
+              transcription = {
+                success: true,
+                text: transcriptionResult.text,
+                language: transcriptionResult.language,
+                duration: transcriptionResult.duration,
+                segments: transcriptionResult.segments,
+                formattedTranscript: formatTranscriptionWithTimestamps(transcriptionResult.segments),
+                keyMoments: extractKeyMoments(transcriptionResult.segments)
+              };
+              console.log(`[Analysis] Transcription complete: ${transcription.text.length} chars, ${transcription.segments.length} segments`);
+              console.log(`[Analysis] Key moments found: ${transcription.keyMoments.length}`);
+            } else {
+              console.warn('[Analysis] Transcription failed:', transcriptionResult.error);
+            }
           } else {
-            frameInterval = 1;
-            maxFrames = Math.min(30, Math.ceil(metadata.duration));
+            console.log('[Analysis] Step 4: Skipping transcription (no audio)');
           }
           
-          extractedFrames = await extractFrames(compressedFilePath || tempInputPath, frameInterval, maxFrames);
-          console.log(`[Analysis] Extracted ${extractedFrames.length} frames from video`);
+          // ===== STEP 5: GEMINI ANALYSIS WITH ALL DATA =====
+          console.log('[Analysis] Step 5: Starting Gemini analysis with all data...');
           
-          if (extractedFrames.length === 0) {
-            throw new Error('No se pudieron extraer frames del vídeo');
-          }
-          
-          // ===== STEP 5: GEMINI ANALYSIS WITH FRAMES =====
-          console.log('[Analysis] Step 5: Starting Gemini analysis with', extractedFrames.length, 'frames...');
+          // Build comprehensive data text
+          const comprehensiveDataText = buildComprehensiveDataText(fullAnalysis, transcription);
           
           // Build content array with frames
           const contentParts: any[] = [];
+          contentParts.push({ type: 'text', text: comprehensiveDataText });
           
-          // Add video info as text
-          const videoInfoText = `
-INFORMACIÓN DEL VÍDEO:
-- Nombre del archivo: ${input.fileName}
-- Duración total: ${metadata.duration.toFixed(1)} segundos
-- Resolución: ${metadata.width}x${metadata.height}
-- Codec original: ${metadata.codec}
-- FPS: ${metadata.fps}
-- Tamaño: ${(input.fileSize / 1024 / 1024).toFixed(2)} MB
-
-FRAMES EXTRAÍDOS: ${extractedFrames.length} frames (cada ${frameInterval} segundo${frameInterval > 1 ? 's' : ''})
-Timestamps de los frames: ${extractedFrames.map(f => f.timestamp.toFixed(1) + 's').join(', ')}
-`;
-          
-          contentParts.push({ type: 'text', text: videoInfoText });
-          
-          // Add frames as images with timestamps
-          for (let i = 0; i < extractedFrames.length; i++) {
-            const frame = extractedFrames[i];
+          // Add frames with timestamps
+          for (let i = 0; i < fullAnalysis.frames.length; i++) {
+            const frame = fullAnalysis.frames[i];
             
-            // Add timestamp label before each frame
+            // Add frame type label
+            const frameLabel = frame.type === 'scene_change' ? '🎬 CAMBIO DE ESCENA' :
+                              frame.type === 'thumbnail' ? '📸 THUMBNAIL' : '🎞️ FRAME';
+            
             contentParts.push({
               type: 'text',
-              text: `\n--- FRAME ${i + 1} (${frame.timestamp.toFixed(1)}s) ---`
+              text: `\n--- ${frameLabel} ${i + 1} (${frame.timestamp.toFixed(1)}s) ---`
             });
             
             contentParts.push({
@@ -248,73 +252,36 @@ Timestamps de los frames: ${extractedFrames.map(f => f.timestamp.toFixed(1) + 's
             });
           }
           
-          // Add analysis request
+          // Add ultra-detailed analysis prompt
           contentParts.push({
             type: 'text',
-            text: `
-ANALIZA ESTE VÍDEO EN DETALLE EXTREMO. Tienes ${extractedFrames.length} frames extraídos del vídeo completo de ${metadata.duration.toFixed(1)} segundos.
-
-IMPORTANTE: Analiza TODO el vídeo basándote en TODOS los frames proporcionados. No te bases solo en los primeros frames.
-
-DEBES DESCRIBIR EXACTAMENTE:
-
-1. **DESCRIPCIÓN FRAME POR FRAME**: Para CADA frame/imagen que ves, describe:
-   - Qué persona aparece y qué está haciendo exactamente
-   - Expresión facial y lenguaje corporal
-   - Posición de la cámara (primer plano, plano medio, plano general)
-   - Movimiento de cámara (estático, zoom, pan, tilt)
-   - Iluminación y colores dominantes
-   - Objetos y fondo visible
-   - Texto en pantalla (si hay)
-
-2. **CORTES DE EDICIÓN**: Identifica TODOS los cortes/transiciones entre frames:
-   - Timestamp aproximado de cada corte
-   - Tipo de transición (corte seco, fade, zoom, etc.)
-   - Ritmo de edición (rápido, lento, variable)
-
-3. **CALL TO ACTION (CTA)**: 
-   - ¿Hay CTA? ¿Cuál es exactamente?
-   - ¿En qué momento aparece? (timestamp)
-   - ¿Es verbal, visual o ambos?
-   - ¿Qué acción pide al espectador?
-
-4. **HOOK (primeros 3 segundos)**:
-   - ¿Qué técnica usa para captar atención?
-   - ¿Qué se ve exactamente en los primeros frames?
-   - ¿Por qué funciona (o no) como gancho?
-
-5. **AUDIO Y VOZ** (infiere del contexto visual):
-   - ¿Parece que hay narración/voz?
-   - ¿Qué tipo de contenido parece ser?
-   - ¿Hay texto en pantalla que sugiera el audio?
-
-6. **ESTRUCTURA NARRATIVA**:
-   - Introducción/Hook (primeros segundos)
-   - Desarrollo/Contenido principal
-   - Clímax/Momento clave
-   - Cierre/CTA
-
-7. **FACTORES DE VIRALIDAD**: Puntúa del 0-100 y justifica BASÁNDOTE EN TODO EL VÍDEO:
-   - Hook Score (qué tan efectivo es el gancho inicial)
-   - Pacing Score (ritmo de edición y narrativa)
-   - Engagement Score (qué tan atractivo es el contenido)
-   - Overall Score (puntuación general de viralidad)
-
-IMPORTANTE: 
-- Sé EXTREMADAMENTE DETALLADO
-- Analiza TODOS los ${extractedFrames.length} frames, no solo los primeros
-- Justifica tus puntuaciones con evidencia de los frames
-- Si el vídeo es largo, asegúrate de describir qué pasa en cada sección
-`
+            text: buildAnalysisPrompt(fullAnalysis, transcription)
           });
 
-          console.log('[Analysis] Sending to Gemini...');
+          console.log('[Analysis] Sending to Gemini with', fullAnalysis.frames.length, 'frames...');
           
           const response = await invokeLLM({
             messages: [
               { 
                 role: "system", 
-                content: "Eres un experto analista de contenido viral con experiencia en TikTok, Instagram Reels y YouTube Shorts. Tu trabajo es analizar vídeos frame por frame, identificando CADA detalle visual, cada corte de edición, cada CTA, y todo lo que ocurre en el vídeo. Debes ser EXTREMADAMENTE DETALLADO y describir exactamente lo que ves en CADA imagen proporcionada. Analiza TODO el vídeo, no solo los primeros segundos. Responde siempre en español y en formato JSON válido." 
+                content: `Eres el analista de contenido viral más experto del mundo. Tienes acceso a:
+- ${fullAnalysis.frames.length} frames extraídos del vídeo
+- Transcripción completa del audio con timestamps
+- Análisis de audio (volumen, silencios, picos)
+- Detección automática de escenas y cortes
+- Metadatos técnicos completos
+
+Tu trabajo es proporcionar el análisis MÁS DETALLADO Y PRECISO posible, describiendo EXACTAMENTE lo que ves en cada frame, lo que se dice en cada momento, y cómo todo esto contribuye (o no) a la viralidad del contenido.
+
+REGLAS:
+1. Analiza TODOS los frames, no solo los primeros
+2. Correlaciona el audio con las imágenes
+3. Identifica EXACTAMENTE dónde están los cortes de edición
+4. Describe el CTA con timestamp exacto
+5. Evalúa el hook de los primeros 3 segundos
+6. Sé EXTREMADAMENTE DETALLADO
+
+Responde siempre en español y en formato JSON válido.`
               },
               { role: "user", content: contentParts }
             ],
@@ -328,27 +295,27 @@ IMPORTANTE:
                   properties: {
                     frameByFrameAnalysis: { 
                       type: "string", 
-                      description: "Descripción DETALLADA de CADA frame/imagen: qué persona aparece, qué hace, expresión facial, posición de cámara, iluminación, colores, objetos, texto en pantalla. Debe ser muy largo y detallado, cubriendo TODOS los frames." 
+                      description: "Descripción DETALLADA de CADA frame: qué persona aparece, qué hace, expresión facial, posición de cámara, iluminación, colores, objetos, texto en pantalla. Correlaciona con el audio de ese momento." 
                     },
                     hookAnalysis: { 
                       type: "string", 
-                      description: "Análisis del hook (primeros 3 segundos): qué técnica usa, qué se ve exactamente, por qué funciona" 
+                      description: "Análisis del hook (primeros 3 segundos): qué técnica usa, qué se ve y escucha exactamente, por qué funciona. Incluye timestamp exacto." 
                     },
                     editingAnalysis: {
                       type: "string",
-                      description: "Análisis de TODOS los cortes de edición: timestamp de cada corte, tipo de transición (corte seco, fade, zoom), ritmo de edición"
+                      description: "Análisis de TODOS los cortes de edición detectados: timestamp de cada corte, tipo de transición, ritmo de edición, duración promedio de shots"
                     },
                     callToAction: {
                       type: "string",
-                      description: "¿Hay CTA? ¿Cuál es exactamente? ¿En qué momento aparece (timestamp)? ¿Es verbal, visual o ambos? ¿Qué acción pide?"
+                      description: "CTA detectado: texto exacto, timestamp, si es verbal/visual/ambos, qué acción pide, efectividad"
                     },
                     audioAnalysis: {
                       type: "string",
-                      description: "Análisis del audio inferido del contexto visual: tipo de contenido, posible narración, texto en pantalla"
+                      description: "Análisis del audio: transcripción resumida, tono de voz, velocidad del habla, música de fondo, efectos de sonido, silencios estratégicos"
                     },
                     visualElements: { 
                       type: "string", 
-                      description: "Elementos visuales generales: colores dominantes, estilo visual, calidad de producción, formato (vertical/horizontal)" 
+                      description: "Elementos visuales: colores dominantes, estilo visual, calidad de producción, formato, iluminación, composición" 
                     },
                     structureBreakdown: {
                       type: "object",
@@ -391,7 +358,7 @@ IMPORTANTE:
                       required: ["factors"],
                       additionalProperties: false
                     },
-                    summary: { type: "string", description: "Resumen completo de por qué este vídeo funcionaría (o no) como contenido viral, basado en TODO el contenido analizado" },
+                    summary: { type: "string", description: "Resumen completo de por qué este vídeo funcionaría (o no) como contenido viral, con recomendaciones específicas de mejora" },
                     overallScore: { type: "number" },
                     hookScore: { type: "number" },
                     pacingScore: { type: "number" },
@@ -408,10 +375,11 @@ IMPORTANTE:
           const content = response.choices[0].message.content;
           const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
           
-          console.log('[Analysis] Overall Score:', analysisData.overallScore);
-          console.log('[Analysis] Hook Score:', analysisData.hookScore);
-          console.log('[Analysis] Pacing Score:', analysisData.pacingScore);
-          console.log('[Analysis] Engagement Score:', analysisData.engagementScore);
+          console.log('[Analysis] Scores:');
+          console.log(`  - Overall: ${analysisData.overallScore}`);
+          console.log(`  - Hook: ${analysisData.hookScore}`);
+          console.log(`  - Pacing: ${analysisData.pacingScore}`);
+          console.log(`  - Engagement: ${analysisData.engagementScore}`);
           
           // Update analysis record with results
           await db.updateVideoAnalysis(analysisId, {
@@ -429,7 +397,9 @@ IMPORTANTE:
           console.log('[Analysis] ====== ANALYSIS COMPLETED SUCCESSFULLY ======');
           
           // Cleanup
-          cleanupFrames(extractedFrames);
+          if (fullAnalysis) {
+            cleanupAnalysis(fullAnalysis);
+          }
           if (compressedFilePath && compressedFilePath !== tempInputPath) {
             cleanupCompressedFile(compressedFilePath);
           }
@@ -456,19 +426,41 @@ IMPORTANTE:
             engagementScore: analysisData.engagementScore,
             // Video metadata
             videoMetadata: {
-              duration: metadata.duration,
-              width: metadata.width,
-              height: metadata.height,
-              fps: metadata.fps,
-              codec: metadata.codec,
-              framesAnalyzed: extractedFrames.length,
+              duration: fullAnalysis.metadata.duration,
+              width: fullAnalysis.metadata.width,
+              height: fullAnalysis.metadata.height,
+              fps: fullAnalysis.metadata.fps,
+              codec: fullAnalysis.metadata.codec,
+              hasAudio: fullAnalysis.metadata.hasAudio,
+              audioCodec: fullAnalysis.metadata.audioCodec,
+              framesAnalyzed: fullAnalysis.frames.length,
+              sceneChanges: fullAnalysis.sceneChanges.length,
+              shots: fullAnalysis.shotDurations.length,
+            },
+            // Transcription data
+            transcription: transcription.success ? {
+              text: transcription.text,
+              language: transcription.language,
+              segments: transcription.segments,
+              keyMoments: transcription.keyMoments,
+            } : null,
+            // Audio analysis
+            audioData: {
+              meanVolume: fullAnalysis.audioAnalysis.meanVolume,
+              maxVolume: fullAnalysis.audioAnalysis.maxVolume,
+              silences: fullAnalysis.audioAnalysis.silences.length,
+              loudPeaks: fullAnalysis.audioAnalysis.loudPeaks.length,
+              hasMusic: fullAnalysis.audioAnalysis.hasMusic,
+              hasSpeech: fullAnalysis.audioAnalysis.hasSpeech,
             }
           };
         } catch (error: any) {
           console.error('[Analysis] Error during analysis:', error);
           
           // Cleanup on error
-          cleanupFrames(extractedFrames);
+          if (fullAnalysis) {
+            cleanupAnalysis(fullAnalysis);
+          }
           if (compressedFilePath && compressedFilePath !== tempInputPath) {
             cleanupCompressedFile(compressedFilePath);
           }
@@ -538,5 +530,168 @@ IMPORTANTE:
       }),
   }),
 });
+
+/**
+ * Build comprehensive data text for Gemini
+ */
+function buildComprehensiveDataText(
+  analysis: FullVideoAnalysis,
+  transcription: {
+    success: boolean;
+    text: string;
+    language: string;
+    formattedTranscript: string;
+    keyMoments: Array<{ timestamp: number; text: string; type: string }>;
+  }
+): string {
+  const { metadata, sceneChanges, audioAnalysis, shotDurations } = analysis;
+  
+  let text = `
+═══════════════════════════════════════════════════════════════
+                    ANÁLISIS COMPLETO DEL VÍDEO
+═══════════════════════════════════════════════════════════════
+
+📊 METADATOS TÉCNICOS
+─────────────────────
+• Duración total: ${metadata.duration.toFixed(2)} segundos
+• Resolución: ${metadata.width}x${metadata.height} (${metadata.aspectRatio})
+• FPS: ${metadata.fps}
+• Codec de vídeo: ${metadata.codec}
+• Bitrate: ${(metadata.bitrate / 1000).toFixed(0)} kbps
+• Formato: ${metadata.format}
+• Rotación: ${metadata.rotation}°
+• Tamaño: ${(metadata.fileSize / 1024 / 1024).toFixed(2)} MB
+
+🔊 INFORMACIÓN DE AUDIO
+───────────────────────
+• Tiene audio: ${metadata.hasAudio ? 'SÍ' : 'NO'}
+${metadata.hasAudio ? `• Codec de audio: ${metadata.audioCodec}
+• Canales: ${metadata.audioChannels}
+• Sample rate: ${metadata.audioSampleRate} Hz
+• Bitrate de audio: ${(metadata.audioBitrate / 1000).toFixed(0)} kbps` : ''}
+
+📈 ANÁLISIS DE AUDIO
+────────────────────
+• Volumen medio: ${audioAnalysis.meanVolume.toFixed(1)} dB
+• Volumen máximo: ${audioAnalysis.maxVolume.toFixed(1)} dB
+• Rango dinámico: ${audioAnalysis.dynamicRange.toFixed(1)} dB
+• Silencios detectados: ${audioAnalysis.silences.length}
+• Picos de volumen: ${audioAnalysis.loudPeaks.length}
+• ¿Tiene música?: ${audioAnalysis.hasMusic ? 'Probablemente SÍ' : 'Probablemente NO'}
+• ¿Tiene voz/habla?: ${audioAnalysis.hasSpeech ? 'Probablemente SÍ' : 'Probablemente NO'}
+
+${audioAnalysis.silences.length > 0 ? `
+📍 SILENCIOS DETECTADOS:
+${audioAnalysis.silences.map((s, i) => `  ${i + 1}. ${s.start.toFixed(1)}s - ${s.end.toFixed(1)}s (${s.duration.toFixed(1)}s)`).join('\n')}
+` : ''}
+
+${audioAnalysis.loudPeaks.length > 0 ? `
+🔊 PICOS DE VOLUMEN (momentos más intensos):
+${audioAnalysis.loudPeaks.slice(0, 10).map((p, i) => `  ${i + 1}. ${p.timestamp.toFixed(1)}s: ${p.volume.toFixed(1)} dB`).join('\n')}
+` : ''}
+
+🎬 CAMBIOS DE ESCENA DETECTADOS: ${sceneChanges.length}
+──────────────────────────────────
+${sceneChanges.map((sc, i) => `  ${i + 1}. ${sc.timestamp.toFixed(2)}s (intensidad: ${(sc.score * 100).toFixed(0)}%)`).join('\n') || '  Ninguno detectado'}
+
+✂️ SHOTS/CORTES DE EDICIÓN: ${shotDurations.length}
+─────────────────────────────
+${shotDurations.map((shot, i) => `  Shot ${i + 1}: ${shot.start.toFixed(1)}s - ${shot.end.toFixed(1)}s (duración: ${shot.duration.toFixed(1)}s)`).join('\n')}
+
+📊 ESTADÍSTICAS DE EDICIÓN:
+• Duración promedio de shot: ${shotDurations.length > 0 ? (shotDurations.reduce((a, b) => a + b.duration, 0) / shotDurations.length).toFixed(2) : 0}s
+• Shot más corto: ${shotDurations.length > 0 ? Math.min(...shotDurations.map(s => s.duration)).toFixed(2) : 0}s
+• Shot más largo: ${shotDurations.length > 0 ? Math.max(...shotDurations.map(s => s.duration)).toFixed(2) : 0}s
+• Ritmo de edición: ${shotDurations.length > 0 ? (shotDurations.length / metadata.duration * 60).toFixed(1) : 0} cortes/minuto
+`;
+
+  if (transcription.success) {
+    text += `
+
+📝 TRANSCRIPCIÓN COMPLETA
+─────────────────────────
+Idioma detectado: ${transcription.language.toUpperCase()}
+
+${transcription.formattedTranscript || transcription.text}
+
+${transcription.keyMoments.length > 0 ? `
+🎯 MOMENTOS CLAVE DETECTADOS EN EL AUDIO:
+${transcription.keyMoments.map((km, i) => `  ${i + 1}. [${km.timestamp.toFixed(1)}s] (${km.type.toUpperCase()}): "${km.text}"`).join('\n')}
+` : ''}
+`;
+  } else {
+    text += `
+
+📝 TRANSCRIPCIÓN: No disponible (sin audio o error en transcripción)
+`;
+  }
+
+  return text;
+}
+
+/**
+ * Build the analysis prompt for Gemini
+ */
+function buildAnalysisPrompt(
+  analysis: FullVideoAnalysis,
+  transcription: { success: boolean; text: string }
+): string {
+  return `
+
+═══════════════════════════════════════════════════════════════
+                    INSTRUCCIONES DE ANÁLISIS
+═══════════════════════════════════════════════════════════════
+
+Tienes ${analysis.frames.length} frames del vídeo (duración total: ${analysis.metadata.duration.toFixed(1)}s).
+${transcription.success ? 'También tienes la transcripción completa del audio.' : 'El vídeo no tiene audio o no se pudo transcribir.'}
+
+ANALIZA EN DETALLE EXTREMO:
+
+1. **ANÁLISIS FRAME POR FRAME** (OBLIGATORIO para CADA frame):
+   - Describe EXACTAMENTE qué ves en cada imagen
+   - Persona: postura, expresión facial, gestos, ropa
+   - Cámara: ángulo, movimiento, encuadre
+   - Escenario: fondo, iluminación, colores
+   - Texto en pantalla: transcribe exactamente
+   - Correlaciona con el audio de ese momento
+
+2. **HOOK (primeros 3 segundos)**:
+   - ¿Qué técnica usa? (pregunta, afirmación impactante, visual llamativo)
+   - ¿Qué se ve y escucha exactamente?
+   - ¿Por qué funciona o no funciona?
+   - Timestamp exacto del hook
+
+3. **EDICIÓN Y RITMO**:
+   - Analiza los ${analysis.sceneChanges.length} cambios de escena detectados
+   - Describe cada transición (corte seco, fade, zoom)
+   - Evalúa el ritmo: ${(analysis.shotDurations.length / analysis.metadata.duration * 60).toFixed(1)} cortes/minuto
+   - ¿Es apropiado para el contenido?
+
+4. **CALL TO ACTION (CTA)**:
+   - ¿Hay CTA? ¿Cuál es exactamente?
+   - Timestamp exacto
+   - ¿Es verbal, visual o ambos?
+   - ¿Qué tan efectivo es?
+
+5. **AUDIO**:
+   - Tono de voz (energético, calmado, humorístico)
+   - Velocidad del habla
+   - Música de fondo (si hay)
+   - Uso de silencios (${analysis.audioAnalysis.silences.length} detectados)
+
+6. **PUNTUACIONES** (0-100, justifica cada una):
+   - hookScore: Efectividad del gancho inicial
+   - pacingScore: Ritmo de edición y narrativa
+   - engagementScore: Capacidad de mantener atención
+   - overallScore: Puntuación general de viralidad
+
+IMPORTANTE:
+- Sé EXTREMADAMENTE DETALLADO
+- Analiza TODOS los ${analysis.frames.length} frames
+- Correlaciona audio con imágenes
+- Da timestamps exactos
+- Justifica TODAS las puntuaciones con evidencia
+`;
+}
 
 export type AppRouter = typeof appRouter;
