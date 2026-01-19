@@ -359,10 +359,10 @@ Responde siempre en español y en formato JSON válido.`
                       additionalProperties: false
                     },
                     summary: { type: "string", description: "Resumen completo de por qué este vídeo funcionaría (o no) como contenido viral, con recomendaciones específicas de mejora" },
-                    overallScore: { type: "number" },
-                    hookScore: { type: "number" },
-                    pacingScore: { type: "number" },
-                    engagementScore: { type: "number" }
+                    overallScore: { type: "number", description: "Puntuación general de viralidad de 0 a 100" },
+                    hookScore: { type: "number", description: "Puntuación del hook (primeros 3 segundos) de 0 a 100" },
+                    pacingScore: { type: "number", description: "Puntuación del ritmo de edición de 0 a 100" },
+                    engagementScore: { type: "number", description: "Puntuación de engagement potencial de 0 a 100" }
                   },
                   required: ["frameByFrameAnalysis", "hookAnalysis", "editingAnalysis", "callToAction", "audioAnalysis", "visualElements", "structureBreakdown", "viralityFactors", "summary", "overallScore", "hookScore", "pacingScore", "engagementScore"],
                   additionalProperties: false
@@ -411,16 +411,21 @@ Responde siempre en español y en formato JSON válido.`
             }
           }
           
-          // Validate required fields
-          if (!analysisData.overallScore && analysisData.overallScore !== 0) {
-            console.warn('[Analysis] Missing overallScore, setting default');
-            analysisData.overallScore = 50;
-          }
-          if (!analysisData.hookScore && analysisData.hookScore !== 0) analysisData.hookScore = 50;
-          if (!analysisData.pacingScore && analysisData.pacingScore !== 0) analysisData.pacingScore = 50;
-          if (!analysisData.engagementScore && analysisData.engagementScore !== 0) analysisData.engagementScore = 50;
+          // Validate required fields and normalize scores to 0-100
+          const normalizeScore = (score: number | undefined): number => {
+            if (score === undefined || score === null) return 50;
+            // If score is 0-10, multiply by 10 to get 0-100
+            if (score <= 10) return Math.round(score * 10);
+            // If score is already 0-100, just round it
+            return Math.round(Math.min(100, Math.max(0, score)));
+          };
           
-          console.log('[Analysis] Scores:');
+          analysisData.overallScore = normalizeScore(analysisData.overallScore);
+          analysisData.hookScore = normalizeScore(analysisData.hookScore);
+          analysisData.pacingScore = normalizeScore(analysisData.pacingScore);
+          analysisData.engagementScore = normalizeScore(analysisData.engagementScore);
+          
+          console.log('[Analysis] Normalized Scores (0-100):');
           console.log(`  - Overall: ${analysisData.overallScore}`);
           console.log(`  - Hook: ${analysisData.hookScore}`);
           console.log(`  - Pacing: ${analysisData.pacingScore}`);
@@ -480,7 +485,7 @@ Responde siempre en español y en formato JSON válido.`
               audioCodec: fullAnalysis.metadata.audioCodec,
               framesAnalyzed: fullAnalysis.frames.length,
               sceneChanges: fullAnalysis.sceneChanges.length,
-              shots: fullAnalysis.shotDurations.length,
+              shots: fullAnalysis.shotDurations?.length || 0,
             },
             // Transcription data
             transcription: transcription.success ? {

@@ -142,3 +142,12 @@
 - [x] Añadir extracción de JSON de respuestas envueltas en markdown
 - [x] Añadir valores por defecto para campos faltantes
 - [x] Mejorar mensajes de error en el frontend
+
+## Bug CRÍTICO: Error al procesar respuesta de análisis
+- [x] Revisar logs del servidor para identificar el error exacto
+- [x] Probar internamente extracción de frames con FFmpeg - 15 frames extraídos correctamente
+- [x] Probar internamente llamada a Gemini con frames - JSON parseado correctamente
+- [x] Configurar la mejor IA para análisis de vídeo (todos los frames) - Gemini analiza TODOS los frames
+- [x] Corregir el código basándose en errores encontrados - Normalización de puntuaciones 0-100
+- [x] Ejecutar test completo interno ANTES de entregar - TEST EXITOSO
+- [x] Verificar que el análisis funciona con vídeo real - Puntuaciones: Overall 88, Hook 92, Pacing 65, Engagement 90
