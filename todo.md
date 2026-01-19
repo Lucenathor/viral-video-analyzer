@@ -133,3 +133,12 @@
 - [x] Análisis de ritmo de edición (duración de cada shot)
 - [x] Integrar todos los datos en el análisis de Gemini
 - [x] Test de pipeline completo - FUNCIONANDO
+
+## Bug: Error "not valid JSON" en análisis
+- [x] Revisar logs del servidor para identificar el error exacto
+- [x] Probar el flujo de análisis en el navegador del sandbox
+- [x] Corregir el parsing de la respuesta de Gemini - añadido manejo robusto
+- [x] Añadir manejo de errores robusto para respuestas malformadas
+- [x] Añadir extracción de JSON de respuestas envueltas en markdown
+- [x] Añadir valores por defecto para campos faltantes
+- [x] Mejorar mensajes de error en el frontend

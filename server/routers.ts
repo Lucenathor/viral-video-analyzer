@@ -373,7 +373,52 @@ Responde siempre en español y en formato JSON válido.`
           
           console.log('[Analysis] Gemini response received');
           const content = response.choices[0].message.content;
-          const analysisData = JSON.parse(typeof content === 'string' ? content : '{}');
+          console.log('[Analysis] Raw content type:', typeof content);
+          console.log('[Analysis] Raw content preview:', typeof content === 'string' ? content.substring(0, 500) : JSON.stringify(content).substring(0, 500));
+          
+          let analysisData;
+          try {
+            if (typeof content === 'string') {
+              // Try to parse as JSON
+              analysisData = JSON.parse(content);
+            } else if (typeof content === 'object' && content !== null) {
+              // Already an object
+              analysisData = content;
+            } else {
+              throw new Error('Respuesta vacía de Gemini');
+            }
+          } catch (parseError) {
+            console.error('[Analysis] JSON parse error:', parseError);
+            console.error('[Analysis] Content that failed to parse:', content);
+            
+            // Try to extract JSON from the response if it's wrapped in markdown
+            if (typeof content === 'string') {
+              const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                               content.match(/```\s*([\s\S]*?)\s*```/) ||
+                               content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                try {
+                  analysisData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                  console.log('[Analysis] Successfully extracted JSON from markdown');
+                } catch {
+                  throw new Error('No se pudo parsear la respuesta de Gemini. El análisis falló.');
+                }
+              } else {
+                throw new Error('Gemini no devolvió un JSON válido. Intenta de nuevo.');
+              }
+            } else {
+              throw new Error('Respuesta inesperada de Gemini');
+            }
+          }
+          
+          // Validate required fields
+          if (!analysisData.overallScore && analysisData.overallScore !== 0) {
+            console.warn('[Analysis] Missing overallScore, setting default');
+            analysisData.overallScore = 50;
+          }
+          if (!analysisData.hookScore && analysisData.hookScore !== 0) analysisData.hookScore = 50;
+          if (!analysisData.pacingScore && analysisData.pacingScore !== 0) analysisData.pacingScore = 50;
+          if (!analysisData.engagementScore && analysisData.engagementScore !== 0) analysisData.engagementScore = 50;
           
           console.log('[Analysis] Scores:');
           console.log(`  - Overall: ${analysisData.overallScore}`);

@@ -323,6 +323,10 @@ export default function Analyzer() {
         errorMessage = 'Error al subir el vídeo. Intenta de nuevo.';
       } else if (errorMessage.includes('indexing failed') || errorMessage.includes('Failed')) {
         errorMessage = 'Error al procesar el vídeo. Intenta con un formato diferente (MP4 recomendado).';
+      } else if (errorMessage.includes('JSON') || errorMessage.includes('parsear') || errorMessage.includes('parse')) {
+        errorMessage = 'Error al procesar la respuesta del análisis. Por favor, intenta de nuevo.';
+      } else if (errorMessage.includes('Gemini')) {
+        errorMessage = 'Error en el análisis de IA. Por favor, intenta de nuevo en unos segundos.';
       }
       
       toast.error(errorMessage);
