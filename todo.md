@@ -151,3 +151,11 @@
 - [x] Corregir el código basándose en errores encontrados - Normalización de puntuaciones 0-100
 - [x] Ejecutar test completo interno ANTES de entregar - TEST EXITOSO
 - [x] Verificar que el análisis funciona con vídeo real - Puntuaciones: Overall 88, Hook 92, Pacing 65, Engagement 90
+
+## Bug: Error al cargar vídeo MOV del usuario
+- [x] Analizar el vídeo MOV del usuario con FFmpeg internamente - 32 frames extraídos, 26s duración
+- [x] Probar transcripción de audio del vídeo MOV - Transcripción completa en español
+- [x] Probar análisis completo con Gemini usando el vídeo MOV - Overall 92, Hook 95, Pacing 85, Engagement 94
+- [x] Identificar y corregir todos los errores encontrados
+- [x] Verificar el flujo completo del dashboard con el vídeo MOV - SIMULACIÓN EXITOSA
+- [x] Asegurar que todo funciona ANTES de entregar - TEST COMPLETO PASADO
