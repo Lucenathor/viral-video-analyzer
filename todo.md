@@ -159,3 +159,11 @@
 - [x] Identificar y corregir todos los errores encontrados
 - [x] Verificar el flujo completo del dashboard con el vídeo MOV - SIMULACIÓN EXITOSA
 - [x] Asegurar que todo funciona ANTES de entregar - TEST COMPLETO PASADO
+
+## Bug CRÍTICO: Error al subir vídeo desde el dashboard
+- [x] Revisar logs del servidor para identificar el error exacto
+- [x] Revisar código del frontend de subida de vídeo (Analyzer.tsx)
+- [x] Depurar y corregir el código problemático - Añadido timeout de 10 minutos para llamadas API
+- [x] Probar el flujo de subida internamente - Test exitoso con archivo de prueba
+- [x] Backend funciona correctamente (test del dashboard completo exitoso)
+- [ ] Verificar que funciona en producción con vídeo real del usuario
