@@ -17,12 +17,15 @@ export interface CompressionResult {
   outputSize: number;
   compressionRatio: number;
   duration: number;
+  videoDuration: number; // Duration of the video in seconds
   error?: string;
 }
 
 /**
- * Compress a video file using FFmpeg
- * Optimized for social media (TikTok, Reels, etc.)
+ * Compress and convert a video file to MP4 using FFmpeg
+ * Optimized for Azure Video Indexer compatibility
+ * 
+ * Supports: MOV, MP4, WebM, AVI, MKV, M4V, 3GP, WMV, FLV
  * 
  * @param inputPath - Path to the input video file
  * @param onProgress - Callback for progress updates
@@ -45,26 +48,41 @@ export async function compressVideo(
   
   // Get video duration first for progress calculation
   const duration = await getVideoDuration(inputPath);
+  console.log(`[FFmpeg] Input video duration: ${duration / 1000}s, size: ${(inputSize / 1024 / 1024).toFixed(2)} MB`);
   
   return new Promise((resolve, reject) => {
-    // FFmpeg command optimized for social media
-    // - CRF 28 for good quality with smaller file size
-    // - preset fast for reasonable speed
-    // - scale to max 1080p while maintaining aspect ratio
-    // - AAC audio at 128k
+    // FFmpeg command optimized for Azure Video Indexer compatibility
+    // Key changes for MOV/HEVC compatibility:
+    // - Use pixel format yuv420p for maximum compatibility
+    // - Use profile:v baseline for older decoder support
+    // - Force re-encoding of all streams
+    // - Handle HEVC (H.265) from iPhone videos
     const args = [
       '-i', inputPath,
       '-y', // Overwrite output file
+      // Video codec settings - force H.264 with maximum compatibility
       '-c:v', 'libx264',
       '-preset', 'fast',
-      '-crf', '28',
-      '-vf', 'scale=\'min(1080,iw)\':\'min(1920,ih)\':force_original_aspect_ratio=decrease',
+      '-crf', '23', // Slightly better quality for analysis
+      '-profile:v', 'high', // High profile for better quality
+      '-level', '4.1', // Compatible with most devices
+      '-pix_fmt', 'yuv420p', // Required for compatibility
+      // Scale to max 1080p while maintaining aspect ratio
+      '-vf', 'scale=\'min(1080,iw)\':\'min(1920,ih)\':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2',
+      // Audio codec settings - force AAC
       '-c:a', 'aac',
       '-b:a', '128k',
+      '-ar', '44100', // Standard sample rate
+      '-ac', '2', // Stereo audio
+      // Container settings
       '-movflags', '+faststart', // Optimize for web streaming
-      '-progress', 'pipe:1', // Output progress to stdout
+      '-f', 'mp4', // Force MP4 container
+      // Progress output
+      '-progress', 'pipe:1',
       outputPath
     ];
+    
+    console.log(`[FFmpeg] Starting conversion with args: ffmpeg ${args.join(' ')}`);
     
     const ffmpeg = spawn('ffmpeg', args);
     
@@ -95,15 +113,51 @@ export async function compressVideo(
       stderr += data.toString();
     });
     
-    ffmpeg.on('close', (code) => {
+    ffmpeg.on('close', async (code) => {
       const endTime = Date.now();
       const processingDuration = (endTime - startTime) / 1000;
       
       if (code === 0) {
+        // Verify output file exists and has content
+        if (!fs.existsSync(outputPath)) {
+          reject({
+            success: false,
+            inputPath,
+            outputPath: '',
+            inputSize,
+            outputSize: 0,
+            compressionRatio: 0,
+            duration: processingDuration,
+            videoDuration: 0,
+            error: 'Output file was not created'
+          });
+          return;
+        }
+        
         // Get output file size
         const outputStats = fs.statSync(outputPath);
         const outputSize = outputStats.size;
+        
+        if (outputSize < 1000) {
+          reject({
+            success: false,
+            inputPath,
+            outputPath: '',
+            inputSize,
+            outputSize: 0,
+            compressionRatio: 0,
+            duration: processingDuration,
+            videoDuration: 0,
+            error: 'Output file is too small, conversion may have failed'
+          });
+          return;
+        }
+        
         const compressionRatio = inputSize / outputSize;
+        
+        // Get output video duration to verify conversion
+        const outputDuration = await getVideoDuration(outputPath);
+        console.log(`[FFmpeg] Output video duration: ${outputDuration / 1000}s, size: ${(outputSize / 1024 / 1024).toFixed(2)} MB`);
         
         if (onProgress) {
           onProgress({ percent: 100 });
@@ -116,9 +170,13 @@ export async function compressVideo(
           inputSize,
           outputSize,
           compressionRatio,
-          duration: processingDuration
+          duration: processingDuration,
+          videoDuration: outputDuration / 1000 // Convert to seconds
         });
       } else {
+        console.error(`[FFmpeg] Conversion failed with code ${code}`);
+        console.error(`[FFmpeg] stderr: ${stderr.slice(-2000)}`); // Last 2000 chars of error
+        
         reject({
           success: false,
           inputPath,
@@ -127,12 +185,14 @@ export async function compressVideo(
           outputSize: 0,
           compressionRatio: 0,
           duration: processingDuration,
-          error: `FFmpeg exited with code ${code}: ${stderr}`
+          videoDuration: 0,
+          error: `FFmpeg exited with code ${code}: ${stderr.slice(-500)}`
         });
       }
     });
     
     ffmpeg.on('error', (error) => {
+      console.error(`[FFmpeg] Process error: ${error.message}`);
       reject({
         success: false,
         inputPath,
@@ -141,6 +201,7 @@ export async function compressVideo(
         outputSize: 0,
         compressionRatio: 0,
         duration: 0,
+        videoDuration: 0,
         error: error.message
       });
     });
@@ -148,7 +209,7 @@ export async function compressVideo(
 }
 
 /**
- * Get video duration in seconds using FFprobe
+ * Get video duration in milliseconds using FFprobe
  */
 async function getVideoDuration(inputPath: string): Promise<number> {
   return new Promise((resolve) => {
@@ -161,18 +222,90 @@ async function getVideoDuration(inputPath: string): Promise<number> {
     
     const ffprobe = spawn('ffprobe', args);
     let output = '';
+    let errorOutput = '';
+    
+    ffprobe.stdout.on('data', (data: Buffer) => {
+      output += data.toString();
+    });
+    
+    ffprobe.stderr.on('data', (data: Buffer) => {
+      errorOutput += data.toString();
+    });
+    
+    ffprobe.on('close', (code) => {
+      if (code !== 0) {
+        console.warn(`[FFprobe] Warning: exit code ${code}, error: ${errorOutput}`);
+      }
+      const duration = parseFloat(output.trim());
+      resolve(isNaN(duration) ? 0 : duration * 1000); // Return in milliseconds
+    });
+    
+    ffprobe.on('error', (error) => {
+      console.error(`[FFprobe] Error: ${error.message}`);
+      resolve(0);
+    });
+  });
+}
+
+/**
+ * Get video codec information using FFprobe
+ */
+export async function getVideoInfo(inputPath: string): Promise<{
+  duration: number;
+  videoCodec: string;
+  audioCodec: string;
+  width: number;
+  height: number;
+}> {
+  return new Promise((resolve) => {
+    const args = [
+      '-v', 'error',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=codec_name,width,height',
+      '-show_entries', 'format=duration',
+      '-of', 'json',
+      inputPath
+    ];
+    
+    const ffprobe = spawn('ffprobe', args);
+    let output = '';
     
     ffprobe.stdout.on('data', (data: Buffer) => {
       output += data.toString();
     });
     
     ffprobe.on('close', () => {
-      const duration = parseFloat(output.trim());
-      resolve(isNaN(duration) ? 0 : duration * 1000); // Return in milliseconds
+      try {
+        const info = JSON.parse(output);
+        const stream = info.streams?.[0] || {};
+        const format = info.format || {};
+        
+        resolve({
+          duration: parseFloat(format.duration) || 0,
+          videoCodec: stream.codec_name || 'unknown',
+          audioCodec: 'unknown', // Would need separate query
+          width: stream.width || 0,
+          height: stream.height || 0
+        });
+      } catch {
+        resolve({
+          duration: 0,
+          videoCodec: 'unknown',
+          audioCodec: 'unknown',
+          width: 0,
+          height: 0
+        });
+      }
     });
     
     ffprobe.on('error', () => {
-      resolve(0);
+      resolve({
+        duration: 0,
+        videoCodec: 'unknown',
+        audioCodec: 'unknown',
+        width: 0,
+        height: 0
+      });
     });
   });
 }

@@ -108,3 +108,16 @@
 - [x] Implement direct video upload to Azure Video Indexer instead of URL (using multipart/form-data with video buffer)
 - [x] Add proper error handling to show user-friendly message instead of raw JSON
 - [x] Test direct upload to Azure - video uploaded successfully (ID: mx3rwdo7jt), processing in progress
+
+## Bug: Análisis solo procesa 3 segundos
+- [x] Investigar por qué Azure Video Indexer solo procesa 3 segundos del vídeo - ENCONTRADO: Error InvalidFileFormat en archivos MOV
+- [ ] Mejorar FFmpeg para convertir correctamente MOV a MP4 compatible con Azure
+- [ ] Añadir validación del formato de salida antes de enviar a Azure
+- [ ] Mostrar mensaje de error claro cuando Azure no pueda procesar el formato
+
+## Solución: Análisis sin Azure Video Indexer
+- [x] Crear servicio FFmpeg para extraer frames del vídeo (cada 1-2 segundos)
+- [x] Crear servicio FFmpeg para obtener metadatos del vídeo
+- [x] Modificar router para usar análisis directo con Gemini (enviar frames)
+- [x] Eliminar dependencia de Azure Video Indexer del flujo principal
+- [x] Probar extracción de frames con FFmpeg - funciona correctamente (10 frames extraídos de vídeo de 10s)

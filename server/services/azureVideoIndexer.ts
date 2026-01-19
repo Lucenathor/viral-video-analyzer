@@ -291,7 +291,26 @@ export async function waitForIndexing(
     }
     
     if (status.state === 'Failed') {
-      throw new Error(`Video indexing failed: ${JSON.stringify(status)}`);
+      // Extract failure details
+      const video = status.videos?.[0];
+      const failureCode = video?.failureCode || 'UNKNOWN';
+      const failureMessage = video?.failureMessage || 'Error desconocido';
+      
+      // Provide user-friendly error messages
+      let userMessage = '';
+      if (failureCode === 'InvalidFileFormat') {
+        userMessage = 'El formato del vídeo no es compatible. Por favor, sube un vídeo en formato MP4 con codec H.264.';
+      } else if (failureCode === 'DownloadFailed') {
+        userMessage = 'No se pudo descargar el vídeo. Intenta subirlo de nuevo.';
+      } else if (failureCode === 'InvalidUrl') {
+        userMessage = 'La URL del vídeo no es válida.';
+      } else if (failureCode === 'ProcessingError') {
+        userMessage = 'Error al procesar el vídeo. El archivo puede estar corrupto.';
+      } else {
+        userMessage = `Error de Azure: ${failureMessage}`;
+      }
+      
+      throw new Error(`Azure no pudo procesar el vídeo: ${userMessage} (Código: ${failureCode})`);
     }
     
     await new Promise(resolve => setTimeout(resolve, 10000));
