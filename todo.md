@@ -272,3 +272,8 @@
 - [x] Añadir descripción y tips para cada reel
 - [x] Añadir navegación al calendario en el navbar
 - [x] Diseño premium con animaciones consistentes
+
+## Mejora: Calendario - Ajustes visuales
+- [x] Ajustar calendario para que los días de publicación empiecen desde hoy (20 enero)
+- [x] No mostrar días pasados como días de publicación
+- [x] Ampliar las fotos de los sectores en el selector del calendario

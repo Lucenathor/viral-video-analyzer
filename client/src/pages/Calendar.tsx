@@ -59,18 +59,28 @@ const getDaysInMonth = (year: number, month: number) => {
   return days;
 };
 
-// Función para distribuir vídeos en el calendario (2 por semana, martes y jueves)
+// Función para distribuir vídeos en el calendario (2 por semana, martes y jueves, solo desde hoy)
 const distributeVideosInCalendar = (videos: typeof businessSectors[0]["videos"], year: number, month: number) => {
   const schedule: { [day: number]: typeof videos[0] } = {};
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
   
-  // Encontrar todos los martes y jueves del mes
+  // Encontrar todos los martes y jueves del mes (solo desde hoy en adelante)
   const publishDays: number[] = [];
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     const dayOfWeek = date.getDay();
-    // Martes (2) y Jueves (4)
-    if (dayOfWeek === 2 || dayOfWeek === 4) {
+    
+    // Solo incluir días desde hoy en adelante
+    const isCurrentMonth = year === todayYear && month === todayMonth;
+    const isFutureMonth = year > todayYear || (year === todayYear && month > todayMonth);
+    const isFutureOrToday = isFutureMonth || (isCurrentMonth && day >= todayDay);
+    
+    // Martes (2) y Jueves (4), solo si es hoy o futuro
+    if ((dayOfWeek === 2 || dayOfWeek === 4) && isFutureOrToday) {
       publishDays.push(day);
     }
   }
@@ -183,15 +193,15 @@ export default function Calendar() {
                   )}
                   
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden mx-auto mb-2">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden mx-auto mb-3 ring-2 ring-border/30 group-hover:ring-primary/50 transition-all">
                       <img 
                         src={s.image} 
                         alt={s.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     </div>
-                    <p className="text-xs font-medium text-center truncate">{s.name}</p>
-                    <p className="text-[10px] text-muted-foreground text-center">{s.videos.length} vídeos</p>
+                    <p className="text-sm font-medium text-center truncate">{s.name}</p>
+                    <p className="text-xs text-muted-foreground text-center">{s.videos.length} vídeos</p>
                   </div>
                   
                   {selectedSector === s.id && (
