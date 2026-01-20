@@ -253,3 +253,9 @@
 ## Bug: Empty src attribute in video thumbnails
 - [x] Fix empty string passed to src attribute when video.cover is empty
 - [x] Add fallback for videos without cover images
+
+## Mejora: Precargar miniaturas de TikTok para todos los vídeos
+- [x] Identificar vídeos sin miniatura (cover vacío)
+- [x] Obtener las miniaturas reales de TikTok para cada vídeo
+- [x] Actualizar el archivo de datos con las URLs de las miniaturas
+- [x] Verificar que todas las miniaturas se cargan correctamente (50/50 vídeos con miniatura)
