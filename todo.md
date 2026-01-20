@@ -250,3 +250,6 @@
 - [x] Buscar vídeos virales con 4K+ likes para Coaches/Consultores
 - [x] Actualizar datos de la biblioteca con vídeos filtrados
 - [x] Verificar que todos los vídeos tienen mínimo 4K likes
+## Bug: Empty src attribute in video thumbnails
+- [x] Fix empty string passed to src attribute when video.cover is empty
+- [x] Add fallback for videos without cover images

@@ -377,17 +377,19 @@ export default function Library() {
                   <CardContent className="p-4">
                     <div className="flex gap-4">
                       {/* Real Thumbnail */}
-                      <div className="w-28 h-28 md:w-36 md:h-36 rounded-xl flex-shrink-0 relative overflow-hidden">
-                        <img 
-                          src={video.cover}
-                          alt={video.description}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={(e) => {
-                            // Fallback to gradient if image fails
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-primary/30', 'to-accent/30');
-                          }}
-                        />
+                      <div className={`w-28 h-28 md:w-36 md:h-36 rounded-xl flex-shrink-0 relative overflow-hidden ${!video.cover ? 'bg-gradient-to-br from-primary/30 to-accent/30' : ''}`}>
+                        {video.cover && (
+                          <img 
+                            src={video.cover}
+                            alt={video.description}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            onError={(e) => {
+                              // Fallback to gradient if image fails
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-primary/30', 'to-accent/30');
+                            }}
+                          />
+                        )}
                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
                         
                         {/* Play overlay */}
