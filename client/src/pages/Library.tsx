@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { sectors, formatNumber, type Sector, type ViralVideo } from '../data/viralVideos';
+import { businessSectors, formatNumber, globalStats, type BusinessSector, type ViralVideo } from '../data/businessSectorVideos';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,18 +21,31 @@ import {
   ExternalLink,
   User,
   Search,
-  Library as LibraryIcon
+  Library as LibraryIcon,
+  X
 } from 'lucide-react';
 
 export default function Library() {
-  const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
+  const [selectedSector, setSelectedSector] = useState<BusinessSector | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<ViralVideo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredSectors = sectors.filter(sector =>
+  const filteredSectors = businessSectors.filter(sector =>
     sector.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     sector.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Calcular engagement rate
+  const calculateEngagement = (video: ViralVideo) => {
+    const total = video.likes + video.comments + video.shares;
+    const rate = video.plays > 0 ? (total / video.plays) * 100 : 0;
+    return rate.toFixed(2);
+  };
+
+  // Construir URL de embed de TikTok
+  const getTikTokEmbedUrl = (video: ViralVideo) => {
+    return `https://www.tiktok.com/embed/v2/${video.id}`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,14 +57,14 @@ export default function Library() {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
               <LibraryIcon className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Biblioteca de Reels</span>
+              <span className="text-sm font-medium text-primary">Biblioteca de Reels para Negocios</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              Reels Virales por <span className="text-gradient">Sector</span>
+              Reels Virales por <span className="text-gradient">Sector de Negocio</span>
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
               Explora nuestra colección de reels virales de TikTok organizados por industria. 
-              Todos los vídeos tienen más de 10,000 likes y están en español.
+              Contenido real de negocios como el tuyo con más de 10,000 likes.
             </p>
 
             {/* Search */}
@@ -70,19 +83,19 @@ export default function Library() {
           {/* Stats Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
             <div className="glass rounded-xl p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-primary mb-1">10</div>
+              <div className="text-2xl md:text-3xl font-bold text-primary mb-1">{globalStats.totalSectors}</div>
               <div className="text-muted-foreground text-sm">Sectores</div>
             </div>
             <div className="glass rounded-xl p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-pink-500 mb-1">50+</div>
+              <div className="text-2xl md:text-3xl font-bold text-pink-500 mb-1">{globalStats.totalVideos}+</div>
               <div className="text-muted-foreground text-sm">Vídeos Virales</div>
             </div>
             <div className="glass rounded-xl p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-orange-500 mb-1">100M+</div>
+              <div className="text-2xl md:text-3xl font-bold text-orange-500 mb-1">{formatNumber(globalStats.totalLikes)}+</div>
               <div className="text-muted-foreground text-sm">Likes Totales</div>
             </div>
             <div className="glass rounded-xl p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-green-500 mb-1">1B+</div>
+              <div className="text-2xl md:text-3xl font-bold text-green-500 mb-1">{formatNumber(globalStats.totalPlays)}+</div>
               <div className="text-muted-foreground text-sm">Reproducciones</div>
             </div>
           </div>
@@ -97,7 +110,7 @@ export default function Library() {
               >
                 <div className="aspect-square relative overflow-hidden">
                   <img 
-                    src={sector.imageUrl} 
+                    src={sector.image} 
                     alt={sector.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
@@ -110,7 +123,7 @@ export default function Library() {
                   </div>
                   <div className="absolute top-3 right-3">
                     <Badge className="bg-black/50 text-white border-0 backdrop-blur-sm">
-                      {sector.totalVideos} vídeos
+                      {sector.videos.length} vídeos
                     </Badge>
                   </div>
                   {/* Hover Badge */}
@@ -124,11 +137,11 @@ export default function Library() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1 text-pink-500">
                       <Heart className="w-4 h-4" />
-                      <span>{formatNumber(sector.avgLikes)} avg</span>
+                      <span>{formatNumber(sector.totalLikes)} total</span>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <TrendingUp className="w-4 h-4" />
-                      <span>Viral</span>
+                      <span>{sector.avgEngagement.toFixed(1)}% eng</span>
                     </div>
                   </div>
                 </CardContent>
@@ -176,7 +189,7 @@ export default function Library() {
               {selectedSector && (
                 <>
                   <img 
-                    src={selectedSector.imageUrl} 
+                    src={selectedSector.image} 
                     alt={selectedSector.name}
                     className="w-12 h-12 rounded-lg object-cover"
                   />
@@ -207,10 +220,10 @@ export default function Library() {
                   <CardContent className="p-4">
                     <div className="flex gap-4">
                       {/* Thumbnail placeholder */}
-                      <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex-shrink-0 flex items-center justify-center relative overflow-hidden">
-                        <Play className="w-8 h-8 text-foreground/50" />
+                      <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex-shrink-0 flex items-center justify-center relative overflow-hidden group">
+                        <Play className="w-8 h-8 text-foreground/50 group-hover:text-primary group-hover:scale-110 transition-all" />
                         <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1 rounded">
-                          {Math.floor(video.durationSeconds / 60)}:{(video.durationSeconds % 60).toString().padStart(2, '0')}
+                          {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
                         </div>
                       </div>
                       
@@ -227,9 +240,9 @@ export default function Library() {
                         
                         <div className="flex items-center gap-2 text-muted-foreground text-xs mb-3">
                           <User className="w-3 h-3" />
-                          <span>@{video.authorUsername}</span>
+                          <span>@{video.username}</span>
                           <span className="text-muted-foreground/40">•</span>
-                          <span>{video.authorNickname}</span>
+                          <span>{video.nickname}</span>
                         </div>
                         
                         <div className="flex flex-wrap gap-3 text-xs">
@@ -249,9 +262,9 @@ export default function Library() {
                             <Eye className="w-3 h-3" />
                             <span>{formatNumber(video.plays)}</span>
                           </div>
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            <span>{video.durationSeconds}s</span>
+                          <div className="flex items-center gap-1 text-purple-500">
+                            <TrendingUp className="w-3 h-3" />
+                            <span>{calculateEngagement(video)}%</span>
                           </div>
                         </div>
                       </div>
@@ -276,101 +289,112 @@ export default function Library() {
         </DialogContent>
       </Dialog>
 
-      {/* Video Detail Modal */}
+      {/* Video Detail Modal with TikTok Embed */}
       <Dialog open={!!selectedVideo} onOpenChange={() => setSelectedVideo(null)}>
-        <DialogContent className="max-w-2xl bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-xl">
-              <span className="text-gradient">
-                Detalles del Vídeo
-              </span>
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Información detallada del vídeo viral
+        <DialogContent className="max-w-lg bg-card border-border p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Reproductor de Vídeo</DialogTitle>
+            <DialogDescription>
+              Vídeo viral de TikTok
             </DialogDescription>
           </DialogHeader>
           
           {selectedVideo && (
-            <div className="space-y-6">
-              {/* Video Preview */}
-              <div className="aspect-video bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center relative">
-                <Play className="w-16 h-16 text-foreground/50" />
-                <div className="absolute bottom-3 right-3 bg-black/70 text-white text-sm px-2 py-1 rounded">
-                  {Math.floor(selectedVideo.durationSeconds / 60)}:{(selectedVideo.durationSeconds % 60).toString().padStart(2, '0')}
-                </div>
+            <div className="relative">
+              {/* Close button */}
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="absolute top-3 right-3 z-50 bg-black/50 hover:bg-black/70 rounded-full p-2 transition-colors"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
+
+              {/* TikTok Embed */}
+              <div className="bg-black aspect-[9/16] max-h-[60vh] w-full flex items-center justify-center">
+                <iframe
+                  src={getTikTokEmbedUrl(selectedVideo)}
+                  className="w-full h-full"
+                  allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  title={`TikTok video by ${selectedVideo.username}`}
+                />
               </div>
-              
-              {/* Description */}
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Descripción</h4>
-                <p className="text-foreground/90">{selectedVideo.description}</p>
-              </div>
-              
-              {/* Author */}
-              <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-foreground font-medium">{selectedVideo.authorNickname}</div>
-                  <div className="text-muted-foreground text-sm">@{selectedVideo.authorUsername}</div>
-                </div>
-              </div>
-              
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-pink-500/10 rounded-lg p-4 text-center">
-                  <Heart className="w-5 h-5 text-pink-500 mx-auto mb-2" />
-                  <div className="text-xl font-bold text-foreground">{formatNumber(selectedVideo.likes)}</div>
-                  <div className="text-xs text-muted-foreground">Me gusta</div>
-                </div>
-                <div className="bg-blue-500/10 rounded-lg p-4 text-center">
-                  <MessageCircle className="w-5 h-5 text-blue-500 mx-auto mb-2" />
-                  <div className="text-xl font-bold text-foreground">{formatNumber(selectedVideo.comments)}</div>
-                  <div className="text-xs text-muted-foreground">Comentarios</div>
-                </div>
-                <div className="bg-green-500/10 rounded-lg p-4 text-center">
-                  <Share2 className="w-5 h-5 text-green-500 mx-auto mb-2" />
-                  <div className="text-xl font-bold text-foreground">{formatNumber(selectedVideo.shares)}</div>
-                  <div className="text-xs text-muted-foreground">Compartidos</div>
-                </div>
-                <div className="bg-orange-500/10 rounded-lg p-4 text-center">
-                  <Eye className="w-5 h-5 text-orange-500 mx-auto mb-2" />
-                  <div className="text-xl font-bold text-foreground">{formatNumber(selectedVideo.plays)}</div>
-                  <div className="text-xs text-muted-foreground">Reproducciones</div>
-                </div>
-              </div>
-              
-              {/* Engagement Rate */}
-              <div className="bg-primary/10 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Tasa de Engagement</div>
-                    <div className="text-2xl font-bold text-primary">
-                      {((selectedVideo.likes + selectedVideo.comments + selectedVideo.shares) / selectedVideo.plays * 100).toFixed(2)}%
-                    </div>
+
+              {/* Video Info */}
+              <div className="p-5 bg-card">
+                <h3 className="text-base font-semibold text-foreground mb-2">
+                  Detalles del Vídeo
+                </h3>
+                
+                <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
+                  {selectedVideo.description}
+                </p>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">
+                      {selectedVideo.nickname.charAt(0).toUpperCase()}
+                    </span>
                   </div>
-                  <TrendingUp className="w-8 h-8 text-primary" />
+                  <div>
+                    <p className="text-foreground font-medium text-sm">{selectedVideo.nickname}</p>
+                    <p className="text-muted-foreground text-xs">@{selectedVideo.username}</p>
+                  </div>
                 </div>
-              </div>
-              
-              {/* CTA */}
-              <div className="flex gap-3">
-                <Button 
-                  className="flex-1 gradient-primary"
-                  onClick={() => {
-                    window.open(`https://www.tiktok.com/@${selectedVideo.authorUsername}/video/${selectedVideo.id}`, '_blank');
-                  }}
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Ver en TikTok
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSelectedVideo(null)}
-                >
-                  Cerrar
-                </Button>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <div className="bg-pink-500/10 rounded-lg p-2 text-center">
+                    <Heart className="h-4 w-4 text-pink-500 mx-auto mb-1" />
+                    <p className="text-foreground font-bold text-sm">{formatNumber(selectedVideo.likes)}</p>
+                    <p className="text-muted-foreground text-[10px]">Me gusta</p>
+                  </div>
+                  <div className="bg-blue-500/10 rounded-lg p-2 text-center">
+                    <MessageCircle className="h-4 w-4 text-blue-500 mx-auto mb-1" />
+                    <p className="text-foreground font-bold text-sm">{formatNumber(selectedVideo.comments)}</p>
+                    <p className="text-muted-foreground text-[10px]">Comentarios</p>
+                  </div>
+                  <div className="bg-green-500/10 rounded-lg p-2 text-center">
+                    <Share2 className="h-4 w-4 text-green-500 mx-auto mb-1" />
+                    <p className="text-foreground font-bold text-sm">{formatNumber(selectedVideo.shares)}</p>
+                    <p className="text-muted-foreground text-[10px]">Compartidos</p>
+                  </div>
+                  <div className="bg-orange-500/10 rounded-lg p-2 text-center">
+                    <Eye className="h-4 w-4 text-orange-500 mx-auto mb-1" />
+                    <p className="text-foreground font-bold text-sm">{formatNumber(selectedVideo.plays)}</p>
+                    <p className="text-muted-foreground text-[10px]">Reproducciones</p>
+                  </div>
+                </div>
+
+                {/* Engagement Rate */}
+                <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg p-3 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Tasa de Engagement</p>
+                      <p className="text-xl font-bold text-primary">
+                        {calculateEngagement(selectedVideo)}%
+                      </p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-primary" />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 gradient-primary"
+                    onClick={() => window.open(selectedVideo.url, "_blank")}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Ver en TikTok
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedVideo(null)}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
               </div>
             </div>
           )}
