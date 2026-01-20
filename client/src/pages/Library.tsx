@@ -93,7 +93,7 @@ export default function Library() {
 
   const calculateEngagement = (video: ViralVideo) => {
     const total = video.likes + video.comments + video.shares;
-    const rate = video.plays > 0 ? (total / video.plays) * 100 : 0;
+    const rate = video.views > 0 ? (total / video.views) * 100 : 0;
     return rate.toFixed(2);
   };
 
@@ -181,28 +181,28 @@ export default function Library() {
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <AnimatedStat 
-              value={`${globalStats.totalSectors}`}
+              value={globalStats.sectors}
               label="Sectores"
               color="bg-gradient-to-br from-purple-500 to-pink-500"
               icon={LibraryIcon}
               delay={100}
             />
             <AnimatedStat 
-              value={`${globalStats.totalVideos}+`}
+              value={globalStats.videos}
               label="Vídeos Virales"
               color="bg-gradient-to-br from-pink-500 to-rose-500"
               icon={Flame}
               delay={200}
             />
             <AnimatedStat 
-              value={formatNumber(globalStats.totalLikes)}
+              value={globalStats.likes}
               label="Likes Totales"
               color="bg-gradient-to-br from-orange-500 to-amber-500"
               icon={Heart}
               delay={300}
             />
             <AnimatedStat 
-              value={formatNumber(globalStats.totalPlays)}
+              value={globalStats.views}
               label="Reproducciones"
               color="bg-gradient-to-br from-emerald-500 to-teal-500"
               icon={Eye}
@@ -276,11 +276,11 @@ export default function Library() {
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-1.5 text-pink-500">
                         <Heart className="w-4 h-4" fill="currentColor" />
-                        <span className="font-semibold">{formatNumber(sector.totalLikes)}</span>
+                        <span className="font-semibold">{formatNumber(sector.videos.reduce((acc, v) => acc + v.likes, 0))}</span>
                       </div>
                       <div className="flex items-center gap-1.5 text-emerald-500">
                         <TrendingUp className="w-4 h-4" />
-                        <span className="font-semibold">{sector.avgEngagement.toFixed(1)}%</span>
+                        <span className="font-semibold">{(sector.videos.reduce((acc, v) => acc + v.engagement, 0) / sector.videos.length).toFixed(1)}%</span>
                       </div>
                     </div>
                   </CardContent>
@@ -379,7 +379,7 @@ export default function Library() {
                       {/* Real Thumbnail */}
                       <div className="w-28 h-28 md:w-36 md:h-36 rounded-xl flex-shrink-0 relative overflow-hidden">
                         <img 
-                          src={video.cover || video.originCover || video.dynamicCover}
+                          src={video.cover}
                           alt={video.description}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           onError={(e) => {
@@ -399,7 +399,7 @@ export default function Library() {
                         
                         {/* Duration badge */}
                         <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded-md font-medium">
-                          {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                          {video.duration}
                         </div>
                       </div>
                       
@@ -421,7 +421,7 @@ export default function Library() {
                           </div>
                           <span className="font-medium">@{video.username}</span>
                           <span className="text-muted-foreground/40">•</span>
-                          <span>{video.nickname}</span>
+                          <span>{video.authorName}</span>
                         </div>
                         
                         <div className="flex flex-wrap gap-3 text-xs">
@@ -439,7 +439,7 @@ export default function Library() {
                           </div>
                           <div className="flex items-center gap-1.5 text-orange-500 bg-orange-500/10 px-2 py-1 rounded-full">
                             <Eye className="w-3 h-3" />
-                            <span className="font-semibold">{formatNumber(video.plays)}</span>
+                            <span className="font-semibold">{formatNumber(video.views)}</span>
                           </div>
                         </div>
                       </div>
@@ -509,12 +509,12 @@ export default function Library() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center ring-2 ring-primary/30">
                     <span className="text-white font-bold text-sm">
-                      {selectedVideo.nickname.charAt(0).toUpperCase()}
+                      {selectedVideo.authorName.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <p className="text-foreground font-medium text-sm">{selectedVideo.nickname}</p>
-                    <p className="text-muted-foreground text-xs">@{selectedVideo.username}</p>
+                    <p className="text-foreground font-medium text-sm">{selectedVideo.authorName}</p>
+                    <p className="text-muted-foreground text-xs">{selectedVideo.username}</p>
                   </div>
                 </div>
 
@@ -537,7 +537,7 @@ export default function Library() {
                   </div>
                   <div className="bg-orange-500/10 rounded-xl p-3 text-center hover:bg-orange-500/20 transition-colors">
                     <Eye className="h-4 w-4 text-orange-500 mx-auto mb-1" />
-                    <p className="text-foreground font-bold text-sm">{formatNumber(selectedVideo.plays)}</p>
+                    <p className="text-foreground font-bold text-sm">{formatNumber(selectedVideo.views)}</p>
                     <p className="text-muted-foreground text-[10px]">Reproducciones</p>
                   </div>
                 </div>

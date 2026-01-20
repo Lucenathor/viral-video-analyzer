@@ -43,7 +43,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation con animaciones */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1 ml-8">
             {navItems.map((item, index) => {
               const isActive = location === item.href || location.startsWith(item.href + "/");
               return (

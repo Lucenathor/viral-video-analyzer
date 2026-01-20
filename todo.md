@@ -232,3 +232,21 @@
 - [ ] Añadir sección de Sonidos virales por sector
 - [x] Probar experiencia completa antes de entregar
 
+
+## Bug: Solapamiento en Navbar
+- [x] Arreglar solapamiento entre logo ViralPro y enlace Biblioteca
+- [x] Verificar espaciado correcto en navbar
+
+## Mejora: Vídeos con mínimo 4,000 likes
+- [x] Buscar vídeos virales con 4K+ likes para Clínica Estética
+- [x] Buscar vídeos virales con 4K+ likes para Inmobiliaria
+- [x] Buscar vídeos virales con 4K+ likes para Abogados
+- [x] Buscar vídeos virales con 4K+ likes para Agencias de Marketing
+- [x] Buscar vídeos virales con 4K+ likes para Personal Trainer
+- [x] Buscar vídeos virales con 4K+ likes para Manicura/Uñas
+- [x] Buscar vídeos virales con 4K+ likes para Micropigmentación
+- [x] Buscar vídeos virales con 4K+ likes para Peluquería
+- [x] Buscar vídeos virales con 4K+ likes para Restaurantes
+- [x] Buscar vídeos virales con 4K+ likes para Coaches/Consultores
+- [x] Actualizar datos de la biblioteca con vídeos filtrados
+- [x] Verificar que todos los vídeos tienen mínimo 4K likes
