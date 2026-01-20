@@ -25,11 +25,16 @@ import {
   FileVideo,
   Lock,
   Calendar,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Crown,
+  Flame,
+  Star,
+  Rocket
 } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface AnalysisResult {
   id: number;
@@ -56,6 +61,31 @@ interface AnalysisResult {
   engagementScore: number;
 }
 
+// Unlock dates
+const UNLOCK_DATE_USER_VIDEO = new Date('2026-01-30T00:00:00');
+const UNLOCK_DATE_VIRAL_VIDEO = new Date('2026-02-05T00:00:00');
+
+// Check if feature is unlocked
+function isFeatureUnlocked(unlockDate: Date): boolean {
+  return new Date() >= unlockDate;
+}
+
+// Format date for display
+function formatUnlockDate(date: Date): string {
+  return date.toLocaleDateString('es-ES', { 
+    day: 'numeric', 
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+// Calculate days until unlock
+function daysUntilUnlock(date: Date): number {
+  const now = new Date();
+  const diff = date.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
 // Upload file in chunks through the server
 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
@@ -72,12 +102,10 @@ async function uploadFileInChunks(
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const chunk = file.slice(start, end);
     
-    // Convert chunk to base64
     const base64Chunk = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data URL prefix
         const base64 = result.split(',')[1];
         resolve(base64);
       };
@@ -94,10 +122,82 @@ async function uploadFileInChunks(
       isLastChunk: i === totalChunks - 1,
     });
     
-    // Update progress (upload is 0-50% of total progress)
     const uploadProgress = ((i + 1) / totalChunks) * 50;
     onProgress(uploadProgress);
   }
+}
+
+// Locked Feature Card Component
+function LockedFeatureCard({ 
+  title, 
+  description, 
+  unlockDate, 
+  icon: Icon,
+  gradient 
+}: { 
+  title: string; 
+  description: string; 
+  unlockDate: Date;
+  icon: React.ElementType;
+  gradient: string;
+}) {
+  const days = daysUntilUnlock(unlockDate);
+  
+  return (
+    <Card className="relative overflow-hidden bg-card/30 border-primary/20 backdrop-blur-xl">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+      <div className="absolute inset-0 gradient-mesh opacity-30" />
+      
+      <CardContent className="relative p-8 text-center">
+        {/* Lock icon with glow */}
+        <div className="relative inline-block mb-6">
+          <div className={`w-24 h-24 rounded-3xl ${gradient} flex items-center justify-center mx-auto shadow-2xl`}>
+            <Lock className="w-10 h-10 text-white" />
+          </div>
+          <div className="absolute -inset-2 bg-primary/20 rounded-3xl blur-xl -z-10 animate-pulse-glow" />
+        </div>
+        
+        {/* Badge */}
+        <Badge className="mb-4 bg-primary/20 text-primary border-primary/30 px-4 py-1.5">
+          <Calendar className="w-3 h-3 mr-2" />
+          Se desbloquea el {formatUnlockDate(unlockDate)}
+        </Badge>
+        
+        <h3 className="text-2xl font-bold mb-3 text-gradient">{title}</h3>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">{description}</p>
+        
+        {/* Countdown */}
+        <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-background/50 border border-primary/20">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gradient">{days}</div>
+            <div className="text-xs text-muted-foreground">días</div>
+          </div>
+          <div className="w-px h-10 bg-border" />
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="w-4 h-4" />
+            <span className="text-sm">para el desbloqueo</span>
+          </div>
+        </div>
+        
+        {/* Features preview */}
+        <div className="mt-8 grid grid-cols-3 gap-4">
+          <div className="p-3 rounded-xl bg-background/30 border border-border/30">
+            <Sparkles className="w-5 h-5 text-primary mx-auto mb-2" />
+            <span className="text-xs text-muted-foreground">Análisis IA</span>
+          </div>
+          <div className="p-3 rounded-xl bg-background/30 border border-border/30">
+            <BarChart3 className="w-5 h-5 text-accent mx-auto mb-2" />
+            <span className="text-xs text-muted-foreground">Métricas</span>
+          </div>
+          <div className="p-3 rounded-xl bg-background/30 border border-border/30">
+            <Target className="w-5 h-5 text-pink-500 mx-auto mb-2" />
+            <span className="text-xs text-muted-foreground">Mejoras</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function Analyzer() {
@@ -119,6 +219,10 @@ export default function Analyzer() {
   const [tiktokUrl, setTiktokUrl] = useState<string>("");
   const [isDownloadingTiktok, setIsDownloadingTiktok] = useState(false);
   
+  // Check unlock status
+  const isUserVideoUnlocked = isFeatureUnlocked(UNLOCK_DATE_USER_VIDEO);
+  const isViralVideoUnlocked = isFeatureUnlocked(UNLOCK_DATE_VIRAL_VIDEO);
+  
   // Tips to show while waiting
   const analysisTips = [
     "💡 Tip: Los vídeos más cortos (15-30s) se procesan más rápido",
@@ -131,7 +235,6 @@ export default function Analyzer() {
     "💡 Tip: El ritmo de edición afecta la retención de audiencia",
   ];
   
-  // Rotate tips every 5 seconds during analysis
   useEffect(() => {
     if (isAnalyzing) {
       setCurrentTip(analysisTips[0]);
@@ -145,7 +248,6 @@ export default function Analyzer() {
     }
   }, [isAnalyzing]);
   
-  // Countdown timer
   useEffect(() => {
     if (isAnalyzing && analysisStartTime > 0) {
       const countdownInterval = setInterval(() => {
@@ -155,7 +257,6 @@ export default function Analyzer() {
     }
   }, [isAnalyzing, analysisStartTime]);
   
-  // Format seconds to mm:ss
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -188,7 +289,6 @@ export default function Analyzer() {
     setAnalysisProgress(0);
     setUploadStatus("Preparando subida...");
     
-    // Calculate estimated time based on file size
     const fileSizeMB = videoFile.size / (1024 * 1024);
     const uploadTimeEstimate = Math.ceil(fileSizeMB * 1.2);
     const processingTimeEstimate = 180;
@@ -199,7 +299,6 @@ export default function Analyzer() {
     setAnalysisStartTime(Date.now());
     
     try {
-      // Step 1: Get upload key from server
       setUploadStatus("Iniciando subida...");
       setAnalysisProgress(2);
       
@@ -208,7 +307,6 @@ export default function Analyzer() {
         mimeType: videoFile.type,
       });
       
-      // Step 2: Upload file in chunks
       setUploadStatus("Subiendo vídeo...");
       
       await uploadFileInChunks(
@@ -221,11 +319,9 @@ export default function Analyzer() {
         }
       );
       
-      // Step 3: Finalize upload and start analysis
       setUploadStatus("Vídeo subido. Iniciando análisis...");
       setAnalysisProgress(55);
       
-      // Progress simulation with detailed messages
       const analysisSteps = [
         { progress: 56, message: "Extrayendo frames del vídeo..." },
         { progress: 60, message: "Analizando audio y transcripción..." },
@@ -256,7 +352,6 @@ export default function Analyzer() {
       
       clearInterval(analysisProgressInterval);
       
-      // The result is the analysis directly, not wrapped in success/analysis
       if (result && result.id) {
         setAnalysisResult(result as unknown as AnalysisResult);
         setAnalysisProgress(100);
@@ -289,7 +384,6 @@ export default function Analyzer() {
       return;
     }
     
-    // Validate TikTok URL
     if (!tiktokUrl.includes("tiktok.com")) {
       toast.error("La URL debe ser de TikTok");
       return;
@@ -299,8 +393,6 @@ export default function Analyzer() {
     toast.info("Descargando vídeo de TikTok...");
     
     try {
-      // TODO: Implement TikTok download via RapidAPI
-      // For now, show coming soon message
       toast.info("Esta función estará disponible el 5 de febrero");
     } catch (error: any) {
       toast.error("Error al descargar el vídeo de TikTok");
@@ -312,7 +404,10 @@ export default function Analyzer() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
       </div>
     );
   }
@@ -322,16 +417,22 @@ export default function Analyzer() {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container py-20">
-          <Card className="max-w-md mx-auto bg-card/50 border-border/50">
+          <Card className="max-w-md mx-auto glass-card border-primary/20">
             <CardHeader className="text-center">
-              <CardTitle>Acceso Requerido</CardTitle>
+              <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+              <CardTitle className="text-gradient">Acceso Requerido</CardTitle>
               <CardDescription>
                 Inicia sesión para analizar tus vídeos
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full gradient-primary" asChild>
-                <a href={getLoginUrl()}>Iniciar Sesión</a>
+              <Button className="w-full btn-premium gradient-primary text-white" asChild>
+                <a href={getLoginUrl()}>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Iniciar Sesión
+                </a>
               </Button>
             </CardContent>
           </Card>
@@ -341,355 +442,344 @@ export default function Analyzer() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Navbar />
-      <div className="container py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-gradient">
-              Analizador de Viralidad
+      
+      {/* Hero Section */}
+      <section className="relative pt-24 pb-8 overflow-hidden">
+        <div className="absolute inset-0 gradient-hero" />
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        
+        {/* Floating particles */}
+        <div className="absolute top-20 left-10 w-3 h-3 rounded-full bg-primary/50 animate-float" />
+        <div className="absolute top-40 right-20 w-2 h-2 rounded-full bg-accent/50 animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-20 left-1/4 w-4 h-4 rounded-full bg-pink-500/30 animate-float" style={{ animationDelay: '2s' }} />
+        
+        <div className="container relative">
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Premium badge */}
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full badge-premium mb-6 animate-fade-in-scale">
+              <Rocket className="w-4 h-4 text-primary animate-bounce-subtle" />
+              <span className="text-sm font-semibold text-gradient">Analizador con IA Avanzada</span>
+              <Sparkles className="w-4 h-4 text-accent animate-bounce-subtle" style={{ animationDelay: '0.5s' }} />
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 animate-fade-in-up">
+              <span className="text-foreground">Analiza tu </span>
+              <span className="text-gradient">Potencial Viral</span>
             </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Descubre el potencial viral de tu vídeo con análisis de IA avanzado.
-              Obtén puntuaciones detalladas y recomendaciones para mejorar tu contenido.
+            
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              Descubre qué hace que un vídeo se vuelva viral. Obtén análisis detallados, 
+              puntuaciones y recomendaciones personalizadas.
             </p>
           </div>
+        </div>
+      </section>
 
+      <div className="container py-8">
+        <div className="max-w-4xl mx-auto space-y-8">
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="analyze" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-card/50 p-1.5 rounded-xl border border-border/50">
+              <TabsTrigger 
+                value="analyze" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg transition-all"
+              >
                 <Video className="w-4 h-4" />
                 Analizar Tu Vídeo
+                {!isUserVideoUnlocked && <Lock className="w-3 h-3 ml-1" />}
               </TabsTrigger>
-              <TabsTrigger value="viral-reference" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="viral-reference" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg transition-all"
+              >
                 <TrendingUp className="w-4 h-4" />
                 Analizar Vídeo Viral
+                {!isViralVideoUnlocked && <Lock className="w-3 h-3 ml-1" />}
               </TabsTrigger>
             </TabsList>
 
             {/* Analyze Your Video Tab */}
-            <TabsContent value="analyze" className="space-y-6">
-              {/* Upload Card */}
-              <Card className="bg-card/50 border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="w-5 h-5 text-primary" />
-                    Sube Tu Vídeo
-                  </CardTitle>
-                  <CardDescription>
-                    Sube tu vídeo para analizar su potencial viral y obtener recomendaciones de mejora
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <input
-                    ref={videoInputRef}
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoSelect}
-                    className="hidden"
-                  />
-                  
-                  {videoPreview ? (
-                    <div className="space-y-4">
-                      <div className="aspect-video rounded-xl overflow-hidden bg-black">
-                        <video
-                          src={videoPreview}
-                          controls
-                          className="w-full h-full object-contain"
-                        />
+            <TabsContent value="analyze" className="space-y-6 animate-fade-in-up">
+              {!isUserVideoUnlocked ? (
+                <LockedFeatureCard
+                  title="Analiza Tu Propio Vídeo"
+                  description="Sube tu vídeo y obtén un análisis completo de su potencial viral con recomendaciones de mejora personalizadas."
+                  unlockDate={UNLOCK_DATE_USER_VIDEO}
+                  icon={Video}
+                  gradient="gradient-primary"
+                />
+              ) : (
+                <Card className="glass-card border-primary/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-white" />
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => videoInputRef.current?.click()}
-                          disabled={isAnalyzing}
-                        >
-                          Cambiar Vídeo
-                        </Button>
-                        <Button
-                          className="flex-1 gradient-primary"
-                          onClick={handleAnalyze}
-                          disabled={isAnalyzing}
-                        >
-                          {isAnalyzing ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Procesando...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              Analizar Vídeo
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      {isAnalyzing && (
-                        <div className="space-y-4 p-4 rounded-xl bg-secondary/20 border border-border/30">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{uploadStatus || 'Procesando...'}</span>
-                            <span className="font-mono font-semibold text-primary">
-                              {estimatedTimeRemaining > 0 ? (
-                                <>
-                                  <Clock className="w-4 h-4 inline mr-1" />
-                                  ~{formatTime(estimatedTimeRemaining)} restantes
-                                </>
-                              ) : (
-                                'Finalizando...'
-                              )}
-                            </span>
-                          </div>
-                          <Progress value={analysisProgress} className="h-3" />
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">{Math.round(analysisProgress)}% completado</span>
-                            <span className="text-muted-foreground">
-                              {analysisProgress < 50 ? 'Subiendo' : analysisProgress < 80 ? 'Procesando' : 'Analizando con IA'}
-                            </span>
-                          </div>
-                          {currentTip && (
-                            <div className="text-sm text-center text-muted-foreground bg-secondary/30 rounded-lg p-3 animate-pulse">
-                              {currentTip}
-                            </div>
-                          )}
+                      <span>Sube Tu Vídeo</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Sube tu vídeo para analizar su potencial viral y obtener recomendaciones de mejora
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoSelect}
+                      className="hidden"
+                    />
+                    
+                    {videoPreview ? (
+                      <div className="space-y-4">
+                        <div className="aspect-video rounded-xl overflow-hidden bg-black ring-2 ring-primary/20">
+                          <video
+                            src={videoPreview}
+                            controls
+                            className="w-full h-full object-contain"
+                          />
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => videoInputRef.current?.click()}
-                      className="border-2 border-dashed border-border/50 rounded-xl p-12 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                    >
-                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                        <Upload className="w-8 h-8 text-primary" />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                            onClick={() => videoInputRef.current?.click()}
+                            disabled={isAnalyzing}
+                          >
+                            Cambiar Vídeo
+                          </Button>
+                          <Button
+                            className="flex-1 btn-premium gradient-primary text-white"
+                            onClick={handleAnalyze}
+                            disabled={isAnalyzing}
+                          >
+                            {isAnalyzing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Procesando...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                Analizar Vídeo
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        {isAnalyzing && (
+                          <div className="space-y-4 p-5 rounded-xl bg-primary/5 border border-primary/20">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{uploadStatus || 'Procesando...'}</span>
+                              <span className="font-mono font-semibold text-primary">
+                                {estimatedTimeRemaining > 0 ? (
+                                  <>
+                                    <Clock className="w-4 h-4 inline mr-1" />
+                                    ~{formatTime(estimatedTimeRemaining)} restantes
+                                  </>
+                                ) : (
+                                  'Finalizando...'
+                                )}
+                              </span>
+                            </div>
+                            <Progress value={analysisProgress} className="h-3" />
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">{Math.round(analysisProgress)}% completado</span>
+                              <span className="text-muted-foreground">
+                                {analysisProgress < 50 ? 'Subiendo' : analysisProgress < 80 ? 'Procesando' : 'Analizando con IA'}
+                              </span>
+                            </div>
+                            {currentTip && (
+                              <div className="text-sm text-center text-muted-foreground bg-background/50 rounded-lg p-3">
+                                {currentTip}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <h3 className="font-semibold mb-2">Haz clic para subir</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        O arrastra y suelta tu vídeo aquí
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        MP4, MOV, WebM • Máximo 100MB
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    ) : (
+                      <div
+                        className="border-2 border-dashed border-primary/30 rounded-2xl p-12 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 group"
+                        onClick={() => videoInputRef.current?.click()}
+                      >
+                        <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                          <FileVideo className="w-10 h-10 text-white" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">Arrastra tu vídeo aquí</h3>
+                        <p className="text-muted-foreground mb-4">o haz clic para seleccionar</p>
+                        <Badge variant="outline" className="text-xs">
+                          MP4, MOV, AVI • Máx 100MB
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Analysis Results */}
               {analysisResult && (
-                <Card className="bg-card/50 border-border/50">
+                <Card className="glass-card border-primary/20 animate-fade-in-up">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <BarChart3 className="w-5 h-5 text-primary" />
-                          Resultados del Análisis
-                        </CardTitle>
-                        <CardDescription>
-                          Análisis detallado del potencial viral de tu vídeo
-                        </CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center">
+                        <BarChart3 className="w-5 h-5 text-white" />
                       </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-gradient">
-                          {analysisResult.overallScore}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Puntuación Viral
-                        </div>
-                      </div>
-                    </div>
+                      <span>Resultados del Análisis</span>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Score Cards */}
+                    {/* Overall Score */}
+                    <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20">
+                      <div className="text-6xl font-bold text-gradient mb-2">
+                        {analysisResult.overallScore}
+                      </div>
+                      <p className="text-muted-foreground">Puntuación de Viralidad</p>
+                    </div>
+
+                    {/* Score Breakdown */}
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 rounded-lg bg-secondary/30 text-center">
-                        <Zap className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-                        <div className="text-2xl font-bold">{analysisResult.hookScore}%</div>
-                        <div className="text-xs text-muted-foreground">Hook</div>
+                      <div className="p-4 rounded-xl bg-pink-500/10 border border-pink-500/20 text-center">
+                        <Zap className="w-6 h-6 text-pink-500 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-pink-500">{analysisResult.hookScore}</div>
+                        <p className="text-xs text-muted-foreground">Hook</p>
                       </div>
-                      <div className="p-4 rounded-lg bg-secondary/30 text-center">
-                        <Clock className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                        <div className="text-2xl font-bold">{analysisResult.pacingScore}%</div>
-                        <div className="text-xs text-muted-foreground">Ritmo</div>
+                      <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
+                        <Scissors className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-blue-500">{analysisResult.pacingScore}</div>
+                        <p className="text-xs text-muted-foreground">Ritmo</p>
                       </div>
-                      <div className="p-4 rounded-lg bg-secondary/30 text-center">
-                        <TrendingUp className="w-6 h-6 text-green-500 mx-auto mb-2" />
-                        <div className="text-2xl font-bold">{analysisResult.engagementScore}%</div>
-                        <div className="text-xs text-muted-foreground">Engagement</div>
-                      </div>
-                    </div>
-
-                    {/* Hook Analysis */}
-                    <div>
-                      <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-yellow-500" />
-                        Análisis del Hook
-                      </h4>
-                      <p className="text-sm text-muted-foreground bg-secondary/30 p-4 rounded-lg">
-                        {analysisResult.hookAnalysis}
-                      </p>
-                    </div>
-
-                    {/* Structure Breakdown */}
-                    <div>
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-blue-500" />
-                        Estructura del Vídeo
-                      </h4>
-                      <div className="space-y-2">
-                        {analysisResult.structureBreakdown?.segments?.map((segment, index) => (
-                          <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                            <div className="flex-shrink-0 px-2 py-1 rounded bg-primary/20 text-primary text-xs font-mono">
-                              {segment.startTime}s - {segment.endTime}s
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-sm font-medium">{segment.type}</div>
-                              <div className="text-xs text-muted-foreground">{segment.description}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Virality Factors */}
-                    <div>
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-green-500" />
-                        Factores de Viralidad
-                      </h4>
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        {analysisResult.viralityFactors?.factors?.map((factor, index) => (
-                          <div key={index} className="p-4 rounded-lg bg-secondary/30">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium text-sm">{factor.name}</span>
-                              <span className="text-primary font-bold">{factor.score}%</span>
-                            </div>
-                            <Progress value={factor.score} className="h-1.5 mb-2" />
-                            <p className="text-xs text-muted-foreground">{factor.description}</p>
-                          </div>
-                        ))}
+                      <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+                        <Target className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-green-500">{analysisResult.engagementScore}</div>
+                        <p className="text-xs text-muted-foreground">Engagement</p>
                       </div>
                     </div>
 
                     {/* Summary */}
-                    <div>
+                    <div className="p-4 rounded-xl bg-background/50 border border-border/50">
                       <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-primary" />
-                        Resumen y Recomendaciones
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        Resumen
                       </h4>
-                      <div className="p-4 rounded-lg bg-secondary/30 prose prose-invert prose-sm max-w-none">
-                        <Streamdown>{analysisResult.summary}</Streamdown>
-                      </div>
+                      <Streamdown>{analysisResult.summary}</Streamdown>
                     </div>
+
+                    {/* Hook Analysis */}
+                    <div className="p-4 rounded-xl bg-background/50 border border-border/50">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-pink-500" />
+                        Análisis del Hook
+                      </h4>
+                      <Streamdown>{analysisResult.hookAnalysis}</Streamdown>
+                    </div>
+
+                    {/* Virality Factors */}
+                    {analysisResult.viralityFactors?.factors && (
+                      <div className="p-4 rounded-xl bg-background/50 border border-border/50">
+                        <h4 className="font-semibold mb-4 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-green-500" />
+                          Factores de Viralidad
+                        </h4>
+                        <div className="space-y-3">
+                          {analysisResult.viralityFactors.factors.map((factor, index) => (
+                            <div key={index} className="flex items-center gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium">{factor.name}</span>
+                                  <span className="text-sm text-primary font-semibold">{factor.score}/10</span>
+                                </div>
+                                <Progress value={factor.score * 10} className="h-2" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
             </TabsContent>
 
-            {/* Viral Reference Tab - Coming Soon */}
-            <TabsContent value="viral-reference" className="space-y-6">
-              <Card className="bg-card/50 border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                    Analizar Vídeo Viral de Referencia
-                  </CardTitle>
-                  <CardDescription>
-                    Analiza un vídeo viral de TikTok o Instagram para aprender de su estructura
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Coming Soon Banner */}
-                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/20 via-accent/20 to-secondary/20 p-8 text-center border border-primary/30">
-                    <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-                    <div className="relative z-10">
-                      <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
-                        <Lock className="w-10 h-10 text-primary" />
+            {/* Analyze Viral Video Tab */}
+            <TabsContent value="viral-reference" className="space-y-6 animate-fade-in-up">
+              {!isViralVideoUnlocked ? (
+                <LockedFeatureCard
+                  title="Analiza Vídeos Virales de TikTok"
+                  description="Pega la URL de cualquier vídeo viral de TikTok y obtén un análisis detallado de por qué se volvió viral."
+                  unlockDate={UNLOCK_DATE_VIRAL_VIDEO}
+                  icon={TrendingUp}
+                  gradient="gradient-accent"
+                />
+              ) : (
+                <Card className="glass-card border-primary/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center">
+                        <LinkIcon className="w-5 h-5 text-white" />
                       </div>
-                      <h3 className="text-2xl font-bold mb-3">Disponible el 5 de Febrero</h3>
-                      <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                        Esta función te permitirá analizar vídeos virales de TikTok e Instagram 
-                        para descubrir qué técnicas usan y aplicarlas a tu contenido.
-                      </p>
-                      <div className="flex items-center justify-center gap-2 text-primary font-semibold">
-                        <Calendar className="w-5 h-5" />
-                        <span>5 de Febrero, 2026</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Preview of Features */}
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-secondary/20 border border-border/30 opacity-60">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                          <LinkIcon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">Análisis por URL</h4>
-                          <p className="text-xs text-muted-foreground">Pega el enlace del vídeo viral</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="https://tiktok.com/@user/video/..." 
-                          disabled 
-                          className="bg-background/50"
-                        />
-                        <Button disabled variant="outline">
-                          <Lock className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-secondary/20 border border-border/30 opacity-60">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                          <Target className="w-5 h-5 text-accent" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">Comparar Vídeos</h4>
-                          <p className="text-xs text-muted-foreground">Compara tu vídeo con el viral</p>
-                        </div>
-                      </div>
-                      <Button disabled className="w-full" variant="outline">
-                        <Lock className="w-4 h-4 mr-2" />
-                        Próximamente
+                      <span>Analizar Vídeo de TikTok</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Pega la URL de un vídeo viral de TikTok para analizar qué lo hizo exitoso
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://www.tiktok.com/@usuario/video/..."
+                        value={tiktokUrl}
+                        onChange={(e) => setTiktokUrl(e.target.value)}
+                        className="flex-1 bg-background/50 border-primary/20 focus:border-primary/50"
+                      />
+                      <Button
+                        className="btn-premium gradient-accent text-white"
+                        onClick={handleTiktokDownload}
+                        disabled={isDownloadingTiktok}
+                      >
+                        {isDownloadingTiktok ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Analizar
+                          </>
+                        )}
                       </Button>
                     </div>
-                  </div>
-
-                  {/* What you'll get */}
-                  <div className="p-4 rounded-lg bg-secondary/20 border border-border/30">
-                    <h4 className="font-semibold mb-4 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                      Lo que podrás hacer
-                    </h4>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-3 text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Analizar vídeos virales de TikTok e Instagram directamente por URL</span>
-                      </li>
-                      <li className="flex items-start gap-3 text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Comparar tu vídeo con el viral para identificar diferencias clave</span>
-                      </li>
-                      <li className="flex items-start gap-3 text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Obtener recomendaciones específicas de cortes y edición</span>
-                      </li>
-                      <li className="flex items-start gap-3 text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Aprender las técnicas exactas que hacen viral un vídeo</span>
-                      </li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+                    <p className="text-xs text-muted-foreground">
+                      Copia la URL del vídeo de TikTok que quieres analizar
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
+
+          {/* Features Preview */}
+          <div className="grid md:grid-cols-3 gap-4 mt-12">
+            <Card className="glass-card border-primary/20 p-6 text-center hover-lift">
+              <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-6 h-6 text-pink-500" />
+              </div>
+              <h3 className="font-semibold mb-2">Análisis de Hook</h3>
+              <p className="text-sm text-muted-foreground">Evalúa los primeros 3 segundos críticos</p>
+            </Card>
+            <Card className="glass-card border-primary/20 p-6 text-center hover-lift">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                <Scissors className="w-6 h-6 text-blue-500" />
+              </div>
+              <h3 className="font-semibold mb-2">Estructura y Ritmo</h3>
+              <p className="text-sm text-muted-foreground">Analiza cortes, transiciones y pacing</p>
+            </Card>
+            <Card className="glass-card border-primary/20 p-6 text-center hover-lift">
+              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <Target className="w-6 h-6 text-green-500" />
+              </div>
+              <h3 className="font-semibold mb-2">Recomendaciones</h3>
+              <p className="text-sm text-muted-foreground">Mejoras específicas para tu contenido</p>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
