@@ -182,3 +182,10 @@
 - [x] Corregir el código definitivamente - añadido logs y validación robusta
 - [x] Test interno exitoso: Overall 89, Hook 95, Pacing 70, Engagement 92
 - [ ] Verificar en producción con el usuario
+
+## Nueva funcionalidad: Simplificar analizador + TikTok API
+- [x] Simplificar el analizador para solo analizar vídeo del usuario
+- [x] Añadir mensaje "Disponible 5 de febrero" para función de vídeos virales de referencia
+- [x] Investigar TikTok API de RapidAPI (apibox) - Usa Manus Data API integrada
+- [x] Integrar TikTok API para buscar vídeos virales (descarga directa bloqueada por TikTok)
+- [x] Probar el flujo completo - TEST EXITOSO: Overall 92, Hook 98, Pacing 85, Engagement 95
