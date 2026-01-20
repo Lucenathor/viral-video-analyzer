@@ -439,18 +439,43 @@ Responde siempre en español y en formato JSON válido.`
           console.log('[Analysis] Validated fields - viralityFactors:', JSON.stringify(analysisData.viralityFactors).substring(0, 200));
           
           // Normalize scores to 0-100
-          const normalizeScore = (score: number | undefined): number => {
-            if (score === undefined || score === null || isNaN(score)) return 50;
+          const normalizeScore = (score: number | undefined, fieldName: string): number => {
+            console.log(`[Analysis] Normalizing ${fieldName}: raw value = ${score}, type = ${typeof score}`);
+            
+            if (score === undefined || score === null) {
+              console.log(`[Analysis] ${fieldName} is undefined/null, using default 50`);
+              return 50;
+            }
+            
+            const numScore = Number(score);
+            if (isNaN(numScore)) {
+              console.log(`[Analysis] ${fieldName} is NaN, using default 50`);
+              return 50;
+            }
+            
+            // If score is 0, it's likely an error - use default
+            if (numScore === 0) {
+              console.log(`[Analysis] ${fieldName} is 0, using default 50`);
+              return 50;
+            }
+            
             // If score is 0-10, multiply by 10 to get 0-100
-            if (score <= 10) return Math.round(score * 10);
+            if (numScore <= 10) {
+              const normalized = Math.round(numScore * 10);
+              console.log(`[Analysis] ${fieldName} normalized from ${numScore} to ${normalized}`);
+              return normalized;
+            }
+            
             // If score is already 0-100, just round it
-            return Math.round(Math.min(100, Math.max(0, score)));
+            const clamped = Math.round(Math.min(100, Math.max(1, numScore)));
+            console.log(`[Analysis] ${fieldName} clamped to ${clamped}`);
+            return clamped;
           };
           
-          analysisData.overallScore = normalizeScore(analysisData.overallScore);
-          analysisData.hookScore = normalizeScore(analysisData.hookScore);
-          analysisData.pacingScore = normalizeScore(analysisData.pacingScore);
-          analysisData.engagementScore = normalizeScore(analysisData.engagementScore);
+          analysisData.overallScore = normalizeScore(analysisData.overallScore, 'overallScore');
+          analysisData.hookScore = normalizeScore(analysisData.hookScore, 'hookScore');
+          analysisData.pacingScore = normalizeScore(analysisData.pacingScore, 'pacingScore');
+          analysisData.engagementScore = normalizeScore(analysisData.engagementScore, 'engagementScore');
           
           console.log('[Analysis] Normalized Scores (0-100):');
           console.log(`  - Overall: ${analysisData.overallScore}`);

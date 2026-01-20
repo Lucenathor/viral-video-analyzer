@@ -174,3 +174,11 @@
 - [x] Corregir el código del error - añadida validación y valores por defecto
 - [x] Probar internamente con el vídeo MOV del usuario - TEST EXITOSO (Overall 88, Hook 98, Pacing 60, Engagement 92)
 - [ ] Verificar que funciona en producción
+
+## Bug CRÍTICO FINAL: Error persistente al enviar análisis
+- [x] Abrir navegador y monitorear consola del frontend en tiempo real
+- [x] Subir el vídeo MOV y capturar el error exacto - puntuaciones llegaban como 0
+- [x] Identificar la causa raíz del error - problema de normalización de scores
+- [x] Corregir el código definitivamente - añadido logs y validación robusta
+- [x] Test interno exitoso: Overall 89, Hook 95, Pacing 70, Engagement 92
+- [ ] Verificar en producción con el usuario
