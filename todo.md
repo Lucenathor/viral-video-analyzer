@@ -263,3 +263,12 @@
 ## Bug: Solapamiento Biblioteca con Logo ViralPro
 - [x] Arreglar solapamiento entre logo ViralPro y enlace Biblioteca en el navbar
 - [x] Añadir más espacio entre el logo y el menú de navegación
+
+## Nueva Funcionalidad: Calendario de Contenido
+- [x] Crear página Calendar.tsx con vista de calendario mensual
+- [x] Implementar selector de sector para el usuario
+- [x] Distribuir 2 reels por semana durante el mes (martes y jueves)
+- [x] Mostrar qué vídeo viral replicar en cada día asignado
+- [x] Añadir descripción y tips para cada reel
+- [x] Añadir navegación al calendario en el navbar
+- [x] Diseño premium con animaciones consistentes

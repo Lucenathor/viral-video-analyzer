@@ -10,6 +10,7 @@ import Library from "./pages/Library";
 import SectorDetail from "./pages/SectorDetail";
 import Support from "./pages/Support";
 import Dashboard from "./pages/Dashboard";
+import Calendar from "./pages/Calendar";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/library/:slug" component={SectorDetail} />
       <Route path="/support" component={Support} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/calendar" component={Calendar} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
