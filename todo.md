@@ -259,3 +259,7 @@
 - [x] Obtener las miniaturas reales de TikTok para cada vídeo
 - [x] Actualizar el archivo de datos con las URLs de las miniaturas
 - [x] Verificar que todas las miniaturas se cargan correctamente (50/50 vídeos con miniatura)
+
+## Bug: Solapamiento Biblioteca con Logo ViralPro
+- [x] Arreglar solapamiento entre logo ViralPro y enlace Biblioteca en el navbar
+- [x] Añadir más espacio entre el logo y el menú de navegación
