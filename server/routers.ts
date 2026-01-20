@@ -411,9 +411,36 @@ Responde siempre en español y en formato JSON válido.`
             }
           }
           
-          // Validate required fields and normalize scores to 0-100
+          // Validate and ensure all required fields exist with defaults
+          if (!analysisData) {
+            throw new Error('No se recibió respuesta de análisis de Gemini');
+          }
+          
+          // Ensure required fields exist with defaults
+          analysisData.frameByFrameAnalysis = analysisData.frameByFrameAnalysis || [];
+          analysisData.hookAnalysis = analysisData.hookAnalysis || 'No se pudo analizar el hook del vídeo.';
+          analysisData.editingAnalysis = analysisData.editingAnalysis || 'No se pudo analizar la edición del vídeo.';
+          analysisData.callToAction = analysisData.callToAction || { detected: false, timestamp: '0:00', type: 'ninguno', effectiveness: 'No detectado' };
+          analysisData.audioAnalysis = analysisData.audioAnalysis || 'No se pudo analizar el audio del vídeo.';
+          analysisData.visualElements = analysisData.visualElements || 'No se pudieron analizar los elementos visuales.';
+          analysisData.structureBreakdown = analysisData.structureBreakdown || { segments: [] };
+          analysisData.viralityFactors = analysisData.viralityFactors || { factors: [] };
+          analysisData.summary = analysisData.summary || 'No se pudo generar un resumen del análisis.';
+          
+          // Ensure nested structures are correct
+          if (!analysisData.structureBreakdown.segments) {
+            analysisData.structureBreakdown = { segments: [] };
+          }
+          if (!analysisData.viralityFactors.factors) {
+            analysisData.viralityFactors = { factors: [] };
+          }
+          
+          console.log('[Analysis] Validated fields - structureBreakdown:', JSON.stringify(analysisData.structureBreakdown).substring(0, 200));
+          console.log('[Analysis] Validated fields - viralityFactors:', JSON.stringify(analysisData.viralityFactors).substring(0, 200));
+          
+          // Normalize scores to 0-100
           const normalizeScore = (score: number | undefined): number => {
-            if (score === undefined || score === null) return 50;
+            if (score === undefined || score === null || isNaN(score)) return 50;
             // If score is 0-10, multiply by 10 to get 0-100
             if (score <= 10) return Math.round(score * 10);
             // If score is already 0-100, just round it

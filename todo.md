@@ -167,3 +167,10 @@
 - [x] Probar el flujo de subida internamente - Test exitoso con archivo de prueba
 - [x] Backend funciona correctamente (test del dashboard completo exitoso)
 - [ ] Verificar que funciona en producción con vídeo real del usuario
+
+## Bug PERSISTENTE: Error al procesar respuesta del análisis
+- [x] Revisar logs del servidor en tiempo real
+- [x] Identificar el error exacto en el flujo - campos faltantes en respuesta de Gemini
+- [x] Corregir el código del error - añadida validación y valores por defecto
+- [x] Probar internamente con el vídeo MOV del usuario - TEST EXITOSO (Overall 88, Hook 98, Pacing 60, Engagement 92)
+- [ ] Verificar que funciona en producción
