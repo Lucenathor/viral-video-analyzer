@@ -11,6 +11,7 @@ import SectorDetail from "./pages/SectorDetail";
 import Support from "./pages/Support";
 import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
+import Stories from "./pages/Stories";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/support" component={Support} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/calendar" component={Calendar} />
+      <Route path="/stories" component={Stories} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

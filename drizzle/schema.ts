@@ -133,3 +133,24 @@ export const ticketMessages = mysqlTable("ticket_messages", {
 
 export type TicketMessage = typeof ticketMessages.$inferSelect;
 export type InsertTicketMessage = typeof ticketMessages.$inferInsert;
+
+/**
+ * Story generation history for "Lanzamientos en Caliente"
+ */
+export const storyHistory = mysqlTable("story_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  sectorId: varchar("sectorId", { length: 100 }).notNull(),
+  sectorCustom: varchar("sectorCustom", { length: 255 }),
+  objective: varchar("objective", { length: 100 }).notNull(),
+  offer: text("offer"),
+  urgencyType: varchar("urgencyType", { length: 50 }).notNull(),
+  urgencyValue: varchar("urgencyValue", { length: 100 }).notNull(),
+  ctaKeyword: varchar("ctaKeyword", { length: 50 }).notNull(),
+  variant: varchar("variant", { length: 50 }).notNull(),
+  result: json("result").notNull(), // JSON with the generated stories
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StoryHistory = typeof storyHistory.$inferSelect;
+export type InsertStoryHistory = typeof storyHistory.$inferInsert;

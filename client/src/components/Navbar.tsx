@@ -11,14 +11,16 @@ import {
   Menu, 
   X,
   Sparkles,
-  CalendarDays
+  CalendarDays,
+  Flame
 } from "lucide-react";
 import { useState } from "react";
 
-// Navegación reorganizada: Biblioteca primero, luego Calendario
+// Navegación reorganizada: Biblioteca primero, luego Calendario, Stories
 const navItems = [
   { href: "/library", label: "Biblioteca", icon: Library },
   { href: "/calendar", label: "Calendario", icon: CalendarDays },
+  { href: "/stories", label: "Lanzamientos", icon: Flame },
   { href: "/analyzer", label: "Analizador", icon: Video },
   { href: "/support", label: "Soporte 24h", icon: Headphones },
 ];

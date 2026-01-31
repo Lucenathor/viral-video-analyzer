@@ -631,6 +631,180 @@ Responde siempre en español y en formato JSON válido.`
         return { success: true };
       }),
   }),
+
+  // Stories Router - Lanzamientos en Caliente
+  stories: router({
+    // Generate story script with AI
+    generate: protectedProcedure
+      .input(z.object({
+        sectorId: z.string(),
+        sectorCustom: z.string().optional(),
+        city: z.string().optional(),
+        objective: z.enum(["citas", "leads_whatsapp", "vender_servicio", "vender_producto", "captar_propietarios", "captar_empleados"]),
+        offer: z.string().optional(),
+        urgency: z.object({
+          type: z.enum(["hora_cierre", "huecos_semana", "plazas_hoy"]),
+          value: z.string(),
+        }),
+        ctaKeyword: z.string().default("INFO"),
+        ticket: z.string().optional(),
+        differentiator: z.string().optional(),
+        socialProof: z.string().optional(),
+        variant: z.enum(["agresiva", "neutra", "autoridad"]).default("neutra"),
+        easyMode: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        console.log('[Stories] Generating story script for sector:', input.sectorId);
+        
+        const urgencyText = input.urgency.type === "hora_cierre" 
+          ? `Hoy cierro a las ${input.urgency.value}`
+          : input.urgency.type === "huecos_semana"
+          ? `Solo ${input.urgency.value} huecos esta semana`
+          : `Solo ${input.urgency.value} plazas hoy`;
+        
+        const objectiveMap: Record<string, string> = {
+          "citas": "conseguir citas",
+          "leads_whatsapp": "conseguir leads por WhatsApp",
+          "vender_servicio": "vender un servicio",
+          "vender_producto": "vender un producto",
+          "captar_propietarios": "captar propietarios (inmobiliaria)",
+          "captar_empleados": "captar empleados (reclutamiento)"
+        };
+        
+        const variantInstructions: Record<string, string> = {
+          "agresiva": "Usa un tono MUY directo, urgente, con escasez real. Frases cortas y contundentes.",
+          "neutra": "Usa un tono profesional pero cercano. Equilibra información con urgencia.",
+          "autoridad": "Usa un tono de experto. Menciona experiencia, casos de éxito, autoridad en el sector."
+        };
+        
+        const easyModeInstructions = input.easyMode 
+          ? "IMPORTANTE: Usa lenguaje MUY SIMPLE. Frases de máximo 8 palabras. Sin tecnicismos."
+          : "";
+        
+        const systemPrompt = `Eres un experto en marketing de Stories de Instagram para negocios locales.
+Generas guiones de 5 Stories que convierten.
+
+REGLAS DE COPY:
+- Lenguaje simple, sin tecnicismos
+- Frases cortas (máximo 2-3 líneas por story)
+- CTA único y claro: "Responde [keyword]"
+- El CTA final debe incluir urgencia real
+- Debe sonar a "lanzamiento en caliente": rápido, directo, accionable
+
+${easyModeInstructions}
+
+VARIANTE: ${input.variant.toUpperCase()}
+${variantInstructions[input.variant]}`;
+        
+        const userPrompt = `Genera un guion de 5 Stories para un "Lanzamiento en Caliente":
+
+SECTOR: ${input.sectorCustom || input.sectorId}
+CIUDAD/ZONA: ${input.city || "No especificada"}
+OBJETIVO: ${objectiveMap[input.objective]}
+OFERTA/PROMESA: ${input.offer || "A determinar por ti según el sector"}
+URGENCIA: ${urgencyText}
+KEYWORD CTA: ${input.ctaKeyword}
+${input.ticket ? `TICKET: ${input.ticket}` : ""}
+${input.differentiator ? `DIFERENCIADOR: ${input.differentiator}` : ""}
+${input.socialProof ? `PRUEBA SOCIAL: ${input.socialProof}` : ""}
+
+FORMATO (5 Stories):
+- Story 1: FOTO (Hook)
+- Story 2: VÍDEO (Núcleo)
+- Story 3: FOTO (Valor)
+- Story 4: VÍDEO (Prueba social)
+- Story 5: FOTO (CTA final)
+
+Devuelve JSON:
+{
+  "stories": [
+    {
+      "number": 1,
+      "type": "FOTO",
+      "phase": "Hook",
+      "instruction": "Qué foto usar",
+      "duration": "Solo para vídeos",
+      "spokenText": "Solo para vídeos",
+      "screenText": "Texto en pantalla",
+      "sticker": "Sticker recomendado",
+      "background": "Descripción del fondo"
+    }
+  ],
+  "dmMessages": {
+    "dm1": "Mensaje de filtro",
+    "dm2": "Mensaje de cierre"
+  },
+  "suggestedOffers": ["Oferta 1", "Oferta 2", "Oferta 3"]
+}
+
+Devuelve SOLO el JSON.`;
+        
+        try {
+          const response = await invokeLLM({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" }
+          });
+          
+          const rawContent = response.choices[0]?.message?.content;
+          const content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent) || "{}";
+          let result;
+          
+          try {
+            result = JSON.parse(content);
+          } catch {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              result = JSON.parse(jsonMatch[0]);
+            } else {
+              throw new Error("No se pudo parsear la respuesta del LLM");
+            }
+          }
+          
+          // Save to history
+          const historyId = await db.createStoryHistory({
+            userId: ctx.user.id,
+            sectorId: input.sectorId,
+            sectorCustom: input.sectorCustom,
+            objective: input.objective,
+            offer: input.offer,
+            urgencyType: input.urgency.type,
+            urgencyValue: input.urgency.value,
+            ctaKeyword: input.ctaKeyword,
+            variant: input.variant,
+            result: JSON.stringify(result),
+          });
+          
+          return {
+            success: true,
+            historyId,
+            ...result
+          };
+        } catch (error) {
+          console.error('[Stories] Error generating script:', error);
+          throw new Error('Error al generar el guion de Stories');
+        }
+      }),
+    
+    // Get user's story history
+    getHistory: protectedProcedure
+      .input(z.object({
+        limit: z.number().default(20),
+        sectorId: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return db.getStoryHistory(ctx.user.id, input.limit, input.sectorId);
+      }),
+    
+    // Get a specific story from history
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.getStoryById(input.id, ctx.user.id);
+      }),
+  }),
 });
 
 /**

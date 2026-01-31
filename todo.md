@@ -277,3 +277,20 @@
 - [x] Ajustar calendario para que los días de publicación empiecen desde hoy (20 enero)
 - [x] No mostrar días pasados como días de publicación
 - [x] Ampliar las fotos de los sectores en el selector del calendario
+
+## Nueva Funcionalidad: Lanzamientos en Caliente (Stories Relámpago)
+- [x] Crear base de datos de 30+ sectores con problemas, servicios, objeciones, pruebas sociales y keywords
+- [x] Crear endpoint tRPC para generar guiones de 5 Stories con LLM
+- [x] Implementar detección automática de sector por texto
+- [x] Crear formulario de inputs (sector, ciudad, objetivo, oferta, urgencia, CTA)
+- [x] Generar guion con formato fijo: FOTO/VÍDEO/FOTO/VÍDEO/FOTO
+- [x] Incluir instrucciones detalladas para cada story (qué grabar, segundos, texto hablado, texto pantalla, sticker)
+- [x] Generar 2 mensajes de DM listos para copiar
+- [x] Implementar 3 variantes automáticas (agresiva, neutra, autoridad)
+- [x] Modo "Cero ideas" que propone ofertas típicas del sector
+- [x] Botones de copiar (todo, por story)
+- [ ] Exportar a PDF y texto plano
+- [x] Historial de últimos 20 guiones
+- [x] Toggle "modo fácil" para simplificar lenguaje
+- [x] Botón "Regenerar" manteniendo inputs
+- [x] Añadir navegación en el navbar

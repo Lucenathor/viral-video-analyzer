@@ -257,3 +257,40 @@ export async function getTicketMessages(ticketId: number) {
     .where(eq(ticketMessages.ticketId, ticketId))
     .orderBy(ticketMessages.createdAt);
 }
+
+
+// ==================== STORY HISTORY FUNCTIONS ====================
+import { storyHistory, InsertStoryHistory, StoryHistory } from "../drizzle/schema";
+
+export async function createStoryHistory(data: Omit<InsertStoryHistory, 'id' | 'createdAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(storyHistory).values(data);
+  return result[0].insertId;
+}
+
+export async function getStoryHistory(userId: number, limit = 20, sectorId?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (sectorId) {
+    return db.select().from(storyHistory)
+      .where(and(eq(storyHistory.userId, userId), eq(storyHistory.sectorId, sectorId)))
+      .orderBy(desc(storyHistory.createdAt))
+      .limit(limit);
+  }
+  
+  return db.select().from(storyHistory)
+    .where(eq(storyHistory.userId, userId))
+    .orderBy(desc(storyHistory.createdAt))
+    .limit(limit);
+}
+
+export async function getStoryById(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(storyHistory)
+    .where(and(eq(storyHistory.id, id), eq(storyHistory.userId, userId)))
+    .limit(1);
+  return result[0];
+}
