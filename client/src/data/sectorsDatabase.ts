@@ -11,6 +11,25 @@ export interface SectorData {
   socialProofs: string[];
   keywords: string[];
   typicalOffers: string[];
+  allowedObjectives?: string[]; // Objetivos permitidos para este sector (opcional, se calcula dinámicamente)
+}
+
+// Mapeo de objetivos disponibles
+export const allObjectives = [
+  { value: "citas", label: "Conseguir citas", icon: "📅", sectors: ["clinica-estetica", "odontologia", "fisioterapia", "veterinaria", "peluqueria", "gimnasio", "formacion", "abogado", "gestoria", "psicologia", "nutricion", "manicura", "micropigmentacion", "personal-trainer", "coaching"] },
+  { value: "leads_whatsapp", label: "Leads por WhatsApp", icon: "💬", sectors: "all" }, // Disponible para todos
+  { value: "vender_servicio", label: "Vender un servicio", icon: "🛠️", sectors: "all" }, // Disponible para todos
+  { value: "vender_producto", label: "Vender un producto", icon: "📦", sectors: ["restaurante", "tienda-ropa", "floristeria", "joyeria", "optica", "farmacia", "panaderia", "carniceria", "fruteria", "tienda-deportes", "libreria", "jugueteria"] },
+  { value: "captar_propietarios", label: "Captar propietarios", icon: "🏠", sectors: ["inmobiliaria"] }, // Solo inmobiliaria
+  { value: "captar_empleados", label: "Captar empleados", icon: "👥", sectors: ["restaurante", "gimnasio", "limpieza", "reformas", "taller-mecanico", "agencia-marketing"] },
+] as const;
+
+// Función para obtener objetivos permitidos por sector
+export function getObjectivesForSector(sectorId: string) {
+  return allObjectives.filter(obj => {
+    if (obj.sectors === "all") return true;
+    return (obj.sectors as readonly string[]).includes(sectorId);
+  });
 }
 
 export const sectorsDatabase: SectorData[] = [

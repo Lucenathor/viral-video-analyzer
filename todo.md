@@ -294,3 +294,10 @@
 - [x] Toggle "modo fácil" para simplificar lenguaje
 - [x] Botón "Regenerar" manteniendo inputs
 - [x] Añadir navegación en el navbar
+
+## Mejora: Lanzamientos en Caliente - UX y Calidad
+- [x] Filtrar objetivos/CTAs por sector (estética no muestra "captar propiedades")
+- [x] Mejorar texto de stories de foto: cambiar "Solo para vídeos" por explicación clara
+- [x] Añadir campo "¿Qué buscas exactamente con este lanzamiento?" para personalizar
+- [x] Mejorar prompt de IA para guiones más profesionales y personalizados
+- [x] Usar la mejor IA disponible con razonamiento para mejor calidad

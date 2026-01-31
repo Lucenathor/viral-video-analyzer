@@ -652,6 +652,7 @@ Responde siempre en español y en formato JSON válido.`
         socialProof: z.string().optional(),
         variant: z.enum(["agresiva", "neutra", "autoridad"]).default("neutra"),
         easyMode: z.boolean().default(true),
+        goalDescription: z.string().optional(), // Descripción detallada de lo que busca el usuario
       }))
       .mutation(async ({ ctx, input }) => {
         console.log('[Stories] Generating story script for sector:', input.sectorId);
@@ -696,6 +697,11 @@ ${easyModeInstructions}
 VARIANTE: ${input.variant.toUpperCase()}
 ${variantInstructions[input.variant]}`;
         
+        // Construir el contexto de finalidad si existe
+        const goalContext = input.goalDescription 
+          ? `\n\n🎯 FINALIDAD EXACTA DEL LANZAMIENTO:\n${input.goalDescription}\n\nUSA ESTA INFORMACIÓN para personalizar al máximo el guión. El usuario ha descrito exactamente qué quiere conseguir.`
+          : "";
+        
         const userPrompt = `Genera un guion de 5 Stories para un "Lanzamiento en Caliente":
 
 SECTOR: ${input.sectorCustom || input.sectorId}
@@ -706,33 +712,53 @@ URGENCIA: ${urgencyText}
 KEYWORD CTA: ${input.ctaKeyword}
 ${input.ticket ? `TICKET: ${input.ticket}` : ""}
 ${input.differentiator ? `DIFERENCIADOR: ${input.differentiator}` : ""}
-${input.socialProof ? `PRUEBA SOCIAL: ${input.socialProof}` : ""}
+${input.socialProof ? `PRUEBA SOCIAL: ${input.socialProof}` : ""}${goalContext}
 
 FORMATO (5 Stories):
-- Story 1: FOTO (Hook)
-- Story 2: VÍDEO (Núcleo)
-- Story 3: FOTO (Valor)
-- Story 4: VÍDEO (Prueba social)
-- Story 5: FOTO (CTA final)
+- Story 1: FOTO (Hook) - Es una FOTO, NO hay voz
+- Story 2: VÍDEO (Núcleo) - Hay que grabar hablando a cámara
+- Story 3: FOTO (Valor) - Es una FOTO, NO hay voz
+- Story 4: VÍDEO (Prueba social) - Hay que grabar hablando a cámara
+- Story 5: FOTO (CTA final) - Es una FOTO, NO hay voz
+
+MUY IMPORTANTE PARA LAS FOTOS:
+- En las stories de FOTO, NO pongas "spokenText" porque no hay voz
+- En su lugar, añade un campo "voiceNote" explicando que es una foto estática y el impacto viene del texto en pantalla
+- Ejemplo: "voiceNote": "Esta story es una foto estática. No necesitas grabar voz. El impacto viene del texto en pantalla."
+
+MUY IMPORTANTE PARA LOS VÍDEOS:
+- En las stories de VÍDEO, sí incluye "spokenText" con el texto exacto a decir mirando a cámara
+- Incluye "duration" con la duración recomendada (ej: "5-8 segundos")
 
 Devuelve JSON:
 {
+  "goalSummary": "Resumen en 1 frase de qué busca conseguir este lanzamiento",
   "stories": [
     {
       "number": 1,
       "type": "FOTO",
       "phase": "Hook",
-      "instruction": "Qué foto usar",
-      "duration": "Solo para vídeos",
-      "spokenText": "Solo para vídeos",
+      "instruction": "Qué foto usar y cómo prepararla",
+      "voiceNote": "Explicación de por qué no hay voz en esta story",
+      "screenText": "Texto en pantalla (corto e impactante)",
+      "sticker": "Sticker recomendado (encuesta, emoji, etc)",
+      "background": "Descripción del fondo/imagen"
+    },
+    {
+      "number": 2,
+      "type": "VIDEO",
+      "phase": "Núcleo",
+      "instruction": "Qué grabar y cómo",
+      "duration": "X-Y segundos",
+      "spokenText": "Texto EXACTO a decir mirando a cámara",
       "screenText": "Texto en pantalla",
       "sticker": "Sticker recomendado",
       "background": "Descripción del fondo"
     }
   ],
   "dmMessages": {
-    "dm1": "Mensaje de filtro",
-    "dm2": "Mensaje de cierre"
+    "dm1": "Mensaje de filtro (primer DM cuando respondan)",
+    "dm2": "Mensaje de cierre (segundo DM para cerrar cita/venta)"
   },
   "suggestedOffers": ["Oferta 1", "Oferta 2", "Oferta 3"]
 }

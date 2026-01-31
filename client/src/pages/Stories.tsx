@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,9 +26,10 @@ import {
   Lightbulb,
   Send,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  HelpCircle
 } from "lucide-react";
-import { sectorsDatabase, SectorData } from "@/data/sectorsDatabase";
+import { sectorsDatabase, SectorData, getObjectivesForSector } from "@/data/sectorsDatabase";
 
 // Types for the generated stories
 interface Story {
@@ -41,6 +42,7 @@ interface Story {
   screenText: string;
   sticker?: string;
   background?: string;
+  voiceNote?: string; // Nueva propiedad para explicar por qué no hay voz
 }
 
 interface GeneratedResult {
@@ -52,17 +54,8 @@ interface GeneratedResult {
     dm2: string;
   };
   suggestedOffers: string[];
+  goalSummary?: string; // Resumen de lo que se busca con el lanzamiento
 }
-
-// Objectives options
-const objectives = [
-  { value: "citas", label: "Conseguir citas", icon: "📅" },
-  { value: "leads_whatsapp", label: "Leads por WhatsApp", icon: "💬" },
-  { value: "vender_servicio", label: "Vender un servicio", icon: "🛠️" },
-  { value: "vender_producto", label: "Vender un producto", icon: "📦" },
-  { value: "captar_propietarios", label: "Captar propietarios", icon: "🏠" },
-  { value: "captar_empleados", label: "Captar empleados", icon: "👥" },
-];
 
 // Urgency types
 const urgencyTypes = [
@@ -93,11 +86,31 @@ export default function Stories() {
   const [socialProof, setSocialProof] = useState("");
   const [variant, setVariant] = useState<"agresiva" | "neutra" | "autoridad">("neutra");
   const [easyMode, setEasyMode] = useState(true);
+  const [goalDescription, setGoalDescription] = useState(""); // NUEVO: Campo de finalidad
   
   // Result state
   const [result, setResult] = useState<GeneratedResult | null>(null);
   const [activeTab, setActiveTab] = useState("form");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  
+  // Obtener objetivos filtrados por sector
+  const filteredObjectives = useMemo(() => {
+    if (!sectorId || sectorId === "otro") {
+      // Si no hay sector o es personalizado, mostrar todos los objetivos comunes
+      return getObjectivesForSector("all");
+    }
+    return getObjectivesForSector(sectorId);
+  }, [sectorId]);
+  
+  // Resetear objetivo si el sector cambia y el objetivo actual no está permitido
+  useEffect(() => {
+    if (sectorId && objective) {
+      const isObjectiveAllowed = filteredObjectives.some(obj => obj.value === objective);
+      if (!isObjectiveAllowed) {
+        setObjective("");
+      }
+    }
+  }, [sectorId, filteredObjectives]);
   
   // Generate mutation
   const generateMutation = trpc.stories.generate.useMutation({
@@ -132,6 +145,7 @@ export default function Stories() {
       socialProof: socialProof || undefined,
       variant,
       easyMode,
+      goalDescription: goalDescription || undefined, // NUEVO: Enviar la finalidad
     });
   };
   
@@ -236,7 +250,31 @@ export default function Stories() {
                   </CardContent>
                 </Card>
                 
-                {/* Objective */}
+                {/* NUEVO: Campo de Finalidad del Lanzamiento */}
+                <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-slate-700/50">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <HelpCircle className="w-5 h-5 text-yellow-400" />
+                      ¿Qué buscas exactamente?
+                    </CardTitle>
+                    <CardDescription className="text-slate-400">
+                      Describe con detalle qué quieres conseguir con este lanzamiento. La IA usará esto para crear un guión más personalizado.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <Textarea
+                      value={goalDescription}
+                      onChange={(e) => setGoalDescription(e.target.value)}
+                      placeholder="Ej: Quiero llenar mi agenda de esta semana porque tengo 3 huecos libres. Mi tratamiento estrella es el botox y quiero atraer a mujeres de 35-50 años que quieren verse más jóvenes para un evento próximo..."
+                      className="bg-slate-800/50 border-slate-600 min-h-[120px]"
+                    />
+                    <p className="text-xs text-slate-500 mt-2">
+                      💡 Cuanto más detalle des, mejor será el guión generado
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                {/* Objective - FILTRADO POR SECTOR */}
                 <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-b border-slate-700/50">
                     <CardTitle className="flex items-center gap-2 text-lg">
@@ -246,7 +284,7 @@ export default function Stories() {
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="grid grid-cols-2 gap-3">
-                      {objectives.map((obj) => (
+                      {filteredObjectives.map((obj) => (
                         <button
                           key={obj.value}
                           onClick={() => setObjective(obj.value)}
@@ -256,11 +294,16 @@ export default function Stories() {
                               : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
                           }`}
                         >
-                          <span className="text-2xl mb-2 block">{obj.icon}</span>
-                          <span className="text-sm font-medium">{obj.label}</span>
+                          <div className="text-2xl mb-1">{obj.icon}</div>
+                          <div className="text-sm font-medium">{obj.label}</div>
                         </button>
                       ))}
                     </div>
+                    {sectorId && filteredObjectives.length < 6 && (
+                      <p className="text-xs text-slate-500 mt-3 text-center">
+                        ℹ️ Mostrando objetivos relevantes para {selectedSector?.name || "tu sector"}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
                 
@@ -271,7 +314,7 @@ export default function Stories() {
                       <Clock className="w-5 h-5 text-red-400" />
                       Urgencia (obligatorio)
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-slate-400">
                       La urgencia real es clave para convertir
                     </CardDescription>
                   </CardHeader>
@@ -301,53 +344,37 @@ export default function Stories() {
                 </Card>
               </div>
               
-              {/* Right Column - Optional Inputs */}
+              {/* Right Column - Additional Inputs */}
               <div className="space-y-6">
-                {/* CTA Keyword */}
+                {/* CTA & Offer */}
                 <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-b border-slate-700/50">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <MessageCircle className="w-5 h-5 text-green-400" />
-                      Call to Action
+                      CTA y Oferta
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
-                      <Label>Keyword para responder</Label>
+                      <Label>Palabra clave para responder</Label>
                       <Input
                         value={ctaKeyword}
                         onChange={(e) => setCtaKeyword(e.target.value.toUpperCase())}
                         placeholder="INFO"
-                        className="bg-slate-800/50 border-slate-600 font-mono text-lg"
+                        className="bg-slate-800/50 border-slate-600 font-bold"
                       />
-                      <p className="text-xs text-slate-500">
-                        Los usuarios responderán "{ctaKeyword}" a tu story
-                      </p>
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label>Oferta / Promesa (opcional)</Label>
+                      <Label>Oferta / Gancho (opcional)</Label>
                       <Textarea
                         value={offer}
                         onChange={(e) => setOffer(e.target.value)}
                         placeholder="Ej: Diagnóstico gratuito, 20% descuento, Primera sesión gratis..."
-                        className="bg-slate-800/50 border-slate-600 min-h-[80px]"
+                        className="bg-slate-800/50 border-slate-600"
                       />
                     </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Extras */}
-                <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-b border-slate-700/50">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Lightbulb className="w-5 h-5 text-blue-400" />
-                      Extras (opcional)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
-                      <Label>Ticket aproximado</Label>
+                      <Label>Precio / Ticket (opcional)</Label>
                       <Input
                         value={ticket}
                         onChange={(e) => setTicket(e.target.value)}
@@ -355,7 +382,18 @@ export default function Stories() {
                         className="bg-slate-800/50 border-slate-600"
                       />
                     </div>
-                    
+                  </CardContent>
+                </Card>
+                
+                {/* Differentiators */}
+                <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-b border-slate-700/50">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Sparkles className="w-5 h-5 text-blue-400" />
+                      Tu Diferenciación
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
                       <Label>Tu diferenciador</Label>
                       <Input
@@ -365,7 +403,6 @@ export default function Stories() {
                         className="bg-slate-800/50 border-slate-600"
                       />
                     </div>
-                    
                     <div className="space-y-2">
                       <Label>Prueba social</Label>
                       <Input
@@ -378,11 +415,11 @@ export default function Stories() {
                   </CardContent>
                 </Card>
                 
-                {/* Variant & Mode */}
+                {/* Style */}
                 <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-b border-slate-700/50">
+                  <CardHeader className="bg-gradient-to-r from-pink-500/10 to-purple-500/10 border-b border-slate-700/50">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <Sparkles className="w-5 h-5 text-yellow-400" />
+                      <Sparkles className="w-5 h-5 text-pink-400" />
                       Estilo del Guión
                     </CardTitle>
                   </CardHeader>
@@ -394,25 +431,22 @@ export default function Stories() {
                           onClick={() => setVariant(v.value as any)}
                           className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
                             variant === v.value
-                              ? "border-yellow-500 bg-yellow-500/10"
+                              ? "border-pink-500 bg-pink-500/20"
                               : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
                           }`}
                         >
                           <div className="font-medium">{v.label}</div>
-                          <div className="text-xs text-slate-400 mt-1">{v.description}</div>
+                          <div className="text-xs text-slate-400">{v.description}</div>
                         </button>
                       ))}
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-slate-800/30 border border-slate-700">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-800/30 border border-slate-700">
                       <div>
                         <div className="font-medium">Modo Fácil</div>
                         <div className="text-xs text-slate-400">Lenguaje súper simple, sin tecnicismos</div>
                       </div>
-                      <Switch
-                        checked={easyMode}
-                        onCheckedChange={setEasyMode}
-                      />
+                      <Switch checked={easyMode} onCheckedChange={setEasyMode} />
                     </div>
                   </CardContent>
                 </Card>
@@ -421,37 +455,35 @@ export default function Stories() {
             
             {/* Sector Suggestions */}
             {selectedSector && (
-              <Card className="bg-gradient-to-r from-slate-900/80 to-slate-800/80 border-slate-700/50 backdrop-blur-sm animate-fade-in">
+              <Card className="bg-slate-900/30 border-slate-700/30 backdrop-blur-sm">
                 <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="text-4xl">{selectedSector.icon}</div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2">Sugerencias para {selectedSector.name}</h3>
-                      <div className="grid md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <div className="text-slate-400 mb-1">Problemas comunes:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedSector.problems.slice(0, 3).map((p: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-xs">{p}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-slate-400 mb-1">Servicios:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedSector.services.slice(0, 3).map((s: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-xs">{s}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-slate-400 mb-1">Pruebas sociales:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedSector.socialProofs.slice(0, 2).map((sp: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-xs">{sp}</Badge>
-                            ))}
-                          </div>
-                        </div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Lightbulb className="w-6 h-6 text-yellow-400" />
+                    <span className="font-medium">Sugerencias para {selectedSector.name}</span>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-slate-400 mb-2">Problemas comunes:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedSector.problems.slice(0, 3).map((p, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{p}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 mb-2">Servicios:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedSector.services.slice(0, 3).map((s, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{s}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 mb-2">Pruebas sociales:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedSector.socialProofs.slice(0, 2).map((sp, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{sp}</Badge>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -462,10 +494,10 @@ export default function Stories() {
             {/* Generate Button */}
             <div className="flex justify-center pt-4">
               <Button
+                size="lg"
                 onClick={handleGenerate}
                 disabled={!sectorId || !objective || !urgencyValue || generateMutation.isPending}
-                size="lg"
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-12 py-6 text-lg font-semibold rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-12 py-6 text-lg font-bold shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all"
               >
                 {generateMutation.isPending ? (
                   <>
@@ -476,7 +508,6 @@ export default function Stories() {
                   <>
                     <Flame className="w-5 h-5 mr-2" />
                     Generar Guión de Stories
-                    <ChevronRight className="w-5 h-5 ml-2" />
                   </>
                 )}
               </Button>
@@ -487,17 +518,28 @@ export default function Stories() {
           <TabsContent value="result" className="space-y-6">
             {result && (
               <>
-                {/* Stories Grid */}
-                <div className="grid gap-4">
+                {/* Goal Summary - NUEVO */}
+                {result.goalSummary && (
+                  <Card className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/30 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-3">
+                        <Target className="w-6 h-6 text-yellow-400 mt-1" />
+                        <div>
+                          <div className="font-medium text-yellow-300 mb-1">Objetivo de este lanzamiento</div>
+                          <div className="text-white">{result.goalSummary}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Stories */}
+                <div className="space-y-4">
                   {result.stories.map((story, index) => (
-                    <Card 
-                      key={index} 
-                      className={`bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden animate-fade-in`}
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
+                    <Card key={index} className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden hover:border-slate-600 transition-all">
                       <CardContent className="p-0">
                         <div className="flex">
-                          {/* Story Number */}
+                          {/* Story Number & Type */}
                           <div className={`w-20 flex-shrink-0 flex flex-col items-center justify-center p-4 ${
                             story.type === "FOTO" 
                               ? "bg-gradient-to-b from-blue-500/20 to-blue-600/20" 
@@ -520,18 +562,30 @@ export default function Stories() {
                             </div>
                             
                             {/* Duration (for videos) */}
-                            {story.duration && (
+                            {story.type === "VIDEO" && story.duration && (
                               <div>
                                 <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Duración</div>
                                 <Badge variant="outline">{story.duration}</Badge>
                               </div>
                             )}
                             
+                            {/* Voice Note for FOTO stories - MEJORADO */}
+                            {story.type === "FOTO" && (
+                              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                                <div className="text-xs text-blue-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                  <Camera className="w-3 h-3" /> Nota sobre el audio
+                                </div>
+                                <div className="text-slate-300 text-sm">
+                                  {story.voiceNote || "Esta story es una foto estática. No necesitas grabar voz. El impacto viene del texto en pantalla y la imagen."}
+                                </div>
+                              </div>
+                            )}
+                            
                             {/* Spoken Text (for videos) */}
-                            {story.spokenText && (
+                            {story.type === "VIDEO" && story.spokenText && (
                               <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
                                 <div className="text-xs text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                  <Video className="w-3 h-3" /> Texto a decir
+                                  <Video className="w-3 h-3" /> Texto a decir (mirando a cámara)
                                 </div>
                                 <div className="text-white italic">"{story.spokenText}"</div>
                               </div>
