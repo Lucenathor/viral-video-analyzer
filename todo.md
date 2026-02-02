@@ -301,3 +301,25 @@
 - [x] Añadir campo "¿Qué buscas exactamente con este lanzamiento?" para personalizar
 - [x] Mejorar prompt de IA para guiones más profesionales y personalizados
 - [x] Usar la mejor IA disponible con razonamiento para mejor calidad
+
+
+## Mejoras Prioritarias - Febrero 2026
+
+### Calendario
+- [ ] Arreglar miniaturas que no cargan (muestran "Video thumbnail")
+- [ ] Añadir navegación entre meses (ver meses futuros)
+- [ ] Persistir progreso del usuario en base de datos
+- [ ] Crear tabla calendar_progress en schema
+
+### Lanzamientos en Caliente
+- [ ] Añadir botón exportar a PDF
+- [ ] Integrar con Calendario (botón "Añadir al calendario")
+
+### Biblioteca
+- [ ] Ampliar a 10 vídeos por sector (buscar 5 más por sector)
+
+## Mejora: Explicaciones en cada sección
+- [x] Añadir explicación en Biblioteca Viral (para qué sirve, cómo usarla)
+- [x] Añadir explicación en Calendario (para qué sirve, cómo usarlo)
+- [x] Añadir explicación en Lanzamientos en Caliente (para qué sirve, cómo usarlo)
+- [x] Añadir explicación en Analizador (para qué sirve, cómo usarlo)

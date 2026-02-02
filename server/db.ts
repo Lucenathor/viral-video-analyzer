@@ -294,3 +294,104 @@ export async function getStoryById(id: number, userId: number) {
     .limit(1);
   return result[0];
 }
+
+
+// ==================== CALENDAR PROGRESS FUNCTIONS ====================
+import { calendarProgress, InsertCalendarProgress, CalendarProgress, scheduledStories, InsertScheduledStory, ScheduledStory } from "../drizzle/schema";
+
+export async function getCalendarProgress(userId: number, sectorId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(calendarProgress)
+    .where(and(eq(calendarProgress.userId, userId), eq(calendarProgress.sectorId, sectorId)))
+    .orderBy(calendarProgress.scheduledDate);
+}
+
+export async function upsertCalendarProgress(data: Omit<InsertCalendarProgress, 'id' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Check if entry exists
+  const existing = await db.select().from(calendarProgress)
+    .where(and(
+      eq(calendarProgress.userId, data.userId),
+      eq(calendarProgress.sectorId, data.sectorId),
+      eq(calendarProgress.videoId, data.videoId)
+    ))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(calendarProgress)
+      .set({ 
+        isCompleted: data.isCompleted, 
+        completedAt: data.isCompleted ? new Date() : null,
+        notes: data.notes 
+      })
+      .where(eq(calendarProgress.id, existing[0].id));
+    return existing[0].id;
+  } else {
+    const result = await db.insert(calendarProgress).values({
+      ...data,
+      completedAt: data.isCompleted ? new Date() : null
+    });
+    return result[0].insertId;
+  }
+}
+
+export async function markVideoCompleted(userId: number, sectorId: string, videoId: string, completed: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await db.select().from(calendarProgress)
+    .where(and(
+      eq(calendarProgress.userId, userId),
+      eq(calendarProgress.sectorId, sectorId),
+      eq(calendarProgress.videoId, videoId)
+    ))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(calendarProgress)
+      .set({ 
+        isCompleted: completed, 
+        completedAt: completed ? new Date() : null 
+      })
+      .where(eq(calendarProgress.id, existing[0].id));
+  } else {
+    await db.insert(calendarProgress).values({
+      userId,
+      sectorId,
+      videoId,
+      scheduledDate: new Date(),
+      isCompleted: completed,
+      completedAt: completed ? new Date() : null
+    });
+  }
+}
+
+// ==================== SCHEDULED STORIES FUNCTIONS ====================
+export async function createScheduledStory(data: Omit<InsertScheduledStory, 'id' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(scheduledStories).values(data);
+  return result[0].insertId;
+}
+
+export async function getScheduledStories(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(scheduledStories)
+    .where(eq(scheduledStories.userId, userId))
+    .orderBy(scheduledStories.scheduledDate);
+}
+
+export async function markScheduledStoryCompleted(id: number, userId: number, completed: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(scheduledStories)
+    .set({ 
+      isCompleted: completed, 
+      completedAt: completed ? new Date() : null 
+    })
+    .where(and(eq(scheduledStories.id, id), eq(scheduledStories.userId, userId)));
+}

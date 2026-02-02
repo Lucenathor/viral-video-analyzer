@@ -154,3 +154,41 @@ export const storyHistory = mysqlTable("story_history", {
 
 export type StoryHistory = typeof storyHistory.$inferSelect;
 export type InsertStoryHistory = typeof storyHistory.$inferInsert;
+
+
+/**
+ * Calendar progress tracking for users
+ */
+export const calendarProgress = mysqlTable("calendar_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  sectorId: varchar("sectorId", { length: 100 }).notNull(),
+  videoId: varchar("videoId", { length: 100 }).notNull(),
+  scheduledDate: timestamp("scheduledDate").notNull(),
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  completedAt: timestamp("completedAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalendarProgress = typeof calendarProgress.$inferSelect;
+export type InsertCalendarProgress = typeof calendarProgress.$inferInsert;
+
+/**
+ * Scheduled stories from "Lanzamientos en Caliente" added to calendar
+ */
+export const scheduledStories = mysqlTable("scheduled_stories", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  storyHistoryId: int("storyHistoryId").references(() => storyHistory.id).notNull(),
+  scheduledDate: timestamp("scheduledDate").notNull(),
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  completedAt: timestamp("completedAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ScheduledStory = typeof scheduledStories.$inferSelect;
+export type InsertScheduledStory = typeof scheduledStories.$inferInsert;

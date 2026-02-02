@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
@@ -97,11 +99,58 @@ const distributeVideosInCalendar = (videos: typeof businessSectors[0]["videos"],
 
 export default function Calendar() {
   const today = new Date();
+  const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
+
+  // Fetch progress from database
+  const { data: progressData, refetch: refetchProgress } = trpc.calendar.getProgress.useQuery(
+    { sectorId: selectedSector || '' },
+    { enabled: !!selectedSector && !!user }
+  );
+
+  // Toggle complete mutation
+  const toggleCompleteMutation = trpc.calendar.toggleComplete.useMutation({
+    onSuccess: () => {
+      refetchProgress();
+    }
+  });
+
+  // Update local state when progress data changes
+  useEffect(() => {
+    if (progressData) {
+      const completed = new Set(progressData.filter(p => p.isCompleted).map(p => p.videoId));
+      setCompletedVideos(completed);
+    }
+  }, [progressData]);
+
+  // Function to toggle video completion
+  const toggleVideoComplete = (videoId: string) => {
+    if (!selectedSector || !user) return;
+    const isCurrentlyCompleted = completedVideos.has(videoId);
+    
+    // Optimistic update
+    setCompletedVideos(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyCompleted) {
+        newSet.delete(videoId);
+      } else {
+        newSet.add(videoId);
+      }
+      return newSet;
+    });
+    
+    // Persist to database
+    toggleCompleteMutation.mutate({
+      sectorId: selectedSector,
+      videoId,
+      completed: !isCurrentlyCompleted
+    });
+  };
 
   // Obtener el sector seleccionado
   const sector = useMemo(() => {
@@ -166,9 +215,41 @@ export default function Calendar() {
             <span className="text-gradient">Reels Virales</span>
           </h1>
 
-          <p className="text-lg text-muted-foreground text-center max-w-2xl mx-auto mb-12 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+          <p className="text-lg text-muted-foreground text-center max-w-2xl mx-auto mb-6 animate-fade-in" style={{ animationDelay: "0.2s" }}>
             Selecciona tu sector y obtén un calendario personalizado con los mejores vídeos virales para replicar cada semana.
           </p>
+
+          {/* Explicación de la sección */}
+          <div className="glass rounded-2xl p-6 max-w-3xl mx-auto mb-12 text-left animate-fade-in" style={{ animationDelay: "0.25s" }}>
+            <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              ¿Para qué sirve esta sección?
+            </h3>
+            <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+              El <strong className="text-foreground">Calendario de Contenido</strong> te organiza automáticamente los reels que deberías publicar cada semana. 
+              Te asigna <strong className="text-foreground">2 vídeos por semana</strong> (martes y jueves) basados en los virales de tu sector.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-green-400 text-xs">1</span>
+                </div>
+                <span className="text-muted-foreground"><strong className="text-foreground">Elige tu sector</strong> y verás el calendario con los días de publicación</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-blue-400 text-xs">2</span>
+                </div>
+                <span className="text-muted-foreground"><strong className="text-foreground">Haz clic en un día</strong> para ver qué vídeo viral debes replicar</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-purple-400 text-xs">3</span>
+                </div>
+                <span className="text-muted-foreground"><strong className="text-foreground">Márcalo como completado</strong> cuando hayas grabado tu versión</span>
+              </div>
+            </div>
+          </div>
 
           {/* Sector Selector */}
           <div className="max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: "0.3s" }}>
@@ -308,6 +389,11 @@ export default function Calendar() {
                                       src={videoSchedule[day]?.cover} 
                                       alt="Video thumbnail"
                                       className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>';
+                                      }}
                                     />
                                   ) : (
                                     <div className="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
@@ -321,8 +407,8 @@ export default function Calendar() {
                                   <Play className="w-6 h-6 text-white fill-white" />
                                 </div>
                                 
-                                {/* Completed indicator for past days */}
-                                {isPast && (
+                                {/* Completed indicator - based on user progress */}
+                                {videoSchedule[day] && completedVideos.has(videoSchedule[day]!.id) && (
                                   <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                                     <CheckCircle2 className="w-3 h-3 text-white" />
                                   </div>
@@ -515,12 +601,15 @@ export default function Calendar() {
                   </Button>
                 </a>
                 <Button 
-                  variant="outline" 
-                  className="flex-1 gap-2"
-                  onClick={() => setShowVideoModal(false)}
+                  variant={completedVideos.has(selectedVideo.id) ? "default" : "outline"}
+                  className={`flex-1 gap-2 ${completedVideos.has(selectedVideo.id) ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                  onClick={() => {
+                    toggleVideoComplete(selectedVideo.id);
+                  }}
+                  disabled={toggleCompleteMutation.isPending}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Marcar como hecho
+                  {completedVideos.has(selectedVideo.id) ? '¡Completado!' : 'Marcar como hecho'}
                 </Button>
               </div>
             </div>

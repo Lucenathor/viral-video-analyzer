@@ -156,6 +156,98 @@ export default function Stories() {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
   
+  // Export to PDF
+  const exportToPDF = (result: GeneratedResult) => {
+    // Create a printable HTML content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Guión de Stories - ${selectedSector?.name || sectorCustom}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #f97316; border-bottom: 2px solid #f97316; padding-bottom: 10px; }
+          h2 { color: #333; margin-top: 30px; }
+          .goal { background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+          .story { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+          .story-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+          .story-number { background: #f97316; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
+          .story-type { background: ${result.stories[0]?.type === 'FOTO' ? '#3b82f6' : '#ef4444'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+          .label { color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+          .content { margin-bottom: 15px; }
+          .screen-text { background: #f3e8ff; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; }
+          .dm-section { background: #ecfdf5; padding: 20px; border-radius: 8px; margin-top: 30px; }
+          .dm-message { background: white; padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid #d1fae5; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>🔥 Guión de Stories</h1>
+        <p><strong>Sector:</strong> ${selectedSector?.name || sectorCustom}</p>
+        <p><strong>Objetivo:</strong> ${objective}</p>
+        <p><strong>Estilo:</strong> ${variant}</p>
+        
+        ${result.goalSummary ? `<div class="goal"><strong>🎯 Objetivo del lanzamiento:</strong> ${result.goalSummary}</div>` : ''}
+        
+        <h2>Stories</h2>
+        ${result.stories.map((story, i) => `
+          <div class="story">
+            <div class="story-header">
+              <div class="story-number">${story.number}</div>
+              <span class="story-type" style="background: ${story.type === 'FOTO' ? '#3b82f6' : '#ef4444'}">${story.type}</span>
+              <span style="color: #666;">${story.phase}</span>
+            </div>
+            <div class="content">
+              <div class="label">Qué hacer:</div>
+              <p>${story.instruction}</p>
+            </div>
+            ${story.type === 'VIDEO' && story.duration ? `<div class="content"><div class="label">Duración:</div><p>${story.duration}</p></div>` : ''}
+            ${story.type === 'VIDEO' && story.spokenText ? `<div class="content"><div class="label">Texto a decir:</div><p style="font-style: italic;">"${story.spokenText}"</p></div>` : ''}
+            ${story.type === 'FOTO' ? `<div class="content"><div class="label">Nota:</div><p>Esta story es una foto estática. No necesitas grabar voz.</p></div>` : ''}
+            <div class="screen-text">
+              <div class="label">Texto en pantalla:</div>
+              ${story.screenText}
+            </div>
+            ${story.sticker ? `<p><strong>Sticker:</strong> ${story.sticker}</p>` : ''}
+          </div>
+        `).join('')}
+        
+        <div class="dm-section">
+          <h2>💬 Mensajes de DM</h2>
+          <div class="dm-message">
+            <div class="label">DM 1 - Filtro:</div>
+            <p>${result.dmMessages.dm1}</p>
+          </div>
+          <div class="dm-message">
+            <div class="label">DM 2 - Cierre:</div>
+            <p>${result.dmMessages.dm2}</p>
+          </div>
+        </div>
+        
+        ${result.suggestedOffers && result.suggestedOffers.length > 0 ? `
+          <h2>💡 Ofertas Sugeridas</h2>
+          <ul>
+            ${result.suggestedOffers.map(offer => `<li>${offer}</li>`).join('')}
+          </ul>
+        ` : ''}
+        
+        <p style="margin-top: 40px; color: #999; font-size: 12px; text-align: center;">Generado con ViralPro - Lanzamientos en Caliente</p>
+      </body>
+      </html>
+    `;
+    
+    // Open print dialog
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+  };
+  
   // Get sector suggestions
   const selectedSector = sectorsDatabase.find((s: SectorData) => s.id === sectorId);
   
@@ -173,9 +265,41 @@ export default function Stories() {
               Genera Guiones de Stories
             </span>
           </h1>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-6">
             Crea secuencias de 5 Stories que convierten. Guiones listos para grabar con IA.
           </p>
+          
+          {/* Explicación de la sección */}
+          <div className="bg-slate-800/50 rounded-2xl p-6 max-w-3xl mx-auto text-left border border-slate-700/50">
+            <h3 className="text-lg font-semibold text-orange-400 mb-3 flex items-center gap-2">
+              <HelpCircle className="w-5 h-5" />
+              ¿Para qué sirve esta sección?
+            </h3>
+            <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              Los <strong className="text-white">Lanzamientos en Caliente</strong> generan guiones completos de 5 Stories para vender tus servicios o productos de forma urgente. 
+              La IA crea el guión con <strong className="text-white">texto exacto a decir, texto en pantalla, stickers y mensajes de DM</strong> listos para copiar.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-green-400 text-xs">1</span>
+                </div>
+                <span className="text-slate-400"><strong className="text-white">Rellena el formulario</strong> con tu sector, objetivo y urgencia real</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-blue-400 text-xs">2</span>
+                </div>
+                <span className="text-slate-400"><strong className="text-white">La IA genera el guión</strong> con 5 Stories (FOTO/VÍDEO/FOTO/VÍDEO/FOTO)</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-purple-400 text-xs">3</span>
+                </div>
+                <span className="text-slate-400"><strong className="text-white">Graba y publica</strong> siguiendo las instrucciones exactas</span>
+              </div>
+            </div>
+          </div>
         </div>
         
         {/* Main Content */}
@@ -698,7 +822,7 @@ export default function Stories() {
                 )}
                 
                 {/* Actions */}
-                <div className="flex justify-center gap-4 pt-4">
+                <div className="flex justify-center gap-4 pt-4 flex-wrap">
                   <Button
                     variant="outline"
                     onClick={() => setActiveTab("form")}
@@ -706,6 +830,14 @@ export default function Stories() {
                   >
                     <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
                     Modificar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => exportToPDF(result)}
+                    className="border-green-600 text-green-400 hover:bg-green-500/20"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Descargar PDF
                   </Button>
                   <Button
                     onClick={handleGenerate}

@@ -830,6 +830,62 @@ Devuelve SOLO el JSON.`;
       .query(async ({ ctx, input }) => {
         return db.getStoryById(input.id, ctx.user.id);
       }),
+    
+    // Add story to calendar
+    addToCalendar: protectedProcedure
+      .input(z.object({
+        storyHistoryId: z.number(),
+        scheduledDate: z.string(), // ISO date string
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const scheduledDate = new Date(input.scheduledDate);
+        const id = await db.createScheduledStory({
+          userId: ctx.user.id,
+          storyHistoryId: input.storyHistoryId,
+          scheduledDate,
+          isCompleted: false,
+        });
+        return { success: true, id };
+      }),
+  }),
+
+  // Calendar Progress Router
+  calendar: router({
+    // Get progress for a sector
+    getProgress: protectedProcedure
+      .input(z.object({ sectorId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        return db.getCalendarProgress(ctx.user.id, input.sectorId);
+      }),
+    
+    // Mark video as completed/uncompleted
+    toggleComplete: protectedProcedure
+      .input(z.object({
+        sectorId: z.string(),
+        videoId: z.string(),
+        completed: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.markVideoCompleted(ctx.user.id, input.sectorId, input.videoId, input.completed);
+        return { success: true };
+      }),
+    
+    // Get scheduled stories
+    getScheduledStories: protectedProcedure
+      .query(async ({ ctx }) => {
+        return db.getScheduledStories(ctx.user.id);
+      }),
+    
+    // Mark scheduled story as completed
+    toggleScheduledStory: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        completed: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.markScheduledStoryCompleted(input.id, ctx.user.id, input.completed);
+        return { success: true };
+      }),
   }),
 });
 

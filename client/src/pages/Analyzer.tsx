@@ -469,10 +469,42 @@ export default function Analyzer() {
               <span className="text-gradient">Potencial Viral</span>
             </h1>
             
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+            <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '100ms' }}>
               Descubre qué hace que un vídeo se vuelva viral. Obtén análisis detallados, 
               puntuaciones y recomendaciones personalizadas.
             </p>
+            
+            {/* Explicación de la sección */}
+            <div className="glass-card rounded-2xl p-6 max-w-3xl mx-auto text-left animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+              <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                ¿Para qué sirve esta sección?
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                El <strong className="text-foreground">Analizador de Vídeos</strong> usa IA avanzada (Gemini) para analizar tus vídeos o vídeos virales de TikTok. 
+                Te da una <strong className="text-foreground">puntuación de viralidad</strong> y recomendaciones específicas para mejorar tu contenido.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-green-400 text-xs">1</span>
+                  </div>
+                  <span className="text-muted-foreground"><strong className="text-foreground">Sube tu vídeo</strong> o pega la URL de un TikTok viral</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-blue-400 text-xs">2</span>
+                  </div>
+                  <span className="text-muted-foreground"><strong className="text-foreground">La IA analiza</strong> hook, estructura, ritmo y engagement</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-purple-400 text-xs">3</span>
+                  </div>
+                  <span className="text-muted-foreground"><strong className="text-foreground">Recibe puntuación</strong> y consejos para mejorar</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
