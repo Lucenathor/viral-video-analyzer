@@ -27,9 +27,14 @@ import {
   Send,
   CheckCircle2,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  Smartphone,
+  Eye,
+  List,
+  LayoutGrid
 } from "lucide-react";
 import { sectorsDatabase, SectorData, getObjectivesForSector } from "@/data/sectorsDatabase";
+import StoryPreview from "@/components/StoryPreview";
 
 // Types for the generated stories
 interface Story {
@@ -42,7 +47,7 @@ interface Story {
   screenText: string;
   sticker?: string;
   background?: string;
-  voiceNote?: string; // Nueva propiedad para explicar por qué no hay voz
+  voiceNote?: string;
 }
 
 interface GeneratedResult {
@@ -54,7 +59,7 @@ interface GeneratedResult {
     dm2: string;
   };
   suggestedOffers: string[];
-  goalSummary?: string; // Resumen de lo que se busca con el lanzamiento
+  goalSummary?: string;
 }
 
 // Urgency types
@@ -69,6 +74,15 @@ const variants = [
   { value: "agresiva", label: "🔥 Agresiva", description: "Tono directo, urgente, presiona para acción" },
   { value: "neutra", label: "⚖️ Neutra", description: "Profesional pero cercano, equilibrado" },
   { value: "autoridad", label: "👑 Autoridad", description: "Tono experto, credibilidad, casos de éxito" },
+];
+
+// Colores de fondo para las stories
+const storyBackgrounds = [
+  "bg-gradient-to-br from-purple-900 via-pink-800 to-orange-700",
+  "bg-gradient-to-br from-blue-900 via-cyan-800 to-teal-700",
+  "bg-gradient-to-br from-rose-900 via-red-800 to-orange-700",
+  "bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700",
+  "bg-gradient-to-br from-emerald-900 via-green-800 to-lime-700",
 ];
 
 export default function Stories() {
@@ -86,17 +100,17 @@ export default function Stories() {
   const [socialProof, setSocialProof] = useState("");
   const [variant, setVariant] = useState<"agresiva" | "neutra" | "autoridad">("neutra");
   const [easyMode, setEasyMode] = useState(true);
-  const [goalDescription, setGoalDescription] = useState(""); // NUEVO: Campo de finalidad
+  const [goalDescription, setGoalDescription] = useState("");
   
   // Result state
   const [result, setResult] = useState<GeneratedResult | null>(null);
   const [activeTab, setActiveTab] = useState("form");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"preview" | "list">("preview");
   
   // Obtener objetivos filtrados por sector
   const filteredObjectives = useMemo(() => {
     if (!sectorId || sectorId === "otro") {
-      // Si no hay sector o es personalizado, mostrar todos los objetivos comunes
       return getObjectivesForSector("all");
     }
     return getObjectivesForSector(sectorId);
@@ -145,7 +159,7 @@ export default function Stories() {
       socialProof: socialProof || undefined,
       variant,
       easyMode,
-      goalDescription: goalDescription || undefined, // NUEVO: Enviar la finalidad
+      goalDescription: goalDescription || undefined,
     });
   };
   
@@ -158,7 +172,6 @@ export default function Stories() {
   
   // Export to PDF
   const exportToPDF = (result: GeneratedResult) => {
-    // Create a printable HTML content
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -169,7 +182,7 @@ export default function Stories() {
           h1 { color: #f97316; border-bottom: 2px solid #f97316; padding-bottom: 10px; }
           h2 { color: #333; margin-top: 30px; }
           .goal { background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-          .story { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+          .story { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 15px; page-break-inside: avoid; }
           .story-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
           .story-number { background: #f97316; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
           .story-type { background: ${result.stories[0]?.type === 'FOTO' ? '#3b82f6' : '#ef4444'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
@@ -236,7 +249,6 @@ export default function Stories() {
       </html>
     `;
     
-    // Open print dialog
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(printContent);
@@ -253,7 +265,7 @@ export default function Stories() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 py-8 px-4">
-      <div className="container max-w-6xl mx-auto">
+      <div className="container max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12 animate-fade-in">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 mb-6">
@@ -310,8 +322,8 @@ export default function Stories() {
               Crear
             </TabsTrigger>
             <TabsTrigger value="result" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 rounded-lg" disabled={!result}>
-              <Video className="w-4 h-4 mr-2" />
-              Guión
+              <Smartphone className="w-4 h-4 mr-2" />
+              Vista Previa
             </TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 rounded-lg">
               <History className="w-4 h-4 mr-2" />
@@ -351,12 +363,12 @@ export default function Stories() {
                     </div>
                     
                     {sectorId === "otro" && (
-                      <div className="space-y-2 animate-fade-in">
-                        <Label>Describe tu sector</Label>
+                      <div className="space-y-2">
+                        <Label>Nombre del sector</Label>
                         <Input
                           value={sectorCustom}
                           onChange={(e) => setSectorCustom(e.target.value)}
-                          placeholder="Ej: Tienda de bicicletas"
+                          placeholder="Ej: Tienda de mascotas"
                           className="bg-slate-800/50 border-slate-600"
                         />
                       </div>
@@ -374,9 +386,9 @@ export default function Stories() {
                   </CardContent>
                 </Card>
                 
-                {/* NUEVO: Campo de Finalidad del Lanzamiento */}
+                {/* Goal Description - NUEVO */}
                 <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-slate-700/50">
+                  <CardHeader className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-b border-slate-700/50">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <HelpCircle className="w-5 h-5 text-yellow-400" />
                       ¿Qué buscas exactamente?
@@ -390,44 +402,40 @@ export default function Stories() {
                       value={goalDescription}
                       onChange={(e) => setGoalDescription(e.target.value)}
                       placeholder="Ej: Quiero llenar mi agenda de esta semana porque tengo 3 huecos libres. Mi tratamiento estrella es el botox y quiero atraer a mujeres de 35-50 años que quieren verse más jóvenes para un evento próximo..."
-                      className="bg-slate-800/50 border-slate-600 min-h-[120px]"
+                      className="bg-slate-800/50 border-slate-600 min-h-[100px]"
                     />
-                    <p className="text-xs text-slate-500 mt-2">
-                      💡 Cuanto más detalle des, mejor será el guión generado
+                    <p className="text-xs text-yellow-400/70 mt-2 flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" />
+                      Cuanto más detalle des, mejor será el guión generado
                     </p>
                   </CardContent>
                 </Card>
                 
-                {/* Objective - FILTRADO POR SECTOR */}
+                {/* Objective */}
                 <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-b border-slate-700/50">
+                  <CardHeader className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-b border-slate-700/50">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <Zap className="w-5 h-5 text-purple-400" />
+                      <Zap className="w-5 h-5 text-green-400" />
                       Objetivo
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       {filteredObjectives.map((obj) => (
                         <button
                           key={obj.value}
                           onClick={() => setObjective(obj.value)}
-                          className={`p-4 rounded-xl border-2 transition-all duration-300 text-left ${
+                          className={`p-4 rounded-xl border-2 transition-all text-left ${
                             objective === obj.value
-                              ? "border-purple-500 bg-purple-500/20 shadow-lg shadow-purple-500/20"
+                              ? "border-green-500 bg-green-500/20"
                               : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
                           }`}
                         >
                           <div className="text-2xl mb-1">{obj.icon}</div>
-                          <div className="text-sm font-medium">{obj.label}</div>
+                          <div className="font-medium text-sm">{obj.label}</div>
                         </button>
                       ))}
                     </div>
-                    {sectorId && filteredObjectives.length < 6 && (
-                      <p className="text-xs text-slate-500 mt-3 text-center">
-                        ℹ️ Mostrando objetivos relevantes para {selectedSector?.name || "tu sector"}
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
                 
@@ -444,37 +452,37 @@ export default function Stories() {
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     <div className="grid grid-cols-3 gap-2">
-                      {urgencyTypes.map((type) => (
+                      {urgencyTypes.map((u) => (
                         <button
-                          key={type.value}
-                          onClick={() => setUrgencyType(type.value)}
-                          className={`p-3 rounded-lg border transition-all text-sm ${
-                            urgencyType === type.value
+                          key={u.value}
+                          onClick={() => setUrgencyType(u.value)}
+                          className={`p-3 rounded-lg border transition-all text-center ${
+                            urgencyType === u.value
                               ? "border-red-500 bg-red-500/20"
                               : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
                           }`}
                         >
-                          {type.label}
+                          <div className="text-xs font-medium">{u.label}</div>
                         </button>
                       ))}
                     </div>
                     <Input
                       value={urgencyValue}
                       onChange={(e) => setUrgencyValue(e.target.value)}
-                      placeholder={urgencyTypes.find(t => t.value === urgencyType)?.placeholder}
+                      placeholder={urgencyTypes.find((u) => u.value === urgencyType)?.placeholder}
                       className="bg-slate-800/50 border-slate-600"
                     />
                   </CardContent>
                 </Card>
               </div>
               
-              {/* Right Column - Additional Inputs */}
+              {/* Right Column */}
               <div className="space-y-6">
                 {/* CTA & Offer */}
                 <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-b border-slate-700/50">
+                  <CardHeader className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-b border-slate-700/50">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <MessageCircle className="w-5 h-5 text-green-400" />
+                      <MessageCircle className="w-5 h-5 text-purple-400" />
                       CTA y Oferta
                     </CardTitle>
                   </CardHeader>
@@ -483,9 +491,9 @@ export default function Stories() {
                       <Label>Palabra clave para responder</Label>
                       <Input
                         value={ctaKeyword}
-                        onChange={(e) => setCtaKeyword(e.target.value.toUpperCase())}
+                        onChange={(e) => setCtaKeyword(e.target.value)}
                         placeholder="INFO"
-                        className="bg-slate-800/50 border-slate-600 font-bold"
+                        className="bg-slate-800/50 border-slate-600"
                       />
                     </div>
                     <div className="space-y-2">
@@ -638,11 +646,33 @@ export default function Stories() {
             </div>
           </TabsContent>
           
-          {/* Result Tab */}
+          {/* Result Tab - NUEVO DISEÑO CON PREVIEW */}
           <TabsContent value="result" className="space-y-6">
             {result && (
               <>
-                {/* Goal Summary - NUEVO */}
+                {/* Toggle de vista */}
+                <div className="flex justify-center gap-2 mb-6">
+                  <Button
+                    variant={viewMode === "preview" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("preview")}
+                    className={viewMode === "preview" ? "bg-gradient-to-r from-pink-500 to-purple-500" : "border-slate-600"}
+                  >
+                    <Smartphone className="w-4 h-4 mr-2" />
+                    Vista Móvil
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("list")}
+                    className={viewMode === "list" ? "bg-gradient-to-r from-pink-500 to-purple-500" : "border-slate-600"}
+                  >
+                    <List className="w-4 h-4 mr-2" />
+                    Vista Lista
+                  </Button>
+                </div>
+
+                {/* Goal Summary */}
                 {result.goalSummary && (
                   <Card className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/30 backdrop-blur-sm">
                     <CardContent className="p-6">
@@ -656,111 +686,129 @@ export default function Stories() {
                     </CardContent>
                   </Card>
                 )}
-                
-                {/* Stories */}
-                <div className="space-y-4">
-                  {result.stories.map((story, index) => (
-                    <Card key={index} className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden hover:border-slate-600 transition-all">
-                      <CardContent className="p-0">
-                        <div className="flex">
-                          {/* Story Number & Type */}
-                          <div className={`w-20 flex-shrink-0 flex flex-col items-center justify-center p-4 ${
-                            story.type === "FOTO" 
-                              ? "bg-gradient-to-b from-blue-500/20 to-blue-600/20" 
-                              : "bg-gradient-to-b from-red-500/20 to-red-600/20"
-                          }`}>
-                            <div className="text-3xl font-bold">{story.number}</div>
-                            <Badge className={story.type === "FOTO" ? "bg-blue-500" : "bg-red-500"}>
-                              {story.type === "FOTO" ? <Camera className="w-3 h-3 mr-1" /> : <Video className="w-3 h-3 mr-1" />}
-                              {story.type}
-                            </Badge>
-                            <div className="text-xs text-slate-400 mt-2">{story.phase}</div>
-                          </div>
-                          
-                          {/* Story Content */}
-                          <div className="flex-1 p-6 space-y-4">
-                            {/* Instruction */}
-                            <div>
-                              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Qué hacer</div>
-                              <div className="text-white font-medium">{story.instruction}</div>
+
+                {/* Vista Preview (Mockup de móvil) */}
+                {viewMode === "preview" && (
+                  <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
+                    <CardContent className="p-8">
+                      <StoryPreview 
+                        stories={result.stories} 
+                        sectorName={selectedSector?.name || sectorCustom}
+                        onCopy={(text) => {
+                          setCopiedIndex(-1);
+                          setTimeout(() => setCopiedIndex(null), 2000);
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Vista Lista (Original mejorada) */}
+                {viewMode === "list" && (
+                  <div className="space-y-4">
+                    {result.stories.map((story, index) => (
+                      <Card key={index} className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden hover:border-slate-600 transition-all">
+                        <CardContent className="p-0">
+                          <div className="flex">
+                            {/* Story Number & Type */}
+                            <div className={`w-24 flex-shrink-0 flex flex-col items-center justify-center p-4 ${
+                              story.type === "FOTO" 
+                                ? "bg-gradient-to-b from-blue-500/20 to-blue-600/20" 
+                                : "bg-gradient-to-b from-red-500/20 to-red-600/20"
+                            }`}>
+                              <div className="text-4xl font-bold mb-2">{story.number}</div>
+                              <Badge className={`${story.type === "FOTO" ? "bg-blue-500" : "bg-red-500"} px-3 py-1`}>
+                                {story.type === "FOTO" ? <Camera className="w-3 h-3 mr-1" /> : <Video className="w-3 h-3 mr-1" />}
+                                {story.type}
+                              </Badge>
+                              <div className="text-xs text-slate-400 mt-2 text-center">{story.phase}</div>
                             </div>
                             
-                            {/* Duration (for videos) */}
-                            {story.type === "VIDEO" && story.duration && (
+                            {/* Story Content */}
+                            <div className="flex-1 p-6 space-y-4">
+                              {/* Instruction */}
                               <div>
-                                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Duración</div>
-                                <Badge variant="outline">{story.duration}</Badge>
+                                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Qué hacer</div>
+                                <div className="text-white font-medium">{story.instruction}</div>
                               </div>
-                            )}
-                            
-                            {/* Voice Note for FOTO stories - MEJORADO */}
-                            {story.type === "FOTO" && (
-                              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-                                <div className="text-xs text-blue-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                  <Camera className="w-3 h-3" /> Nota sobre el audio
+                              
+                              {/* Duration (for videos) */}
+                              {story.type === "VIDEO" && story.duration && (
+                                <div>
+                                  <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Duración</div>
+                                  <Badge variant="outline">{story.duration}</Badge>
                                 </div>
-                                <div className="text-slate-300 text-sm">
-                                  {story.voiceNote || "Esta story es una foto estática. No necesitas grabar voz. El impacto viene del texto en pantalla y la imagen."}
+                              )}
+                              
+                              {/* Voice Note for FOTO stories */}
+                              {story.type === "FOTO" && (
+                                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                                  <div className="text-xs text-blue-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <Camera className="w-3 h-3" /> Nota sobre el audio
+                                  </div>
+                                  <div className="text-slate-300 text-sm">
+                                    {story.voiceNote || "Esta story es una foto estática. No necesitas grabar voz. El impacto viene del texto en pantalla y la imagen."}
+                                  </div>
                                 </div>
+                              )}
+                              
+                              {/* Spoken Text (for videos) */}
+                              {story.type === "VIDEO" && story.spokenText && (
+                                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                                  <div className="text-xs text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <Video className="w-3 h-3" /> Texto a decir (mirando a cámara)
+                                  </div>
+                                  <div className="text-white italic">"{story.spokenText}"</div>
+                                </div>
+                              )}
+                              
+                              {/* Screen Text */}
+                              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                                <div className="text-xs text-purple-400 uppercase tracking-wider mb-1">Texto en pantalla</div>
+                                <div className="text-white font-semibold text-lg">{story.screenText}</div>
                               </div>
-                            )}
-                            
-                            {/* Spoken Text (for videos) */}
-                            {story.type === "VIDEO" && story.spokenText && (
-                              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-                                <div className="text-xs text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                  <Video className="w-3 h-3" /> Texto a decir (mirando a cámara)
-                                </div>
-                                <div className="text-white italic">"{story.spokenText}"</div>
+                              
+                              {/* Sticker & Background */}
+                              <div className="flex gap-4 text-sm">
+                                {story.sticker && (
+                                  <div>
+                                    <span className="text-slate-400">Sticker: </span>
+                                    <Badge variant="outline">{story.sticker}</Badge>
+                                  </div>
+                                )}
+                                {story.background && (
+                                  <div>
+                                    <span className="text-slate-400">Fondo: </span>
+                                    <span className="text-white">{story.background}</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                            
-                            {/* Screen Text */}
-                            <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
-                              <div className="text-xs text-purple-400 uppercase tracking-wider mb-1">Texto en pantalla</div>
-                              <div className="text-white font-semibold text-lg">{story.screenText}</div>
                             </div>
                             
-                            {/* Sticker & Background */}
-                            <div className="flex gap-4 text-sm">
-                              {story.sticker && (
-                                <div>
-                                  <span className="text-slate-400">Sticker: </span>
-                                  <Badge variant="outline">{story.sticker}</Badge>
-                                </div>
-                              )}
-                              {story.background && (
-                                <div>
-                                  <span className="text-slate-400">Fondo: </span>
-                                  <span className="text-white">{story.background}</span>
-                                </div>
-                              )}
+                            {/* Copy Button */}
+                            <div className="p-4 flex items-start">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(
+                                  `Story ${story.number} (${story.type}):\n${story.instruction}\n\nTexto en pantalla: ${story.screenText}${story.spokenText ? `\n\nTexto a decir: "${story.spokenText}"` : ""}`,
+                                  index
+                                )}
+                                className="text-slate-400 hover:text-white"
+                              >
+                                {copiedIndex === index ? (
+                                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
                             </div>
                           </div>
-                          
-                          {/* Copy Button */}
-                          <div className="p-4 flex items-start">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(
-                                `Story ${story.number} (${story.type}):\n${story.instruction}\n\nTexto en pantalla: ${story.screenText}${story.spokenText ? `\n\nTexto a decir: "${story.spokenText}"` : ""}`,
-                                index
-                              )}
-                              className="text-slate-400 hover:text-white"
-                            >
-                              {copiedIndex === index ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
                 
                 {/* DM Messages */}
                 <Card className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-500/30 backdrop-blur-sm">

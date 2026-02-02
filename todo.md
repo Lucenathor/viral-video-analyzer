@@ -323,3 +323,10 @@
 - [x] Añadir explicación en Calendario (para qué sirve, cómo usarlo)
 - [x] Añadir explicación en Lanzamientos en Caliente (para qué sirve, cómo usarlo)
 - [x] Añadir explicación en Analizador (para qué sirve, cómo usarlo)
+
+## Mejora: Lanzamientos en Caliente - Diseño Visual Premium
+- [x] Crear mockups visuales de Stories tipo Instagram para cada story del guión
+- [x] Añadir previsualización interactiva de cómo se verían las stories
+- [x] Mejorar el diseño del formulario con mejor UX
+- [x] Añadir ejemplos de stories exitosas de referencia
+- [x] Hacer el resultado más visual y atractivo
