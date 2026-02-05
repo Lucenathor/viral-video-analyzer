@@ -103,10 +103,35 @@ export const PLANS: Record<string, Plan> = {
 };
 
 export const PLAN_LIMITS = {
-  free: { analysis: 2, stories: 5 },
-  basic: { analysis: 10, stories: 30 },
-  pro: { analysis: 50, stories: 100 },
-  enterprise: { analysis: -1, stories: -1 }, // -1 = unlimited
+  free: { analysis: 2, stories: 5, calendarMonths: 1, reelsPerDay: 1 },
+  basic: { analysis: 10, stories: 30, calendarMonths: 1, reelsPerDay: 2 },
+  pro: { analysis: 50, stories: 100, calendarMonths: 1, reelsPerDay: 2 },
+  enterprise: { analysis: -1, stories: -1, calendarMonths: 12, reelsPerDay: 3 }, // -1 = unlimited
+};
+
+// Calendar visibility rules:
+// - Monthly plans: Only current month visible
+// - Annual plans: Full year visible
+// - Free: Only current month, 1 reel per day
+export const CALENDAR_CONFIG = {
+  monthlySubscription: {
+    visibleMonths: 1, // Only current month
+    reelsPerDayByPlan: {
+      free: 1,
+      basic: 2,
+      pro: 2,
+      enterprise: 3,
+    }
+  },
+  annualSubscription: {
+    visibleMonths: 12, // Full year
+    reelsPerDayByPlan: {
+      free: 1,
+      basic: 2,
+      pro: 2,
+      enterprise: 3,
+    }
+  }
 };
 
 export function getPlanById(planId: string): Plan | undefined {

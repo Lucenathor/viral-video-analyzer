@@ -602,3 +602,63 @@ export async function getReelStats() {
     rejected: rejectedCount[0]?.count ?? 0,
   };
 }
+
+
+// ==================== SUBSCRIPTION BILLING TYPE FUNCTIONS ====================
+import { subscriptionBillingType, InsertSubscriptionBillingType, SubscriptionBillingType, calendarAssignments, InsertCalendarAssignment, CalendarAssignment } from "../drizzle/schema";
+
+export async function getUserBillingType(userId: number): Promise<SubscriptionBillingType | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(subscriptionBillingType).where(eq(subscriptionBillingType.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function createOrUpdateBillingType(userId: number, data: Partial<InsertSubscriptionBillingType>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getUserBillingType(userId);
+  
+  if (existing) {
+    await db.update(subscriptionBillingType)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(subscriptionBillingType.userId, userId));
+    return existing.id;
+  } else {
+    const result = await db.insert(subscriptionBillingType).values({
+      userId,
+      ...data,
+    });
+    return result[0].insertId;
+  }
+}
+
+// ==================== CALENDAR ASSIGNMENTS FUNCTIONS ====================
+export async function getCalendarAssignments(sectorSlug: string, month: number, year: number): Promise<CalendarAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(calendarAssignments)
+    .where(and(
+      eq(calendarAssignments.sectorSlug, sectorSlug),
+      eq(calendarAssignments.month, month),
+      eq(calendarAssignments.year, year),
+      eq(calendarAssignments.isActive, true)
+    ))
+    .orderBy(calendarAssignments.dayOfMonth, calendarAssignments.orderInDay);
+}
+
+export async function createCalendarAssignment(data: Omit<InsertCalendarAssignment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(calendarAssignments).values(data);
+  return result[0].insertId;
+}
+
+export async function deleteCalendarAssignment(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(calendarAssignments).where(eq(calendarAssignments.id, id));
+}

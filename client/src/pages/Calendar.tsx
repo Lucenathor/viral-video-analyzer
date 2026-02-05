@@ -17,8 +17,11 @@ import {
   Clock,
   CheckCircle2,
   X,
-  ExternalLink
+  ExternalLink,
+  Lock,
+  Crown
 } from "lucide-react";
+import { Link } from "wouter";
 import { businessSectors } from "@/data/businessSectorVideos";
 
 // Obtener el mes actual y año
@@ -106,6 +109,23 @@ export default function Calendar() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Fetch subscription config
+  const { data: subscriptionConfig } = trpc.calendar.getSubscriptionConfig.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
+
+  // Check if a month is allowed based on subscription
+  const isMonthAllowed = useMemo(() => {
+    if (!subscriptionConfig) return true; // Allow while loading
+    
+    const { allowedMonths } = subscriptionConfig;
+    return allowedMonths.some(
+      (m: { month: number; year: number }) => m.month === currentMonth && m.year === currentYear
+    );
+  }, [subscriptionConfig, currentMonth, currentYear]);
 
   // Fetch progress from database
   const { data: progressData, refetch: refetchProgress } = trpc.calendar.getProgress.useQuery(
@@ -168,8 +188,30 @@ export default function Calendar() {
     return getDaysInMonth(currentYear, currentMonth);
   }, [currentYear, currentMonth]);
 
-  // Navegación del calendario
+  // Navegación del calendario con restricción de suscripción
+  const canNavigateToPreviousMonth = useMemo(() => {
+    if (!subscriptionConfig) return true;
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    return subscriptionConfig.allowedMonths.some(
+      (m: { month: number; year: number }) => m.month === prevMonth && m.year === prevYear
+    );
+  }, [subscriptionConfig, currentMonth, currentYear]);
+
+  const canNavigateToNextMonth = useMemo(() => {
+    if (!subscriptionConfig) return true;
+    const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    return subscriptionConfig.allowedMonths.some(
+      (m: { month: number; year: number }) => m.month === nextMonth && m.year === nextYear
+    );
+  }, [subscriptionConfig, currentMonth, currentYear]);
+
   const goToPreviousMonth = () => {
+    if (!canNavigateToPreviousMonth) {
+      setShowUpgradeModal(true);
+      return;
+    }
     if (currentMonth === 0) {
       setCurrentMonth(11);
       setCurrentYear(currentYear - 1);
@@ -179,6 +221,10 @@ export default function Calendar() {
   };
 
   const goToNextMonth = () => {
+    if (!canNavigateToNextMonth) {
+      setShowUpgradeModal(true);
+      return;
+    }
     if (currentMonth === 11) {
       setCurrentMonth(0);
       setCurrentYear(currentYear + 1);
@@ -630,6 +676,97 @@ export default function Calendar() {
             </Card>
           </div>
         </section>
+      )}
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowUpgradeModal(false)}
+        >
+          <div 
+            className="relative w-full max-w-md glass border border-primary/30 rounded-2xl overflow-hidden animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button 
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="p-8 text-center">
+              {/* Icon */}
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-6">
+                <Crown className="w-10 h-10 text-white" />
+              </div>
+
+              {/* Title */}
+              <h3 className="text-2xl font-bold mb-3">Desbloquea el Calendario Completo</h3>
+              
+              {/* Description */}
+              <p className="text-muted-foreground mb-6">
+                Tu plan actual solo te permite ver el mes actual. 
+                <strong className="text-foreground"> Actualiza a un plan anual</strong> para acceder a los 12 meses del año y planificar tu contenido con antelación.
+              </p>
+
+              {/* Current plan info */}
+              {subscriptionConfig && (
+                <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 mb-6">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Lock className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Tu plan actual: <span className="text-primary capitalize">{subscriptionConfig.plan}</span></span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {subscriptionConfig.isAnnual 
+                      ? `Tienes acceso a ${subscriptionConfig.visibleMonths} meses`
+                      : 'Plan mensual - Solo mes actual visible'
+                    }
+                  </p>
+                </div>
+              )}
+
+              {/* Benefits */}
+              <div className="text-left mb-6 space-y-2">
+                <p className="text-sm font-medium text-primary mb-2">Con el plan anual obtienes:</p>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>Acceso a los 12 meses del calendario</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>2 meses gratis (paga 10, usa 12)</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>Planifica tu contenido con antelación</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>Más reels por día según tu plan</span>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowUpgradeModal(false)}
+                >
+                  Ahora no
+                </Button>
+                <Link href="/pricing" className="flex-1">
+                  <Button className="w-full gradient-primary text-white gap-2">
+                    <Crown className="w-4 h-4" />
+                    Ver Planes
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

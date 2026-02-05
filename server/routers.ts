@@ -855,6 +855,55 @@ Devuelve SOLO el JSON.`;
 
   // Calendar Progress Router
   calendar: router({
+    // Get user's subscription config for calendar
+    getSubscriptionConfig: protectedProcedure
+      .query(async ({ ctx }) => {
+        const subscription = await db.getUserSubscription(ctx.user.id);
+        const billingType = await db.getUserBillingType(ctx.user.id);
+        
+        const plan = subscription?.plan || 'free';
+        const isAnnual = billingType?.billingType === 'annual';
+        
+        // Determine visible months
+        const visibleMonths = isAnnual ? 12 : 1;
+        
+        // Reels per day based on plan
+        const reelsPerDay = {
+          free: 1,
+          basic: 2,
+          pro: 2,
+          enterprise: 3,
+        }[plan] || 1;
+        
+        // Calculate allowed month range
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        let allowedMonths: { month: number; year: number }[] = [];
+        
+        if (isAnnual && billingType?.startMonth && billingType?.startYear) {
+          // Annual: show from start month to end month
+          for (let i = 0; i < 12; i++) {
+            const m = (billingType.startMonth - 1 + i) % 12;
+            const y = billingType.startYear + Math.floor((billingType.startMonth - 1 + i) / 12);
+            allowedMonths.push({ month: m, year: y });
+          }
+        } else {
+          // Monthly: only current month
+          allowedMonths = [{ month: currentMonth, year: currentYear }];
+        }
+        
+        return {
+          plan,
+          isAnnual,
+          visibleMonths,
+          reelsPerDay,
+          allowedMonths,
+          currentPeriodEnd: subscription?.currentPeriodEnd,
+        };
+      }),
+    
     // Get progress for a sector
     getProgress: protectedProcedure
       .input(z.object({ sectorId: z.string() }))

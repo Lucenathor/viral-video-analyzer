@@ -305,3 +305,50 @@ export const approvedReels = mysqlTable("approved_reels", {
 
 export type ApprovedReel = typeof approvedReels.$inferSelect;
 export type InsertApprovedReel = typeof approvedReels.$inferInsert;
+
+
+/**
+ * Calendar assignments - Reels assigned to specific dates for users
+ * Controls what reels users see on their calendar based on subscription
+ */
+export const calendarAssignments = mysqlTable("calendar_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  // Reel reference
+  approvedReelId: int("approvedReelId").references(() => approvedReels.id).notNull(),
+  // Sector this assignment is for
+  sectorSlug: varchar("sectorSlug", { length: 100 }).notNull(),
+  // Date assignment (day of month, 1-31)
+  dayOfMonth: int("dayOfMonth").notNull(),
+  // Month/Year for specific assignment
+  month: int("month").notNull(), // 1-12
+  year: int("year").notNull(),
+  // Order within the day (for multiple reels per day)
+  orderInDay: int("orderInDay").default(1).notNull(),
+  // Active status
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalendarAssignment = typeof calendarAssignments.$inferSelect;
+export type InsertCalendarAssignment = typeof calendarAssignments.$inferInsert;
+
+/**
+ * Subscription billing type tracking
+ * To know if user paid monthly or annually
+ */
+export const subscriptionBillingType = mysqlTable("subscription_billing_type", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull().unique(),
+  billingType: mysqlEnum("billingType", ["monthly", "annual"]).default("monthly").notNull(),
+  // For annual: which months are unlocked
+  startMonth: int("startMonth"), // 1-12
+  startYear: int("startYear"),
+  endMonth: int("endMonth"), // 1-12
+  endYear: int("endYear"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SubscriptionBillingType = typeof subscriptionBillingType.$inferSelect;
+export type InsertSubscriptionBillingType = typeof subscriptionBillingType.$inferInsert;

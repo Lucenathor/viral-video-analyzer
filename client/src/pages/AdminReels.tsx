@@ -14,8 +14,23 @@ import { toast } from 'sonner';
 import { 
   CheckCircle2, XCircle, Clock, Eye, Heart, MessageCircle, 
   Share2, Plus, Search, TrendingUp, Sparkles, ExternalLink,
-  ChevronLeft, ChevronRight, Play, Filter, RefreshCw
+  ChevronLeft, ChevronRight, Play, Filter, RefreshCw, LayoutGrid,
+  Calendar, Target, Zap, BarChart3
 } from 'lucide-react';
+
+// Sectores disponibles
+const SECTORS = [
+  { slug: 'clinica-estetica', name: 'Clínica Estética', color: 'bg-pink-500' },
+  { slug: 'inmobiliaria', name: 'Inmobiliaria', color: 'bg-blue-500' },
+  { slug: 'abogados', name: 'Abogados', color: 'bg-slate-500' },
+  { slug: 'marketing', name: 'Agencias de Marketing', color: 'bg-purple-500' },
+  { slug: 'personal-trainer', name: 'Personal Trainer', color: 'bg-green-500' },
+  { slug: 'manicura', name: 'Manicura y Uñas', color: 'bg-rose-500' },
+  { slug: 'micropigmentacion', name: 'Micropigmentación', color: 'bg-amber-500' },
+  { slug: 'peluqueria', name: 'Peluquería', color: 'bg-cyan-500' },
+  { slug: 'restaurantes', name: 'Restaurantes', color: 'bg-orange-500' },
+  { slug: 'coaches', name: 'Coaches y Consultores', color: 'bg-indigo-500' },
+];
 
 export default function AdminReels() {
   const { user } = useAuth();
@@ -23,15 +38,17 @@ export default function AdminReels() {
   const [selectedReel, setSelectedReel] = useState<any>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
+  const [filterSector, setFilterSector] = useState('all');
   const [addReelUrl, setAddReelUrl] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   // Queries
   const { data: stats, refetch: refetchStats } = trpc.admin.getStats.useQuery();
   const { data: sectors } = trpc.admin.getSectors.useQuery();
   const { data: pendingReels, refetch: refetchPending } = trpc.admin.getPendingReels.useQuery({ 
     status: selectedTab as 'pending' | 'approved' | 'rejected',
-    limit: 50 
+    limit: 100 
   });
 
   // Mutations
@@ -147,7 +164,6 @@ export default function AdminReels() {
       return;
     }
     
-    // Extract TikTok ID from URL
     const tiktokIdMatch = addReelUrl.match(/video\/(\d+)/);
     const tiktokId = tiktokIdMatch?.[1] || `manual_${Date.now()}`;
     
@@ -163,6 +179,20 @@ export default function AdminReels() {
     return num.toString();
   };
 
+  // Filter reels by sector
+  const filteredReels = pendingReels?.filter((reel: any) => {
+    if (filterSector === 'all') return true;
+    return reel.suggestedSector === filterSector || reel.assignedSector === filterSector;
+  }) || [];
+
+  // Count reels by sector
+  const reelsBySector = SECTORS.map(sector => ({
+    ...sector,
+    count: pendingReels?.filter((r: any) => 
+      r.suggestedSector === sector.slug || r.assignedSector === sector.slug
+    ).length || 0
+  }));
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
@@ -175,7 +205,7 @@ export default function AdminReels() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">Panel de Reels Virales</h1>
-                <p className="text-sm text-slate-400">Gestión interna de contenido viral</p>
+                <p className="text-sm text-slate-400">Gestión interna de contenido viral por sector</p>
               </div>
             </div>
             
@@ -284,13 +314,64 @@ export default function AdminReels() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-400">Sectores</p>
-                  <p className="text-2xl font-bold text-purple-400">{stats?.sectors || 0}</p>
+                  <p className="text-2xl font-bold text-purple-400">10</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-purple-400/50" />
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Sector Filter Bar */}
+        <Card className="bg-slate-900/50 border-slate-800 mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-purple-400" />
+                <CardTitle className="text-base">Filtrar por Sector</CardTitle>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={filterSector === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterSector('all')}
+                className={filterSector === 'all' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                Todos ({pendingReels?.length || 0})
+              </Button>
+              {reelsBySector.map(sector => (
+                <Button
+                  key={sector.slug}
+                  variant={filterSector === sector.slug ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterSector(sector.slug)}
+                  className={filterSector === sector.slug ? `${sector.color} hover:opacity-90` : 'border-slate-700'}
+                >
+                  {sector.name} ({sector.count})
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Reels List */}
@@ -315,89 +396,139 @@ export default function AdminReels() {
                 </Tabs>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                  {pendingReels?.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400">
-                      <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No hay reels en esta categoría</p>
-                    </div>
-                  ) : (
-                    pendingReels?.map((reel: any) => (
-                      <div 
-                        key={reel.id}
-                        onClick={() => setSelectedReel(reel)}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          selectedReel?.id === reel.id 
-                            ? 'border-purple-500 bg-purple-500/10' 
-                            : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex gap-4">
-                          {/* Thumbnail */}
-                          <div className="relative w-20 h-28 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
-                            {reel.coverUrl ? (
-                              <img 
-                                src={reel.coverUrl} 
-                                alt={reel.title || 'Reel'} 
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Play className="w-8 h-8 text-slate-500" />
+                {viewMode === 'list' ? (
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                    {filteredReels.length === 0 ? (
+                      <div className="text-center py-12 text-slate-400">
+                        <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No hay reels en esta categoría</p>
+                      </div>
+                    ) : (
+                      filteredReels.map((reel: any) => (
+                        <div 
+                          key={reel.id}
+                          onClick={() => setSelectedReel(reel)}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                            selectedReel?.id === reel.id 
+                              ? 'border-purple-500 bg-purple-500/10' 
+                              : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="flex gap-4">
+                            {/* Thumbnail */}
+                            <div className="relative w-20 h-28 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
+                              {reel.coverUrl ? (
+                                <img 
+                                  src={reel.coverUrl} 
+                                  alt={reel.title || 'Reel'} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Play className="w-8 h-8 text-slate-500" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                                <Play className="w-8 h-8 text-white" />
                               </div>
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                              <Play className="w-8 h-8 text-white" />
                             </div>
-                          </div>
-                          
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="font-medium text-white truncate">
-                                {reel.title || reel.authorUsername || 'Sin título'}
+                            
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="font-medium text-white truncate">
+                                  {reel.title || reel.authorUsername || 'Sin título'}
+                                </p>
+                                {reel.viralityScore && (
+                                  <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30 flex-shrink-0">
+                                    {reel.viralityScore}%
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <p className="text-sm text-slate-400 mb-2">
+                                @{reel.authorUsername || 'desconocido'}
                               </p>
-                              {reel.viralityScore && (
-                                <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30 flex-shrink-0">
-                                  {reel.viralityScore}%
+                              
+                              <div className="flex items-center gap-3 text-xs text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <Heart className="w-3 h-3" />
+                                  {formatNumber(reel.likes || 0)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <MessageCircle className="w-3 h-3" />
+                                  {formatNumber(reel.comments || 0)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Share2 className="w-3 h-3" />
+                                  {formatNumber(reel.shares || 0)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {formatNumber(reel.views || 0)}
+                                </span>
+                              </div>
+                              
+                              {reel.suggestedSector && (
+                                <Badge variant="outline" className="mt-2 text-xs">
+                                  Sugerido: {SECTORS.find(s => s.slug === reel.suggestedSector)?.name || reel.suggestedSector}
                                 </Badge>
                               )}
                             </div>
-                            
-                            <p className="text-sm text-slate-400 mb-2">
-                              @{reel.authorUsername || 'desconocido'}
-                            </p>
-                            
-                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto pr-2">
+                    {filteredReels.length === 0 ? (
+                      <div className="col-span-full text-center py-12 text-slate-400">
+                        <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No hay reels en esta categoría</p>
+                      </div>
+                    ) : (
+                      filteredReels.map((reel: any) => (
+                        <div 
+                          key={reel.id}
+                          onClick={() => setSelectedReel(reel)}
+                          className={`relative aspect-[9/16] rounded-lg overflow-hidden cursor-pointer transition-all ${
+                            selectedReel?.id === reel.id 
+                              ? 'ring-2 ring-purple-500' 
+                              : 'hover:ring-2 hover:ring-slate-600'
+                          }`}
+                        >
+                          {reel.coverUrl ? (
+                            <img 
+                              src={reel.coverUrl} 
+                              alt={reel.title || 'Reel'} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                              <Play className="w-8 h-8 text-slate-500" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-2">
+                            <p className="text-xs text-white truncate">@{reel.authorUsername || 'desconocido'}</p>
+                            <div className="flex items-center gap-2 text-xs text-white/70 mt-1">
                               <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
                                 {formatNumber(reel.likes || 0)}
                               </span>
-                              <span className="flex items-center gap-1">
-                                <MessageCircle className="w-3 h-3" />
-                                {formatNumber(reel.comments || 0)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Share2 className="w-3 h-3" />
-                                {formatNumber(reel.shares || 0)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                {formatNumber(reel.views || 0)}
-                              </span>
+                              {reel.viralityScore && (
+                                <Badge className="bg-purple-500/80 text-white text-[10px] px-1 py-0">
+                                  {reel.viralityScore}%
+                                </Badge>
+                              )}
                             </div>
-                            
-                            {reel.suggestedSector && (
-                              <Badge variant="outline" className="mt-2 text-xs">
-                                Sugerido: {reel.suggestedSector}
-                              </Badge>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -408,7 +539,7 @@ export default function AdminReels() {
               <CardHeader>
                 <CardTitle className="text-lg">Panel de Revisión</CardTitle>
                 <CardDescription>
-                  {selectedReel ? 'Revisa y clasifica el reel seleccionado' : 'Selecciona un reel para revisar'}
+                  {selectedReel ? 'Revisa y asigna sector al reel' : 'Selecciona un reel para revisar'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -448,21 +579,32 @@ export default function AdminReels() {
                       </div>
                     )}
 
-                    {/* Sector Selection */}
+                    {/* Sector Selection - MEJORADO */}
                     <div className="space-y-2">
-                      <Label>Asignar a Sector</Label>
+                      <Label className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-purple-400" />
+                        Asignar a Sector
+                      </Label>
                       <Select value={selectedSector} onValueChange={setSelectedSector}>
                         <SelectTrigger className="bg-slate-800 border-slate-700">
                           <SelectValue placeholder="Selecciona un sector" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
-                          {sectors?.map((sector: any) => (
+                          {SECTORS.map((sector) => (
                             <SelectItem key={sector.slug} value={sector.slug}>
-                              {sector.name}
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-full ${sector.color}`} />
+                                {sector.name}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {selectedReel.suggestedSector && (
+                        <p className="text-xs text-slate-500">
+                          IA sugiere: {SECTORS.find(s => s.slug === selectedReel.suggestedSector)?.name || selectedReel.suggestedSector}
+                        </p>
+                      )}
                     </div>
 
                     {/* Notes */}
@@ -507,6 +649,33 @@ export default function AdminReels() {
             </Card>
           </div>
         </div>
+
+        {/* Sector Summary */}
+        <Card className="bg-slate-900/50 border-slate-800 mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-purple-400" />
+              <CardTitle className="text-base">Resumen por Sector</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {reelsBySector.map(sector => (
+                <div 
+                  key={sector.slug}
+                  className="p-3 rounded-lg bg-slate-800/50 border border-slate-700"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${sector.color}`} />
+                    <span className="text-sm font-medium text-white truncate">{sector.name}</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white">{sector.count}</p>
+                  <p className="text-xs text-slate-400">reels pendientes</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

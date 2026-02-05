@@ -380,3 +380,96 @@
 - [x] Análisis con IA del potencial viral
 - [x] Añadir candidatos a cola de revisión
 - [x] Búsqueda masiva en todos los sectores
+
+
+## Auditoría Completa - Febrero 2026
+
+### Imágenes de Sectores - CRÍTICO
+- [ ] Actualizar URLs de imágenes en businessSectorVideos.ts (archivo principal usado por Library)
+- [ ] Las imágenes usan rutas locales /sectors/*.jpg pero los archivos fueron movidos
+- [ ] Reemplazar con URLs de CDN que ya existen
+
+### Sectores que necesitan imagen actualizada:
+- [ ] clinica-estetica.jpg
+- [ ] inmobiliaria.jpg
+- [ ] abogados.jpg
+- [ ] marketing.jpg
+- [ ] personal-trainer.jpg
+- [ ] manicura.jpg
+- [ ] micropigmentacion.jpg
+- [ ] peluqueria.jpg
+- [ ] restaurantes.jpg
+- [ ] coaches.jpg
+
+### Otras secciones a revisar:
+- [ ] Calendario - verificar imágenes
+- [ ] Lanzamientos - verificar funcionamiento
+- [ ] Analizador - verificar funcionamiento
+- [ ] Dashboard - verificar funcionamiento
+- [ ] Panel Admin - verificar funcionamiento
+
+
+## Panel Admin de Reels por Sector - NUEVA FUNCIONALIDAD
+- [ ] Mejorar panel admin con filtro por sector
+- [ ] Sistema de aprobación/rechazo con asignación de sector
+- [ ] Vista de reels pendientes organizados por sector
+- [ ] Estadísticas de reels aprobados por sector
+
+## Calendario Limitado por Suscripción - NUEVA FUNCIONALIDAD
+- [ ] Limitar vista de calendario a 1 mes para planes mensuales
+- [ ] Mostrar año completo solo para suscripciones anuales
+- [ ] Mostrar 2 reels por día según el plan del usuario
+- [ ] Bloquear meses futuros hasta renovación de suscripción
+
+## Sistema de Propuesta Automática de Reels - NUEVA FUNCIONALIDAD
+- [ ] Crear sistema backend para proponer reels automáticamente
+- [ ] Implementar metodología de búsqueda de reels virales
+- [ ] Asignar reels a sectores automáticamente
+- [ ] Cola de revisión para aprobación manual
+
+## Análisis de Mejoras de la App
+- [ ] Documentar puntos de mejora identificados
+- [ ] Priorizar mejoras por impacto
+
+
+## Sistema de Pagos con Stripe (Feb 2026)
+
+- [x] Integrar Stripe SDK
+- [x] Crear planes de suscripción (Free, Basic, Pro, Enterprise)
+- [x] Implementar checkout de Stripe
+- [x] Crear webhook para procesar pagos
+- [x] Crear página de precios (/pricing)
+- [x] Añadir control de límites por plan
+
+## Panel Admin de Reels Virales (Feb 2026)
+
+- [x] Crear página de administración (/admin/reels)
+- [x] Sistema de aprobación/rechazo de reels
+- [x] Análisis con IA de por qué es viral cada reel
+- [x] Asignación de sector a cada reel
+- [x] Filtro por sector en el panel admin
+- [x] Búsqueda automática de reels virales
+- [x] Añadir reels manualmente por URL
+
+## Sistema de Propuesta Automática de Reels (Feb 2026)
+
+- [x] Servicio de búsqueda por sector
+- [x] Cálculo de score de viralidad
+- [x] Análisis con IA del potencial viral
+- [x] Añadir candidatos a cola de revisión
+
+## Calendario Limitado por Suscripción (Feb 2026)
+
+- [x] Endpoint para obtener configuración de suscripción
+- [x] Lógica de meses permitidos (mensual vs anual)
+- [x] Restricción de navegación en el calendario
+- [x] Modal de upgrade cuando se intenta acceder a meses bloqueados
+- [x] Tests unitarios para la lógica de suscripción
+
+## Puntos de Mejora Identificados
+
+- [ ] Poblar biblioteca con reels aprobados desde el panel admin
+- [ ] Sistema de emails transaccionales
+- [ ] Portal de gestión de suscripción (cancelar, cambiar plan)
+- [ ] Onboarding para nuevos usuarios
+- [ ] Integraciones con redes sociales (Instagram, TikTok)

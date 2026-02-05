@@ -31,7 +31,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "clinica-estetica",
     "name": "Clínica Estética",
     "description": "Tratamientos faciales, botox, ácido hialurónico y rejuvenecimiento",
-    "image": "/sectors/clinica-estetica.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/OCwXjCbUBGunwAms.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -110,7 +110,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "inmobiliaria",
     "name": "Inmobiliaria",
     "description": "Venta de casas, pisos, propiedades y tours virtuales",
-    "image": "/sectors/inmobiliaria.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/KyZzobDaTSdqANTm.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -189,7 +189,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "abogados",
     "name": "Abogados",
     "description": "Asesoría legal, derecho, casos legales y consultas jurídicas",
-    "image": "/sectors/abogados.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/rjuIlObmxZkUQBbU.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -268,7 +268,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "marketing",
     "name": "Agencias de Marketing",
     "description": "Marketing digital, redes sociales, publicidad y estrategias",
-    "image": "/sectors/marketing.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/OMLyUShFcMunqzaL.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -347,7 +347,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "personal-trainer",
     "name": "Personal Trainer",
     "description": "Fitness, entrenamiento, ejercicios, gimnasio y nutrición",
-    "image": "/sectors/personal-trainer.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/irThpfmeuVFpBiJa.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -426,7 +426,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "manicura",
     "name": "Manicura y Uñas",
     "description": "Nail art, diseño de uñas, manicura y pedicura",
-    "image": "/sectors/manicura.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/axEAUtAXsxkKntCm.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -505,7 +505,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "micropigmentacion",
     "name": "Micropigmentación",
     "description": "Cejas, labios, microblading y maquillaje permanente",
-    "image": "/sectors/micropigmentacion.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/tbZwEJMCwGHMpKLP.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -584,7 +584,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "peluqueria",
     "name": "Peluquería",
     "description": "Cortes de pelo, peinados, coloración y estilismo",
-    "image": "/sectors/peluqueria.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/wkaqPRMXImfJlseb.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -663,7 +663,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "restaurantes",
     "name": "Restaurantes",
     "description": "Comida, recetas, cocina, gastronomía y platos",
-    "image": "/sectors/restaurantes.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/BwPlYjuywkvopRZF.jpg",
     "videoCount": 5,
     "videos": [
       {
@@ -742,7 +742,7 @@ export const businessSectors: BusinessSector[] = [
     "id": "coaches",
     "name": "Coaches y Consultores",
     "description": "Coaching, mentoría, desarrollo personal y negocios",
-    "image": "/sectors/coaches.jpg",
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/xAijulTsjwZorCKk.jpg",
     "videoCount": 5,
     "videos": [
       {
