@@ -19,4 +19,6 @@ export const ENV = {
   // Stripe
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  // RapidAPI TikTok
+  RAPIDAPI_TIKTOK_KEY: process.env.RAPIDAPI_TIKTOK_KEY ?? "",
 };

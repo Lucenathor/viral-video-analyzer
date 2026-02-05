@@ -473,3 +473,32 @@
 - [ ] Portal de gestión de suscripción (cancelar, cambiar plan)
 - [ ] Onboarding para nuevos usuarios
 - [ ] Integraciones con redes sociales (Instagram, TikTok)
+
+
+## Sistema de Aprendizaje de Viralidad (Feb 2026)
+
+- [ ] Configurar API TikTok Scraper (TIKWM) con filtros avanzados
+- [ ] Crear tabla de reels etiquetados (viral/no viral) por sector
+- [ ] Crear tabla de patrones de viralidad aprendidos
+- [ ] Implementar extracción de características de reels
+- [ ] Crear sistema de scoring basado en patrones aprendidos
+- [ ] Interfaz de entrenamiento en panel admin
+- [ ] Sistema de propuesta automática con predicción de viralidad
+
+
+## Mejora de Keywords Virales por Sector
+- [ ] Actualizar keywords de Peluquería con términos de contenido viral (tutoriales, transformaciones, etc.)
+- [ ] Actualizar keywords de Clínica Estética con términos de contenido viral
+- [ ] Actualizar keywords de Inmobiliaria con términos de contenido viral
+- [ ] Actualizar keywords de todos los demás sectores
+- [ ] Mejorar el sistema de búsqueda para usar más keywords por sector
+- [ ] Probar el sistema con las nuevas keywords
+
+
+## Sistema de Aceptación de Vídeos para Calendario
+- [ ] Crear tabla en BD para vídeos aceptados por sector con fechas asignadas
+- [ ] Añadir botón "Aceptar para Calendario" en panel de entrenamiento
+- [ ] Implementar asignación automática de fechas (distribuir a lo largo del año)
+- [ ] Conectar vídeos aceptados con el calendario existente de la app
+- [ ] Reemplazar vídeos estáticos por vídeos reales aceptados
+- [ ] Crear endpoint para obtener vídeos del calendario por sector y fecha

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -226,7 +226,7 @@ export type InsertSubscription = typeof subscriptions.$inferInsert;
 export const pendingReels = mysqlTable("pending_reels", {
   id: int("id").autoincrement().primaryKey(),
   // TikTok data
-  tiktokId: varchar("tiktokId", { length: 100 }).notNull().unique(),
+  tiktokId: varchar("tiktokId", { length: 255 }).notNull().unique(),
   tiktokUrl: varchar("tiktokUrl", { length: 500 }).notNull(),
   authorUsername: varchar("authorUsername", { length: 100 }),
   authorName: varchar("authorName", { length: 255 }),
@@ -273,7 +273,7 @@ export const approvedReels = mysqlTable("approved_reels", {
   id: int("id").autoincrement().primaryKey(),
   pendingReelId: int("pendingReelId").references(() => pendingReels.id),
   // TikTok data (copied for quick access)
-  tiktokId: varchar("tiktokId", { length: 100 }).notNull().unique(),
+  tiktokId: varchar("tiktokId", { length: 255 }).notNull().unique(),
   tiktokUrl: varchar("tiktokUrl", { length: 500 }).notNull(),
   authorUsername: varchar("authorUsername", { length: 100 }),
   authorName: varchar("authorName", { length: 255 }),
@@ -352,3 +352,126 @@ export const subscriptionBillingType = mysqlTable("subscription_billing_type", {
 
 export type SubscriptionBillingType = typeof subscriptionBillingType.$inferSelect;
 export type InsertSubscriptionBillingType = typeof subscriptionBillingType.$inferInsert;
+
+
+/**
+ * Labeled reels for training - Admin labels reels as viral/not viral
+ * This is the training data for the learning system
+ */
+export const labeledReels = mysqlTable("labeled_reels", {
+  id: int("id").autoincrement().primaryKey(),
+  // TikTok data
+  tiktokId: varchar("tiktokId", { length: 255 }).notNull().unique(),
+  tiktokUrl: varchar("tiktokUrl", { length: 500 }).notNull(),
+  authorUsername: varchar("authorUsername", { length: 100 }),
+  // Video metadata
+  description: text("description"),
+  coverUrl: varchar("coverUrl", { length: 500 }),
+  duration: int("duration"), // seconds
+  // Engagement metrics at time of labeling
+  likes: int("likes").default(0).notNull(),
+  comments: int("comments").default(0).notNull(),
+  shares: int("shares").default(0).notNull(),
+  views: int("views").default(0).notNull(),
+  // Calculated ratios
+  likeToViewRatio: decimal("likeToViewRatio", { precision: 10, scale: 6 }),
+  commentToViewRatio: decimal("commentToViewRatio", { precision: 10, scale: 6 }),
+  shareToViewRatio: decimal("shareToViewRatio", { precision: 10, scale: 6 }),
+  engagementRate: decimal("engagementRate", { precision: 10, scale: 6 }),
+  // Content features extracted by AI
+  hashtags: json("hashtags"), // Array of hashtags
+  hasHook: boolean("hasHook"), // Does it have a strong hook in first 3 seconds
+  hookType: varchar("hookType", { length: 100 }), // question, statement, action, etc.
+  contentType: varchar("contentType", { length: 100 }), // tutorial, transformation, story, etc.
+  hasCTA: boolean("hasCTA"), // Has call to action
+  hasTextOverlay: boolean("hasTextOverlay"),
+  hasTrendingSound: boolean("hasTrendingSound"),
+  // Sector assignment
+  sectorSlug: varchar("sectorSlug", { length: 100 }).notNull(),
+  // LABEL - The key field for training
+  isViral: boolean("isViral").notNull(), // true = viral, false = not viral
+  // Admin notes on why it's viral or not
+  labelNotes: text("labelNotes"),
+  labeledBy: int("labeledBy").references(() => users.id).notNull(),
+  labeledAt: timestamp("labeledAt").defaultNow().notNull(),
+  // Search context
+  searchQuery: varchar("searchQuery", { length: 255 }),
+  publishTime: timestamp("publishTime"), // When the TikTok was published
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LabeledReel = typeof labeledReels.$inferSelect;
+export type InsertLabeledReel = typeof labeledReels.$inferInsert;
+
+/**
+ * Virality patterns learned from labeled data
+ * Stores the patterns/rules learned for each sector
+ */
+export const viralityPatterns = mysqlTable("virality_patterns", {
+  id: int("id").autoincrement().primaryKey(),
+  sectorSlug: varchar("sectorSlug", { length: 100 }).notNull(),
+  // Pattern metrics (averages from viral reels in this sector)
+  avgLikeToViewRatio: decimal("avgLikeToViewRatio", { precision: 10, scale: 6 }),
+  avgEngagementRate: decimal("avgEngagementRate", { precision: 10, scale: 6 }),
+  minLikesThreshold: int("minLikesThreshold"), // Minimum likes to consider viral
+  optimalDurationMin: int("optimalDurationMin"), // Optimal duration range
+  optimalDurationMax: int("optimalDurationMax"),
+  // Content patterns
+  commonHookTypes: json("commonHookTypes"), // Array of most common hook types
+  commonContentTypes: json("commonContentTypes"), // Array of most common content types
+  topHashtags: json("topHashtags"), // Most used hashtags in viral reels
+  // Weights for scoring (learned from data)
+  likeWeight: decimal("likeWeight", { precision: 5, scale: 3 }).default("0.3"),
+  commentWeight: decimal("commentWeight", { precision: 5, scale: 3 }).default("0.2"),
+  shareWeight: decimal("shareWeight", { precision: 5, scale: 3 }).default("0.3"),
+  viewWeight: decimal("viewWeight", { precision: 5, scale: 3 }).default("0.2"),
+  // Training stats
+  totalLabeledReels: int("totalLabeledReels").default(0).notNull(),
+  viralReelsCount: int("viralReelsCount").default(0).notNull(),
+  notViralReelsCount: int("notViralReelsCount").default(0).notNull(),
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }), // Model accuracy %
+  lastTrainedAt: timestamp("lastTrainedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ViralityPattern = typeof viralityPatterns.$inferSelect;
+export type InsertViralityPattern = typeof viralityPatterns.$inferInsert;
+
+/**
+ * Candidate reels for review - Found by search, waiting for labeling
+ */
+export const candidateReels = mysqlTable("candidate_reels", {
+  id: int("id").autoincrement().primaryKey(),
+  // TikTok data
+  tiktokId: varchar("tiktokId", { length: 255 }).notNull().unique(),
+  tiktokUrl: varchar("tiktokUrl", { length: 500 }).notNull(),
+  authorUsername: varchar("authorUsername", { length: 100 }),
+  authorName: varchar("authorName", { length: 255 }),
+  // Video metadata
+  description: text("description"),
+  coverUrl: varchar("coverUrl", { length: 500 }),
+  videoUrl: varchar("videoUrl", { length: 500 }),
+  duration: int("duration"),
+  // Engagement metrics
+  likes: int("likes").default(0).notNull(),
+  comments: int("comments").default(0).notNull(),
+  shares: int("shares").default(0).notNull(),
+  views: int("views").default(0).notNull(),
+  // Hashtags
+  hashtags: json("hashtags"),
+  // Search context
+  searchQuery: varchar("searchQuery", { length: 255 }).notNull(),
+  sectorSlug: varchar("sectorSlug", { length: 100 }).notNull(),
+  publishTime: timestamp("publishTime"),
+  // AI predicted score (before human review)
+  predictedViralScore: int("predictedViralScore"), // 0-100
+  predictedViralReason: text("predictedViralReason"),
+  // Status
+  status: mysqlEnum("status", ["pending", "labeled", "skipped"]).default("pending").notNull(),
+  foundAt: timestamp("foundAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CandidateReel = typeof candidateReels.$inferSelect;
+export type InsertCandidateReel = typeof candidateReels.$inferInsert;

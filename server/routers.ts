@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { stripeRouter } from "./routers/stripeRouter";
 import { adminRouter } from "./routers/adminRouter";
+import { trainingRouter } from "./routers/trainingRouter";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storageGet } from "./storage";
@@ -21,6 +22,7 @@ export const appRouter = router({
   system: systemRouter,
   stripe: stripeRouter,
   admin: adminRouter,
+  training: trainingRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
