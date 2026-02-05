@@ -12,6 +12,8 @@ import Support from "./pages/Support";
 import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
 import Stories from "./pages/Stories";
+import Pricing from "./pages/Pricing";
+import AdminReels from "./pages/AdminReels";
 
 function Router() {
   return (
@@ -24,6 +26,8 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/calendar" component={Calendar} />
       <Route path="/stories" component={Stories} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/admin/reels" component={AdminReels} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

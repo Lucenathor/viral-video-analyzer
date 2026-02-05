@@ -330,3 +330,53 @@
 - [x] Mejorar el diseño del formulario con mejor UX
 - [x] Añadir ejemplos de stories exitosas de referencia
 - [x] Hacer el resultado más visual y atractivo
+
+
+## Sistema de Pagos con Stripe
+- [ ] Configurar Stripe con webdev_add_feature
+- [ ] Crear planes de suscripción (Básico, Pro, Enterprise)
+- [ ] Implementar checkout de Stripe
+- [ ] Crear página de precios
+- [ ] Implementar webhooks de Stripe para gestionar suscripciones
+- [ ] Añadir restricciones por plan (límite de análisis, acceso a funciones)
+- [ ] Mostrar estado de suscripción en el dashboard
+
+## Panel Admin - Gestión de Reels Virales
+- [ ] Crear tabla en DB para reels pendientes de aprobación
+- [ ] Crear tabla en DB para reels aprobados
+- [ ] Crear endpoint para buscar reels virales automáticamente
+- [ ] Crear panel admin (solo para owner/admins)
+- [ ] Mostrar reels encontrados con análisis de por qué son virales
+- [ ] Permitir aprobar/rechazar reels con asignación de sector
+- [ ] Integrar reels aprobados en la biblioteca pública
+
+## Sistema de Búsqueda Automática de Reels
+- [ ] Implementar búsqueda de reels virales por hashtags populares
+- [ ] Analizar cada reel con IA para determinar sector y viralidad
+- [ ] Guardar reels encontrados en cola de aprobación
+- [ ] Mostrar métricas de cada reel (likes, views, engagement)
+
+
+## Sistema de Pagos con Stripe
+- [x] Integrar Stripe SDK
+- [x] Crear planes de suscripción (Free, Basic, Pro, Enterprise)
+- [x] Implementar checkout de Stripe
+- [x] Crear webhook para procesar pagos
+- [x] Crear página de precios (/pricing)
+- [x] Añadir control de límites por plan
+- [x] Tests para productos de Stripe
+
+## Panel Admin de Reels Virales
+- [x] Crear página de administración (/admin/reels)
+- [x] Sistema de aprobación/rechazo de reels
+- [x] Análisis con IA de por qué es viral cada reel
+- [x] Asignación de sector a cada reel
+- [x] Búsqueda automática de reels virales
+- [x] Añadir reels manualmente por URL
+
+## Sistema de Búsqueda Automática de Reels
+- [x] Servicio de búsqueda por sector (viralReelFinder.ts)
+- [x] Cálculo de score de viralidad
+- [x] Análisis con IA del potencial viral
+- [x] Añadir candidatos a cola de revisión
+- [x] Búsqueda masiva en todos los sectores

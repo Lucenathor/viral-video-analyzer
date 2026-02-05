@@ -192,3 +192,116 @@ export const scheduledStories = mysqlTable("scheduled_stories", {
 
 export type ScheduledStory = typeof scheduledStories.$inferSelect;
 export type InsertScheduledStory = typeof scheduledStories.$inferInsert;
+
+
+/**
+ * User subscriptions - Stripe integration
+ * Only stores essential Stripe IDs, not duplicate data
+ */
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull().unique(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  // Cache subscription status for quick access (synced via webhooks)
+  status: mysqlEnum("status", ["active", "canceled", "past_due", "trialing", "incomplete"]).default("incomplete").notNull(),
+  plan: mysqlEnum("plan", ["free", "basic", "pro", "enterprise"]).default("free").notNull(),
+  // Usage limits based on plan
+  analysisCount: int("analysisCount").default(0).notNull(),
+  storiesCount: int("storiesCount").default(0).notNull(),
+  // Timestamps
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * Pending viral reels - Queue for admin approval
+ * Reels found by AI that need manual review before going public
+ */
+export const pendingReels = mysqlTable("pending_reels", {
+  id: int("id").autoincrement().primaryKey(),
+  // TikTok data
+  tiktokId: varchar("tiktokId", { length: 100 }).notNull().unique(),
+  tiktokUrl: varchar("tiktokUrl", { length: 500 }).notNull(),
+  authorUsername: varchar("authorUsername", { length: 100 }),
+  authorName: varchar("authorName", { length: 255 }),
+  // Video metadata
+  title: text("title"),
+  description: text("description"),
+  coverUrl: varchar("coverUrl", { length: 500 }),
+  videoUrl: varchar("videoUrl", { length: 500 }),
+  duration: int("duration"), // seconds
+  // Engagement metrics
+  likes: int("likes").default(0).notNull(),
+  comments: int("comments").default(0).notNull(),
+  shares: int("shares").default(0).notNull(),
+  views: int("views").default(0).notNull(),
+  // AI analysis
+  suggestedSector: varchar("suggestedSector", { length: 100 }),
+  viralityExplanation: text("viralityExplanation"), // Why AI thinks it's viral
+  viralityScore: int("viralityScore"), // 0-100
+  contentAnalysis: json("contentAnalysis"), // Detailed AI analysis
+  // Hashtags found
+  hashtags: json("hashtags"), // Array of hashtags
+  // Search metadata
+  searchQuery: varchar("searchQuery", { length: 255 }), // What query found this
+  foundAt: timestamp("foundAt").defaultNow().notNull(),
+  // Review status
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  reviewedBy: int("reviewedBy").references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewNotes: text("reviewNotes"),
+  // If approved, which sector it was assigned to
+  assignedSector: varchar("assignedSector", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PendingReel = typeof pendingReels.$inferSelect;
+export type InsertPendingReel = typeof pendingReels.$inferInsert;
+
+/**
+ * Approved viral reels - Public library
+ * Reels that have been approved by admin and are visible in the library
+ */
+export const approvedReels = mysqlTable("approved_reels", {
+  id: int("id").autoincrement().primaryKey(),
+  pendingReelId: int("pendingReelId").references(() => pendingReels.id),
+  // TikTok data (copied for quick access)
+  tiktokId: varchar("tiktokId", { length: 100 }).notNull().unique(),
+  tiktokUrl: varchar("tiktokUrl", { length: 500 }).notNull(),
+  authorUsername: varchar("authorUsername", { length: 100 }),
+  authorName: varchar("authorName", { length: 255 }),
+  // Video metadata
+  title: text("title"),
+  description: text("description"),
+  coverUrl: varchar("coverUrl", { length: 500 }),
+  videoUrl: varchar("videoUrl", { length: 500 }),
+  duration: int("duration"),
+  // Engagement metrics (snapshot at approval time)
+  likes: int("likes").default(0).notNull(),
+  comments: int("comments").default(0).notNull(),
+  shares: int("shares").default(0).notNull(),
+  views: int("views").default(0).notNull(),
+  // Sector assignment
+  sectorSlug: varchar("sectorSlug", { length: 100 }).notNull(),
+  // Admin notes about why this is a good example
+  viralityExplanation: text("viralityExplanation"),
+  teachingPoints: json("teachingPoints"), // What users can learn from this
+  // Display order
+  displayOrder: int("displayOrder").default(0).notNull(),
+  isFeatured: boolean("isFeatured").default(false).notNull(),
+  // Timestamps
+  approvedBy: int("approvedBy").references(() => users.id),
+  approvedAt: timestamp("approvedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ApprovedReel = typeof approvedReels.$inferSelect;
+export type InsertApprovedReel = typeof approvedReels.$inferInsert;

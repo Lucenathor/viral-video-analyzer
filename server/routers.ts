@@ -2,6 +2,8 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { stripeRouter } from "./routers/stripeRouter";
+import { adminRouter } from "./routers/adminRouter";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storageGet } from "./storage";
@@ -17,6 +19,8 @@ import * as os from 'os';
 
 export const appRouter = router({
   system: systemRouter,
+  stripe: stripeRouter,
+  admin: adminRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

@@ -31,7 +31,7 @@ export const sectors: Sector[] = [
     id: 'fitness',
     name: 'Fitness',
     description: 'Entrenamientos, rutinas de ejercicio y motivación deportiva',
-    imageUrl: '/sectors/fitness.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/dGVmirupGWISfpCd.jpg',
     totalVideos: 5,
     avgLikes: 194248,
     videos: [
@@ -101,7 +101,7 @@ export const sectors: Sector[] = [
     id: 'cocina',
     name: 'Cocina',
     description: 'Recetas virales, trucos de cocina y comida deliciosa',
-    imageUrl: '/sectors/cocina.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/KggHICOTvjGdPUqQ.jpg',
     totalVideos: 5,
     avgLikes: 2660600,
     videos: [
@@ -171,7 +171,7 @@ export const sectors: Sector[] = [
     id: 'tecnologia',
     name: 'Tecnología',
     description: 'Gadgets, trucos tecnológicos y reviews de dispositivos',
-    imageUrl: '/sectors/tecnologia.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/UvTUqFLOhhuTFEkq.jpg',
     totalVideos: 5,
     avgLikes: 290200,
     videos: [
@@ -241,7 +241,7 @@ export const sectors: Sector[] = [
     id: 'moda',
     name: 'Moda',
     description: 'Outfits, tendencias y consejos de estilo',
-    imageUrl: '/sectors/moda.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/LFwbYQsjrevADODQ.jpg',
     totalVideos: 5,
     avgLikes: 26400,
     videos: [
@@ -311,7 +311,7 @@ export const sectors: Sector[] = [
     id: 'comedia',
     name: 'Comedia',
     description: 'Humor, sketches y contenido divertido viral',
-    imageUrl: '/sectors/comedia.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/gNMsbcJoBrlcrFGG.jpg',
     totalVideos: 5,
     avgLikes: 45000,
     videos: [
@@ -381,7 +381,7 @@ export const sectors: Sector[] = [
     id: 'educacion',
     name: 'Educación',
     description: 'Datos curiosos, aprendizaje y contenido educativo',
-    imageUrl: '/sectors/educacion.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/lkeYAKggFQhMqwJB.jpg',
     totalVideos: 5,
     avgLikes: 85000,
     videos: [
@@ -451,7 +451,7 @@ export const sectors: Sector[] = [
     id: 'negocios',
     name: 'Negocios',
     description: 'Emprendimiento, ideas de negocio y finanzas personales',
-    imageUrl: '/sectors/negocios.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/BIuSnHxvlCuybOBr.jpg',
     totalVideos: 5,
     avgLikes: 396640,
     videos: [
@@ -521,7 +521,7 @@ export const sectors: Sector[] = [
     id: 'belleza',
     name: 'Belleza',
     description: 'Maquillaje, skincare y tutoriales de belleza',
-    imageUrl: '/sectors/belleza.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/mLewPatsZJDRykGY.jpg',
     totalVideos: 5,
     avgLikes: 32000,
     videos: [
@@ -591,7 +591,7 @@ export const sectors: Sector[] = [
     id: 'viajes',
     name: 'Viajes',
     description: 'Destinos increíbles, tips de viaje y aventuras',
-    imageUrl: '/sectors/viajes.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/qhuskAGVJgZxKRwN.jpg',
     totalVideos: 5,
     avgLikes: 181000,
     videos: [
@@ -661,7 +661,7 @@ export const sectors: Sector[] = [
     id: 'musica',
     name: 'Música',
     description: 'Covers, bailes virales y contenido musical',
-    imageUrl: '/sectors/musica.jpg',
+    imageUrl: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663288181369/hlbSEaBTNTcsEkyQ.jpg',
     totalVideos: 5,
     avgLikes: 75000,
     videos: [

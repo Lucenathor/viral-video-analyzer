@@ -395,3 +395,210 @@ export async function markScheduledStoryCompleted(id: number, userId: number, co
     })
     .where(and(eq(scheduledStories.id, id), eq(scheduledStories.userId, userId)));
 }
+
+
+// ==================== SUBSCRIPTION FUNCTIONS ====================
+import { subscriptions, InsertSubscription, Subscription, pendingReels, InsertPendingReel, PendingReel, approvedReels, InsertApprovedReel, ApprovedReel } from "../drizzle/schema";
+
+export async function getUserSubscription(userId: number): Promise<Subscription | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function createOrUpdateSubscription(userId: number, data: Partial<InsertSubscription>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getUserSubscription(userId);
+  
+  if (existing) {
+    await db.update(subscriptions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(subscriptions.userId, userId));
+    return existing.id;
+  } else {
+    const result = await db.insert(subscriptions).values({
+      userId,
+      ...data,
+    });
+    return result[0].insertId;
+  }
+}
+
+export async function updateSubscriptionByStripeId(stripeSubscriptionId: string, data: Partial<Subscription>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(subscriptions)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId));
+}
+
+export async function getSubscriptionByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(subscriptions).where(eq(subscriptions.stripeCustomerId, stripeCustomerId)).limit(1);
+  return result[0];
+}
+
+export async function incrementSubscriptionUsage(userId: number, type: 'analysis' | 'stories') {
+  const db = await getDb();
+  if (!db) return;
+  
+  const field = type === 'analysis' ? subscriptions.analysisCount : subscriptions.storiesCount;
+  await db.update(subscriptions)
+    .set({ [type === 'analysis' ? 'analysisCount' : 'storiesCount']: sql`${field} + 1` })
+    .where(eq(subscriptions.userId, userId));
+}
+
+export async function resetMonthlyUsage() {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(subscriptions).set({ analysisCount: 0, storiesCount: 0 });
+}
+
+// ==================== PENDING REELS FUNCTIONS ====================
+export async function createPendingReel(data: Omit<InsertPendingReel, 'id' | 'createdAt' | 'updatedAt' | 'foundAt'>): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Check if reel already exists
+  const existing = await db.select().from(pendingReels).where(eq(pendingReels.tiktokId, data.tiktokId)).limit(1);
+  if (existing.length > 0) {
+    return existing[0].id;
+  }
+  
+  const result = await db.insert(pendingReels).values(data);
+  return result[0].insertId;
+}
+
+export async function getPendingReels(status: 'pending' | 'approved' | 'rejected' = 'pending', limit = 50): Promise<PendingReel[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pendingReels)
+    .where(eq(pendingReels.status, status))
+    .orderBy(desc(pendingReels.foundAt))
+    .limit(limit);
+}
+
+export async function getPendingReelById(id: number): Promise<PendingReel | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(pendingReels).where(eq(pendingReels.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updatePendingReel(id: number, data: Partial<PendingReel>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pendingReels).set({ ...data, updatedAt: new Date() }).where(eq(pendingReels.id, id));
+}
+
+export async function approvePendingReel(id: number, reviewerId: number, assignedSector: string, notes?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Update pending reel status
+  await db.update(pendingReels).set({
+    status: 'approved',
+    reviewedBy: reviewerId,
+    reviewedAt: new Date(),
+    assignedSector,
+    reviewNotes: notes,
+    updatedAt: new Date(),
+  }).where(eq(pendingReels.id, id));
+  
+  // Get the pending reel data
+  const pendingReel = await getPendingReelById(id);
+  if (!pendingReel) throw new Error("Pending reel not found");
+  
+  // Create approved reel
+  const result = await db.insert(approvedReels).values({
+    pendingReelId: id,
+    tiktokId: pendingReel.tiktokId,
+    tiktokUrl: pendingReel.tiktokUrl,
+    authorUsername: pendingReel.authorUsername,
+    authorName: pendingReel.authorName,
+    title: pendingReel.title,
+    description: pendingReel.description,
+    coverUrl: pendingReel.coverUrl,
+    videoUrl: pendingReel.videoUrl,
+    duration: pendingReel.duration,
+    likes: pendingReel.likes,
+    comments: pendingReel.comments,
+    shares: pendingReel.shares,
+    views: pendingReel.views,
+    sectorSlug: assignedSector,
+    viralityExplanation: pendingReel.viralityExplanation,
+    approvedBy: reviewerId,
+  });
+  
+  return result[0].insertId;
+}
+
+export async function rejectPendingReel(id: number, reviewerId: number, notes?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pendingReels).set({
+    status: 'rejected',
+    reviewedBy: reviewerId,
+    reviewedAt: new Date(),
+    reviewNotes: notes,
+    updatedAt: new Date(),
+  }).where(eq(pendingReels.id, id));
+}
+
+// ==================== APPROVED REELS FUNCTIONS ====================
+export async function getApprovedReels(sectorSlug?: string, limit = 50): Promise<ApprovedReel[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (sectorSlug) {
+    return db.select().from(approvedReels)
+      .where(eq(approvedReels.sectorSlug, sectorSlug))
+      .orderBy(desc(approvedReels.likes))
+      .limit(limit);
+  }
+  
+  return db.select().from(approvedReels)
+    .orderBy(desc(approvedReels.likes))
+    .limit(limit);
+}
+
+export async function getApprovedReelById(id: number): Promise<ApprovedReel | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(approvedReels).where(eq(approvedReels.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getFeaturedReels(limit = 10): Promise<ApprovedReel[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(approvedReels)
+    .where(eq(approvedReels.isFeatured, true))
+    .orderBy(approvedReels.displayOrder)
+    .limit(limit);
+}
+
+export async function updateApprovedReel(id: number, data: Partial<ApprovedReel>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(approvedReels).set({ ...data, updatedAt: new Date() }).where(eq(approvedReels.id, id));
+}
+
+export async function getReelStats() {
+  const db = await getDb();
+  if (!db) return { pending: 0, approved: 0, rejected: 0 };
+  
+  const pendingCount = await db.select({ count: sql<number>`count(*)` }).from(pendingReels).where(eq(pendingReels.status, 'pending'));
+  const approvedCount = await db.select({ count: sql<number>`count(*)` }).from(approvedReels);
+  const rejectedCount = await db.select({ count: sql<number>`count(*)` }).from(pendingReels).where(eq(pendingReels.status, 'rejected'));
+  
+  return {
+    pending: pendingCount[0]?.count ?? 0,
+    approved: approvedCount[0]?.count ?? 0,
+    rejected: rejectedCount[0]?.count ?? 0,
+  };
+}
