@@ -15,7 +15,8 @@ import {
   Flame,
   CreditCard,
   Shield,
-  Brain
+  Brain,
+  Compass
 } from "lucide-react";
 import { useState } from "react";
 
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/stories", label: "Lanzamientos", icon: Flame },
   { href: "/analyzer", label: "Analizador", icon: Video },
   { href: "/support", label: "Soporte 24h", icon: Headphones },
+  { href: "/inspiration", label: "Inspiración", icon: Compass },
   { href: "/pricing", label: "Precios", icon: CreditCard },
 ];
 

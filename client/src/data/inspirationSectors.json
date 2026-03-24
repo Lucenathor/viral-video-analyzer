@@ -1,0 +1,931 @@
+{
+  "sectors": [
+    {
+      "name": "Tapicería de calzados , zapatos",
+      "url": "https://www.tiktok.com/@cleanperfect?_r=1&_t=ZS-93Fvu5BHufn",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Producción audiovisual",
+      "url": "https://www.tiktok.com/@hec.mora?_r=1&_t=ZS-93FxMhPnsyD",
+      "platform": "tiktok",
+      "category": "Fotografía y Audiovisual"
+    },
+    {
+      "name": "Interiorismo y decoración",
+      "url": "https://www.tiktok.com/@gisellarossiinteriorista?_r=1&_t=ZS-93FxdaDtxcS",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Network Marketing y Multinivel",
+      "url": "https://www.instagram.com/reel/DTf7BOZkaLt/?igsh=MTN3anZrOWUzNWRkcg==",
+      "platform": "instagram",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Venta de Ropa, Textil , Tienda de ropa",
+      "url": "https://www.tiktok.com/@thluxe.glam?_r=1&_t=ZS-93FyVknAq6G",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Entrenador de deporte ballet o danza",
+      "url": "https://www.tiktok.com/@lizzyshirokova?_r=1&_t=ZS-93Fyos7Ufg5",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Gastronomía",
+      "url": "https://www.tiktok.com/@lizzyshirokova?_r=1&_t=ZS-93Fyos7Ufg5",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Bienestar y Terapias Holísticas",
+      "url": "https://www.tiktok.com/@antoniaavelarghaaa?_r=1&_t=ZS-93FzPuHt5j3",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Masaje",
+      "url": "https://www.tiktok.com/@utilitymassage?_r=1&_t=ZS-93FzLULrCse",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Marketing Digital , Captación clientes, Media buyer",
+      "url": "https://www.instagram.com/lucenathor?igsh=c2hkbWJoM2VwaW04&utm_source=qr",
+      "platform": "instagram",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Actividades de aventura , Paintball",
+      "url": "https://www.tiktok.com/@starkh.paintball?_r=1&_t=ZS-93G0zLyCyLE",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Tráfico de pago",
+      "url": "https://www.instagram.com/lucenathor?igsh=c2hkbWJoM2VwaW04&utm_source=qr",
+      "platform": "instagram",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Trufas Frescas , productos Trufados",
+      "url": "https://www.tiktok.com/@the.truffle.farmer?_r=1&_t=ZS-93G2aVly4aS",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Nutrición",
+      "url": "https://www.tiktok.com/@camilaceballosss?_r=1&_t=ZS-93G2iwuhtgb",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Ropa de Yoga",
+      "url": "https://www.tiktok.com/@tsukiyoga?_r=1&_t=ZS-93G4cTxGdMK",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Biodescodificación",
+      "url": "https://www.tiktok.com/@biosaem?_r=1&_t=ZS-93G4kNMF06P",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Inversiones Inmobiliarias , Real state",
+      "url": "https://www.tiktok.com/@christian.villar09?_r=1&_t=ZS-93G5fd6vars",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Bebidas",
+      "url": "https://www.instagram.com/reel/C8SKUudN42K/?igsh=MXJwdm9wYTB5anNkMw==",
+      "platform": "instagram",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Entrenamiento Personal personal training",
+      "url": "https://www.tiktok.com/@raulteentrena?_r=1&_t=ZS-93G5rwvUsTN",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Desarrollo personal",
+      "url": "https://www.tiktok.com/@anxooficial?_r=1&_t=ZS-93G62TpU5K9",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Reformas",
+      "url": "https://www.tiktok.com/@unicogary?_r=1&_t=ZN-93G6aYTMjdG",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Chuches Golsinas",
+      "url": "https://www.tiktok.com/@frezzyks?_r=1&_t=ZN-93G7G7cddRe",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Alquiler Audiovisual",
+      "url": "https://www.tiktok.com/@abigailfmarquez/video/7474567989187120402?_r=1&_t=ZS-93GAtpJQ9PZ",
+      "platform": "tiktok",
+      "category": "Fotografía y Audiovisual"
+    },
+    {
+      "name": "Inmobiliaria",
+      "url": "https://www.tiktok.com/@hausmen_re?_r=1&_t=ZS-93GBR0t6sa4",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Curso Primeros Auxilios",
+      "url": "https://www.tiktok.com/@miguelassal?_r=1&_t=ZS-93GBcnLDKGT",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Perfumes",
+      "url": "https://www.tiktok.com/@perfumesreal?_r=1&_t=ZS-93GCTXX2Spg",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Micropigmentación Facial",
+      "url": "https://www.tiktok.com/@sthepygarcia?_r=1&_t=ZS-93GCjLeo0Ie",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Programa deportivos, Tenis Academia",
+      "url": "https://www.tiktok.com/@costatennisacademy?_r=1&_t=ZS-93GCuY8ONLZ",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Casas Rurales",
+      "url": "https://www.tiktok.com/@loscocos.cieneguilla?_r=1&_t=ZS-93GD0ld70DN",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Vinilos Rotulación",
+      "url": "https://www.tiktok.com/@misterrotulosquito/video/7509653199452720390?_r=1&_t=ZS-93GGlnbBbeu",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Spa medico, inflarrojos , rejuvenecimiento",
+      "url": "https://www.tiktok.com/@bohomedspa?_r=1&_t=ZS-93GHVIhqQ6e",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Spa Capilar",
+      "url": "https://www.tiktok.com/@aquaaurasalon?_r=1&_t=ZS-93GM0Ct9ty9",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Sector energía, energías renovables",
+      "url": "https://www.tiktok.com/@victorialedec?_r=1&_t=ZS-93GM7fG25h6",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Asesor Inmobilario",
+      "url": "https://www.tiktok.com/@christian.villar09/video/7508414197219233070?_r=1&_t=ZS-93GMHRYg2Dt",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Medicina Natural",
+      "url": "https://www.tiktok.com/@naturalfarma.bo?_r=1&_t=ZS-93GMeH1819p",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Bodas",
+      "url": "https://www.tiktok.com/@trialcatering?_r=1&_t=ZS-93GLTmOcf5h",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Ventas Digitales, Clores, Deal Marker",
+      "url": "https://www.tiktok.com/@teocloserdeventas_?_r=1&_t=ZS-93GTuN9T76y",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Fisioterapeuta , Dolores Muscular, Masaje Deportivo",
+      "url": "https://www.tiktok.com/@joan_fisioterapia2.0?_r=1&_t=ZS-93GU1NgUmkX",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Cría de gatos de raza , animales de raza , cria de animales",
+      "url": "https://www.tiktok.com/@gatosbosquedenoruega?_r=1&_t=ZS-93HOdrj0Whx",
+      "platform": "tiktok",
+      "category": "Animales"
+    },
+    {
+      "name": "Nutrición Fitness",
+      "url": "https://www.tiktok.com/@cristinacastro.es?_r=1&_t=ZS-93HOwLWIMlA",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Masaje Capilar Craneal",
+      "url": "https://www.tiktok.com/@clinica3e/video/7542669527293676805?_r=1&_t=ZS-93HP740x6Cj",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Escuela de baile, academia de baile",
+      "url": "https://www.tiktok.com/@nataliamedina24?_r=1&_t=ZS-93HPDzhfAE1",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Importaciones de productos, china",
+      "url": "https://www.tiktok.com/@jing.importa?_r=1&_t=ZS-93HPK3xYIw0",
+      "platform": "tiktok",
+      "category": "Arte y Artesanía"
+    },
+    {
+      "name": "Fitness",
+      "url": "https://www.tiktok.com/@albertotuya?_r=1&_t=ZS-93HPT4YzLHh",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Airbnb, alojamiento turístico villas",
+      "url": "https://www.tiktok.com/@sonmeryleo/video/7590499088488025364?_r=1&_t=ZS-93HQQh0Kgzd",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Peluquería canina",
+      "url": "https://www.tiktok.com/@hocicoszaragoza/video/7365095559297879328?_r=1&_t=ZN-93HRL8yxrlu",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Academia Oposiciones",
+      "url": "https://www.tiktok.com/@superaoposiciones?_r=1&_t=ZN-93HRslHGytG",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Organizador de eventos",
+      "url": "https://www.tiktok.com/@trialcatering/video/7359197513859009797?_r=1&_t=ZN-93HSGCWIKaU",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Joyería, Bisuteria",
+      "url": "https://www.tiktok.com/@arenaroja?_r=1&_t=ZN-93HT0v8YNGA",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Ilustraciones, dibujo, arte, pintura",
+      "url": "https://www.tiktok.com/@sugusdemaduixa/video/7561758108855323926?_r=1&_t=ZN-93HTJTX6bCQ",
+      "platform": "tiktok",
+      "category": "Fotografía y Audiovisual"
+    },
+    {
+      "name": "Camisetas, ropa chico textil",
+      "url": "https://www.instagram.com/wantsandneedsbrand_?igsh=MXU4dDVsNzZ5ZDA1aA==",
+      "platform": "instagram",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Micropigmentación Capilar",
+      "url": "https://www.tiktok.com/@scalpmicrousa/video/7252374048536038698?_r=1&_t=ZS-93HWWeaaSph",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Estampación textil",
+      "url": "https://www.tiktok.com/@startupdeacasaro?_r=1&_t=ZN-93HXCgef5Ik",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Agente de seguros",
+      "url": "https://www.tiktok.com/@ahorraconeddiel/video/7475229228863212855?_r=1&_t=ZS-93HYF3sRuQ0",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Centro de Estética",
+      "url": "https://www.tiktok.com/@dra.jessicacastaneda?_r=1&_t=ZS-93HYSdIb7n2",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Servicios de limpieza",
+      "url": "https://www.tiktok.com/@sparkclean.cs?_r=1&_t=ZS-93HZSwjTGdw",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "IA inteligencia artificial",
+      "url": "https://vt.tiktok.com/ZSahYQSMa/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Suelos , suelo radiante",
+      "url": "https://www.tiktok.com/@luisa.bolivar_/video/7371063596945607968?_r=1&_t=ZN-93HatSpWjjD",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "SAAS TPV",
+      "url": "https://www.tiktok.com/@turbopos/video/7535044258181614850?_r=1&_t=ZN-93HclaKRJwM",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Alquiler barcos o yates",
+      "url": "https://www.tiktok.com/@yacht.dxb/video/7382233670909693192?_r=1&_t=ZN-93Hcad6dMMY",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Tatuajes",
+      "url": "https://www.tiktok.com/@danielsilva.tattoos?_r=1&_t=ZS-93Hg8VSudgj",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Escuela de Surf",
+      "url": "https://www.tiktok.com/@_mikelgarcia/video/7451681428942671137?_r=1&_t=ZN-93HhU8GWsLL",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Velas Artesanales",
+      "url": "https://www.tiktok.com/@mladymercury/video/7371069934505413920?_r=1&_t=ZN-93Hj2JJuUli",
+      "platform": "tiktok",
+      "category": "Arte y Artesanía"
+    },
+    {
+      "name": "Escuela de Canto",
+      "url": "https://www.tiktok.com/@vickyvocal?_r=1&_t=ZS-93HlJhCJZQq",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Peluquería",
+      "url": "https://www.tiktok.com/@martinc_peluqueria?_r=1&_t=ZS-93HlWaQDljx",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Vuelos en Globo aeroestatico",
+      "url": "https://www.tiktok.com/@balloonsparadisemex?_r=1&_t=ZS-93HnVMQ2EBY",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Cría de Caballos de pura raza",
+      "url": "https://vm.tiktok.com/ZNRBWNgDE/",
+      "platform": "tiktok",
+      "category": "Animales"
+    },
+    {
+      "name": "dj",
+      "url": "https://www.tiktok.com/@wearecrossfader?_r=1&_t=ZS-93HosDtuWX7",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Reventa artículos de moda",
+      "url": "https://vt.tiktok.com/ZSahqxaqk/",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Retiro Espiritual",
+      "url": "https://vm.tiktok.com/ZNRBWVqNb/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Batidos",
+      "url": "https://vm.tiktok.com/ZNRBWPq77/",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Cuadros metálicos",
+      "url": "https://vm.tiktok.com/ZNRB7dCqS/",
+      "platform": "tiktok",
+      "category": "Arte y Artesanía"
+    },
+    {
+      "name": "abogado",
+      "url": "https://www.tiktok.com/@abogadorafaelserrano?_r=1&_t=ZS-93Hs7Mf3pFk",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "resinas epoxi",
+      "url": "https://www.tiktok.com/@backyardresin?_r=1&_t=ZS-93HvJoCBDAC",
+      "platform": "tiktok",
+      "category": "Arte y Artesanía"
+    },
+    {
+      "name": "bolsos venta , bolsos artesanales",
+      "url": "https://vt.tiktok.com/ZSahvbvxw/",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "MentORIA peluquerías",
+      "url": "https://www.tiktok.com/@gustavomigli?_r=1&_t=ZS-93Hw2EViu7o",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Comida para llevar",
+      "url": "https://vm.tiktok.com/ZNRBWTuVj/",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Fotovoltaicas, placas solares",
+      "url": "https://www.tiktok.com/@kaloos101/video/7200375462344920326?_r=1&_t=ZN-93HwGhc8DP1",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Numerologia tántrica",
+      "url": "https://vm.tiktok.com/ZNRB7unta/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "relojes inteligentes",
+      "url": "https://vm.tiktok.com/ZNRB7UwuH/",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Cosmética coreana",
+      "url": "https://vm.tiktok.com/ZNRB7MDh4/",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "Fotografía recien nacido",
+      "url": "https://www.tiktok.com/@babirammephoto?_r=1&_t=ZS-93J6kJfTeFB",
+      "platform": "tiktok",
+      "category": "Fotografía y Audiovisual"
+    },
+    {
+      "name": "climatización",
+      "url": "https://vt.tiktok.com/ZSaBERQf4/",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "jardinería",
+      "url": "https://www.tiktok.com/@jardineroaonline?_r=1&_t=ZS-93J6WRQ7OB3",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "agencia de viajes",
+      "url": "https://www.tiktok.com/@luxviajes.ec?_r=1&_t=ZS-93JAhulujlF",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Centro capilar",
+      "url": "https://www.tiktok.com/@franciscoprotesecapilar?_r=1&_t=ZS-93JBAi7A5QL",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "colchón camper, tienda de campaña",
+      "url": "https://vm.tiktok.com/ZNRBEWFdb/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "dental clínica odontologia",
+      "url": "https://vt.tiktok.com/ZSaDdV1av/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "finanzas",
+      "url": "https://www.tiktok.com/@_celiarubio?_r=1&_t=ZS-93KmiwXiVoD",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Luces led para casa",
+      "url": "https://www.tiktok.com/@pyraterragreenenergy?_r=1&_t=ZS-93JDtpDNT6q",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Comprar coche susbastas",
+      "url": "https://www.tiktok.com/@subastabroker?_r=1&_t=ZS-93JE6NULZuW",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "reparación y sustitución de parabrisas y lunas",
+      "url": "https://vt.tiktok.com/ZSaSJGtQT/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Cantantes para eventos",
+      "url": "https://www.tiktok.com/@caballeroscantan?_r=1&_t=ZS-93JFgHVl5dt",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Venta de Teléfonos",
+      "url": "https://www.tiktok.com/@andresch.oficial?_r=1&_t=ZS-93JNP4qNeJJ",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Kinesotei reparación muscular",
+      "url": "https://vt.tiktok.com/ZSaShd8Pv/",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Instructor de moto autoescuela",
+      "url": "https://www.tiktok.com/@tikant.machines.fa?_r=1&_t=ZS-93JRpV11YwO",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Instalación de ventanas",
+      "url": "https://vt.tiktok.com/ZSaDNny5F/",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "barbería",
+      "url": "https://vt.tiktok.com/ZSaDFYXkV/",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "PELUQUERÍA CANINA",
+      "url": "https://vt.tiktok.com/ZSaDFnEwY/",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "FOTOGRAGIA",
+      "url": "https://vt.tiktok.com/ZSaD2hBQt/",
+      "platform": "tiktok",
+      "category": "Fotografía y Audiovisual"
+    },
+    {
+      "name": "Casas prefabricadas",
+      "url": "https://vt.tiktok.com/ZSaDjroCS/",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "Venta de empresas",
+      "url": "https://vt.tiktok.com/ZSaPauq54/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Paqueteria envíos",
+      "url": "https://vt.tiktok.com/ZSaPg6C1Q/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Mudanza",
+      "url": "https://vt.tiktok.com/ZSaPGuto2/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Cerrajeros",
+      "url": "https://vt.tiktok.com/ZSaP7NYDj/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Car sharing",
+      "url": "https://vt.tiktok.com/ZSaP397Jo/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Venta de Jamones",
+      "url": "https://vt.tiktok.com/ZSaPTBNWs/",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Vino",
+      "url": "https://vm.tiktok.com/ZNRSq13xs/",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "Trenzadora profesional",
+      "url": "https://vt.tiktok.com/ZSaPwKwqQ/",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "IA 2",
+      "url": "https://vt.tiktok.com/ZSaDhcVxA/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "Natación profesional",
+      "url": "https://www.tiktok.com/@opo.swim?_r=1&_t=ZS-93OfNKGUm29",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Lectura",
+      "url": "https://vt.tiktok.com/ZSaa56Dtj/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "osteópata",
+      "url": "https://vt.tiktok.com/ZSaaH7vRs/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "LASER",
+      "url": "https://vt.tiktok.com/ZSaaxq3Xx/",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "formación odontóloga",
+      "url": "https://vt.tiktok.com/ZSaa4uhFg/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Finanzas",
+      "url": "https://vt.tiktok.com/ZSaaVoKWJ/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "frutería",
+      "url": "https://www.tiktok.com/@fruterotiktokero?_r=1&_t=ZS-93QBiJt0SbU",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "faja colombiana",
+      "url": "https://vt.tiktok.com/ZSaaTQyqH/",
+      "platform": "tiktok",
+      "category": "Salud y Belleza"
+    },
+    {
+      "name": "cuidado personas mayores",
+      "url": "https://vt.tiktok.com/ZSau4qQej/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Lavandería autoservicio",
+      "url": "https://vt.tiktok.com/ZSaHrvjSp/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "mantenimiento de piscinas",
+      "url": "https://www.tiktok.com/@thep00lguy?_r=1&_t=ZS-93S5hgDtY1s",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "SUPLEMENTOS PROTEINAS",
+      "url": "https://vt.tiktok.com/ZSaHAaKb3/",
+      "platform": "tiktok",
+      "category": "Fitness y Deporte"
+    },
+    {
+      "name": "Tienda de alimentos de animal",
+      "url": "https://vt.tiktok.com/ZSaHDb5E3/",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "puertas de vidrio",
+      "url": "https://vt.tiktok.com/ZSaHU8Krf/",
+      "platform": "tiktok",
+      "category": "Inmobiliaria y Hogar"
+    },
+    {
+      "name": "PLAGAS",
+      "url": "https://vt.tiktok.com/ZSaHUxkQp/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "Sonido e iluminación eventos",
+      "url": "https://vt.tiktok.com/ZSa971DJB/",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "Visa dubai",
+      "url": "https://vt.tiktok.com/ZSaxN9xub/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "retiro",
+      "url": "https://vt.tiktok.com/ZSaxFVH4F/",
+      "platform": "tiktok",
+      "category": "Salud y Bienestar"
+    },
+    {
+      "name": "Joyería artesanal",
+      "url": "https://vt.tiktok.com/ZSaxY7bH8/",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "lavado de coches",
+      "url": "https://vt.tiktok.com/ZSax66sXW/",
+      "platform": "tiktok",
+      "category": "Servicios Profesionales"
+    },
+    {
+      "name": "restaurante de carnes",
+      "url": "https://vt.tiktok.com/ZSaxMM7Qv/",
+      "platform": "tiktok",
+      "category": "Gastronomía y Alimentación"
+    },
+    {
+      "name": "senderismo organizado",
+      "url": "https://vt.tiktok.com/ZSaxkHFEk/",
+      "platform": "tiktok",
+      "category": "Eventos y Entretenimiento"
+    },
+    {
+      "name": "inversiones",
+      "url": "https://vt.tiktok.com/ZSaCJHuYn/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "tEXTIL SOSTENIBLE",
+      "url": "https://vt.tiktok.com/ZSaCjewMR/",
+      "platform": "tiktok",
+      "category": "Moda y Accesorios"
+    },
+    {
+      "name": "Automatización de youtube",
+      "url": "https://vt.tiktok.com/ZSaCjwtok/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    },
+    {
+      "name": "amazon fba",
+      "url": "https://vt.tiktok.com/ZSaCAJCL9/",
+      "platform": "tiktok",
+      "category": "Marketing y Negocios"
+    }
+  ],
+  "categories": [
+    {
+      "name": "Salud y Belleza",
+      "icon": "💅",
+      "gradient": [
+        "#FF6B9D",
+        "#C44569"
+      ],
+      "count": 18
+    },
+    {
+      "name": "Fitness y Deporte",
+      "icon": "💪",
+      "gradient": [
+        "#4ECDC4",
+        "#2C9E8F"
+      ],
+      "count": 12
+    },
+    {
+      "name": "Salud y Bienestar",
+      "icon": "🧘",
+      "gradient": [
+        "#A8E6CF",
+        "#56AB91"
+      ],
+      "count": 14
+    },
+    {
+      "name": "Gastronomía y Alimentación",
+      "icon": "🍽️",
+      "gradient": [
+        "#FFD93D",
+        "#F0A500"
+      ],
+      "count": 11
+    },
+    {
+      "name": "Inmobiliaria y Hogar",
+      "icon": "🏠",
+      "gradient": [
+        "#6C5CE7",
+        "#4834D4"
+      ],
+      "count": 15
+    },
+    {
+      "name": "Marketing y Negocios",
+      "icon": "📈",
+      "gradient": [
+        "#00B4D8",
+        "#0077B6"
+      ],
+      "count": 12
+    },
+    {
+      "name": "Moda y Accesorios",
+      "icon": "👗",
+      "gradient": [
+        "#E056A0",
+        "#B8336A"
+      ],
+      "count": 11
+    },
+    {
+      "name": "Eventos y Entretenimiento",
+      "icon": "🎉",
+      "gradient": [
+        "#FF9A56",
+        "#FF6348"
+      ],
+      "count": 10
+    },
+    {
+      "name": "Fotografía y Audiovisual",
+      "icon": "📸",
+      "gradient": [
+        "#A29BFE",
+        "#6C5CE7"
+      ],
+      "count": 5
+    },
+    {
+      "name": "Servicios Profesionales",
+      "icon": "🔧",
+      "gradient": [
+        "#74B9FF",
+        "#0984E3"
+      ],
+      "count": 22
+    },
+    {
+      "name": "Animales",
+      "icon": "🐾",
+      "gradient": [
+        "#FDCB6E",
+        "#E17055"
+      ],
+      "count": 2
+    },
+    {
+      "name": "Arte y Artesanía",
+      "icon": "🎨",
+      "gradient": [
+        "#FD79A8",
+        "#E84393"
+      ],
+      "count": 4
+    }
+  ],
+  "total": 136
+}

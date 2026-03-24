@@ -10,7 +10,7 @@
 - [x] Corregir todos los bugs encontrados
 - [x] Actualizar fechas hardcodeadas a marzo 2026
 - [x] Verificar que los tests pasan (49 tests, 11 archivos - todos OK)
-- [ ] Guardar checkpoint final
+- [x] Guardar checkpoint final (d884f76b)
 
 ## Endpoint Calendario Real
 - [x] Crear endpoint calendar.getApprovedReels en routers.ts
@@ -31,4 +31,17 @@
 - [x] server/audit-fixes.test.ts - 9 tests (endpoints calendario, validación de fechas eliminadas)
 - [x] server/calendar.test.ts - 9 tests (lógica de suscripción y visibilidad)
 - [x] server/auth.logout.test.ts - 1 test (logout)
-- [x] Todos los 49 tests pasan (11 archivos)
+- [x] Todos los 62 tests pasan (12 archivos, incluyendo 13 tests de inspiration)
+
+## Inspiración Viral - Nueva Sección (136 sectores del spreadsheet)
+- [x] Parsear y categorizar los 136 sectores del CSV
+- [x] Crear tabla en DB para viral_inspiration_sectors
+- [x] Crear seed script para importar los datos (136 sectores importados)
+- [x] Crear endpoints tRPC (getAll, search, getByCategory, getBySlug, getStats)
+- [x] Crear página InspirationViral.tsx con UI espectacular
+- [x] Buscador inteligente con fuzzy matching (Ctrl+K shortcut)
+- [x] Categorías visuales con iconos y gradientes (12 categorías)
+- [x] Embeber reels de TikTok/Instagram en ficha de sector
+- [x] Añadir ruta /inspiration y nav item 'Inspiración' con icono Compass
+- [x] Probar end-to-end en navegador (búsqueda, filtros, modal, vistas grid/lista)
+- [ ] Guardar checkpoint

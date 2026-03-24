@@ -475,3 +475,24 @@ export const candidateReels = mysqlTable("candidate_reels", {
 
 export type CandidateReel = typeof candidateReels.$inferSelect;
 export type InsertCandidateReel = typeof candidateReels.$inferInsert;
+
+
+/**
+ * Inspiration sectors - 136+ real business sectors with viral reel references
+ * Imported from the "Perfiles Virales" spreadsheet
+ */
+export const inspirationSectors = mysqlTable("inspiration_sectors", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  slug: varchar("slug", { length: 200 }).notNull().unique(),
+  category: varchar("category", { length: 100 }).notNull(),
+  reelUrl: varchar("reelUrl", { length: 500 }).notNull(),
+  platform: mysqlEnum("platform", ["tiktok", "instagram", "other"]).default("tiktok").notNull(),
+  categoryIcon: varchar("categoryIcon", { length: 10 }).default("📌").notNull(),
+  gradientFrom: varchar("gradientFrom", { length: 20 }).default("#6C5CE7").notNull(),
+  gradientTo: varchar("gradientTo", { length: 20 }).default("#4834D4").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InspirationSector = typeof inspirationSectors.$inferSelect;
+export type InsertInspirationSector = typeof inspirationSectors.$inferInsert;

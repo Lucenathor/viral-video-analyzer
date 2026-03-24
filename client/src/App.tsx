@@ -15,6 +15,7 @@ import Stories from "./pages/Stories";
 import Pricing from "./pages/Pricing";
 import AdminReels from "./pages/AdminReels";
 import AdminTraining from "./pages/AdminTraining";
+import InspirationViral from "./pages/InspirationViral";
 
 function Router() {
   return (
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/stories" component={Stories} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/admin/reels" component={AdminReels} />
+      <Route path="/inspiration" component={InspirationViral} />
       <Route path="/admin/training" component={AdminTraining} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
