@@ -50,3 +50,12 @@
 - [x] Bug: Calendario - thumbnails reemplazadas con gradientes fallback bonitos (URLs TikTok CDN expiradas)
 - [x] Bug: Calendario modal - gradiente fallback con icono play y duración
 - [x] Bug: Inspiración Viral - añadido shrink-0, scrollbar-hide CSS, fade edges laterales
+
+## Imágenes Persistentes para Calendario y Biblioteca
+- [x] Identificar todos los vídeos que necesitan thumbnails (50 vídeos en 10 sectores)
+- [x] Generar imágenes profesionales con IA para los 10 sectores
+- [x] Subir imágenes a S3 con manus-upload-file --webdev (CloudFront CDN)
+- [x] Actualizar businessSectorVideos.ts con URLs persistentes (50 covers + 10 sector images)
+- [x] Actualizar Calendar.tsx y Library.tsx para usar las nuevas imágenes
+- [x] Verificar en navegador que todas las imágenes cargan (Calendar, Library, Inspiration)
+- [ ] Guardar checkpoint final
