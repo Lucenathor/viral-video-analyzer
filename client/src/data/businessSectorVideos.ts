@@ -45,7 +45,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 9500000,
         "duration": "0:21",
         "engagement": 9.57,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-clinica-estetica-Zbotqgx5seg6hTixmiPPpZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-clinica-1_a3c424a5.jpg"
       },
       {
         "id": "7553825631440522507",
@@ -59,7 +59,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5800000,
         "duration": "0:18",
         "engagement": 8.19,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-clinica-estetica-Zbotqgx5seg6hTixmiPPpZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-clinica-2_d1e843cc.jpg"
       },
       {
         "id": "7561287596375313671",
@@ -73,7 +73,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4200000,
         "duration": "0:15",
         "engagement": 10.0,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-clinica-estetica-Zbotqgx5seg6hTixmiPPpZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-clinica-3_8772a392.jpg"
       },
       {
         "id": "7581992134803344658",
@@ -87,7 +87,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3900000,
         "duration": "0:32",
         "engagement": 9.14,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-clinica-estetica-Zbotqgx5seg6hTixmiPPpZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-clinica-4_932d035a.jpg"
       },
       {
         "id": "7531275539823332621",
@@ -101,7 +101,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3100000,
         "duration": "0:25",
         "engagement": 9.68,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-clinica-estetica-Zbotqgx5seg6hTixmiPPpZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-clinica-5_fe35742b.jpg"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-clinica-estetica-Zbotqgx5seg6hTixmiPPpZ.webp"
@@ -124,7 +124,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4200000,
         "duration": "6:07",
         "engagement": 11.25,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-inmobiliaria-6j9M889uAwrkX6nPgi4jKk.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-inmob-1_16d1476e.jpg"
       },
       {
         "id": "7509790224541650232",
@@ -138,7 +138,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5100000,
         "duration": "0:45",
         "engagement": 8.76,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-inmobiliaria-6j9M889uAwrkX6nPgi4jKk.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-inmob-2_a2755d06.jpg"
       },
       {
         "id": "7493147343227866374",
@@ -152,7 +152,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4800000,
         "duration": "0:38",
         "engagement": 8.32,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-inmobiliaria-6j9M889uAwrkX6nPgi4jKk.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-inmob-3_32fc2abb.jpg"
       },
       {
         "id": "7565586117693656328",
@@ -166,7 +166,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3200000,
         "duration": "0:52",
         "engagement": 9.8,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-inmobiliaria-6j9M889uAwrkX6nPgi4jKk.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-inmob-4_1f868da5.jpg"
       },
       {
         "id": "7595266536529546514",
@@ -180,7 +180,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 2900000,
         "duration": "1:02",
         "engagement": 9.23,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-inmobiliaria-6j9M889uAwrkX6nPgi4jKk.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-inmob-5_fd2b1d08.jpg"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-inmobiliaria-6j9M889uAwrkX6nPgi4jKk.webp"
@@ -203,7 +203,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 6200000,
         "duration": "0:42",
         "engagement": 9.95,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-abogados-k2zoWJfmoUHvfsf7DYCqoA.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-abog-1_565014a9.jpg"
       },
       {
         "id": "7589948478684613909",
@@ -217,7 +217,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5400000,
         "duration": "0:55",
         "engagement": 8.96,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-abogados-k2zoWJfmoUHvfsf7DYCqoA.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-abog-2_53248a76.jpg"
       },
       {
         "id": "7581618366956260629",
@@ -231,7 +231,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4100000,
         "duration": "1:15",
         "engagement": 10.42,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-abogados-k2zoWJfmoUHvfsf7DYCqoA.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-abog-3_3c728dc2.jpg"
       },
       {
         "id": "7380989879003532549",
@@ -245,7 +245,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3800000,
         "duration": "0:48",
         "engagement": 9.37,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-abogados-k2zoWJfmoUHvfsf7DYCqoA.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-abog-4_8cd15460.jpg"
       },
       {
         "id": "7386285974747221253",
@@ -259,7 +259,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3500000,
         "duration": "0:35",
         "engagement": 10.07,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-abogados-k2zoWJfmoUHvfsf7DYCqoA.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-abog-5_578680b1.jpg"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-abogados-k2zoWJfmoUHvfsf7DYCqoA.webp"
@@ -282,7 +282,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 7200000,
         "duration": "0:58",
         "engagement": 9.21,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-marketing-9yMaS5SitPcSAsmMNpcF5Q.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mktg-1_a47c6c00.jpg"
       },
       {
         "id": "7512345678901234567",
@@ -296,7 +296,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5800000,
         "duration": "1:00",
         "engagement": 9.13,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-marketing-9yMaS5SitPcSAsmMNpcF5Q.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mktg-2_a3c05a5f.jpg"
       },
       {
         "id": "7534567890123456789",
@@ -310,7 +310,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4500000,
         "duration": "0:45",
         "engagement": 10.0,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-marketing-9yMaS5SitPcSAsmMNpcF5Q.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mktg-3_59020c4f.jpg"
       },
       {
         "id": "7556789012345678901",
@@ -324,7 +324,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3600000,
         "duration": "1:20",
         "engagement": 9.9,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-marketing-9yMaS5SitPcSAsmMNpcF5Q.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mktg-4_0b03078d.jpg"
       },
       {
         "id": "7578901234567890123",
@@ -338,7 +338,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3100000,
         "duration": "0:38",
         "engagement": 10.21,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-marketing-9yMaS5SitPcSAsmMNpcF5Q.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mktg-5_174f4f92.jpg"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-marketing-9yMaS5SitPcSAsmMNpcF5Q.webp"
@@ -361,7 +361,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 8500000,
         "duration": "0:42",
         "engagement": 9.36,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-personal-trainer-GfdvVXf5Rmn3hTfm7WfmgQ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-trainer-1_55fb3a85.jpg"
       },
       {
         "id": "7523456789012345678",
@@ -375,7 +375,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 6700000,
         "duration": "0:55",
         "engagement": 9.39,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-personal-trainer-GfdvVXf5Rmn3hTfm7WfmgQ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-trainer-2_7d3324cd.jpg"
       },
       {
         "id": "7545678901234567890",
@@ -389,7 +389,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5200000,
         "duration": "1:05",
         "engagement": 9.6,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-personal-trainer-GfdvVXf5Rmn3hTfm7WfmgQ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-trainer-3_99a0611c.jpg"
       },
       {
         "id": "7567890123456789012",
@@ -403,7 +403,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4800000,
         "duration": "1:30",
         "engagement": 9.32,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-personal-trainer-GfdvVXf5Rmn3hTfm7WfmgQ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-trainer-4_658b2a0f.jpg"
       },
       {
         "id": "7589012345678901234",
@@ -417,7 +417,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3600000,
         "duration": "0:28",
         "engagement": 10.01,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-personal-trainer-GfdvVXf5Rmn3hTfm7WfmgQ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-trainer-5_ae8ea292.jpg"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-personal-trainer-GfdvVXf5Rmn3hTfm7WfmgQ.webp"
@@ -440,7 +440,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 29300000,
         "duration": "0:13",
         "engagement": 4.96,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-unas-nails-bTrqbBkPNPyJushTVceyQj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mani-1-TonZdGdhpXWxUzUhdWEfWK.png"
       },
       {
         "id": "7172767818822241541",
@@ -454,7 +454,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 39200000,
         "duration": "0:05",
         "engagement": 1.6,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-unas-nails-bTrqbBkPNPyJushTVceyQj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mani-2-HSWqz8RioidkUhGoTr7ZCF.png"
       },
       {
         "id": "7316963345507159301",
@@ -468,7 +468,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 27200000,
         "duration": "0:07",
         "engagement": 2.25,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-unas-nails-bTrqbBkPNPyJushTVceyQj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mani-3-ZyT3pBZVbJ4TW7d6ZSK2pT.png"
       },
       {
         "id": "7432367454883433758",
@@ -482,7 +482,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 13700000,
         "duration": "0:06",
         "engagement": 4.41,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-unas-nails-bTrqbBkPNPyJushTVceyQj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mani-4-krwtW5fS5jPHsRU2wceJYM.png"
       },
       {
         "id": "7573157142757133575",
@@ -496,7 +496,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 6500000,
         "duration": "0:05",
         "engagement": 7.66,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-unas-nails-bTrqbBkPNPyJushTVceyQj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-mani-5-aUgQXJhzx5ZejavTQuYQEy.png"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-unas-nails-bTrqbBkPNPyJushTVceyQj.webp"
@@ -519,7 +519,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 7100000,
         "duration": "0:35",
         "engagement": 9.15,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-microblading-iYxQXNe4gz5Tzjhj7ju4sH.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-micro-1_05fcfb26.jpg"
       },
       {
         "id": "7234567890123456789",
@@ -533,7 +533,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5600000,
         "duration": "0:28",
         "engagement": 9.02,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-microblading-iYxQXNe4gz5Tzjhj7ju4sH.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-micro-2_ecac6328.jpg"
       },
       {
         "id": "7256789012345678901",
@@ -547,7 +547,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4800000,
         "duration": "0:42",
         "engagement": 9.14,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-microblading-iYxQXNe4gz5Tzjhj7ju4sH.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-micro-3_7a7aea0f.jpg"
       },
       {
         "id": "7278901234567890123",
@@ -561,7 +561,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4100000,
         "duration": "0:55",
         "engagement": 9.41,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-microblading-iYxQXNe4gz5Tzjhj7ju4sH.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-micro-4_4234a242.jpg"
       },
       {
         "id": "7301234567890123456",
@@ -575,7 +575,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3200000,
         "duration": "0:48",
         "engagement": 9.86,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-microblading-iYxQXNe4gz5Tzjhj7ju4sH.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-micro-5_3b130487.jpg"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-microblading-iYxQXNe4gz5Tzjhj7ju4sH.webp"
@@ -598,7 +598,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 9800000,
         "duration": "0:32",
         "engagement": 9.36,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-peluqueria-G9c7yT7eMUjLLQneHLfxc8.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-pelu-1-KMJ9UViMbmWucx8LebZbnN.webp"
       },
       {
         "id": "7312345678901234567",
@@ -612,7 +612,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 6500000,
         "duration": "0:45",
         "engagement": 9.31,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-peluqueria-G9c7yT7eMUjLLQneHLfxc8.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-pelu-2-CtQqPMszg7ppwKcPjnxjcw.webp"
       },
       {
         "id": "7334567890123456789",
@@ -626,7 +626,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5200000,
         "duration": "0:28",
         "engagement": 9.33,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-peluqueria-G9c7yT7eMUjLLQneHLfxc8.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-pelu-3-fezinAtEhcijaKzvqycN9C.webp"
       },
       {
         "id": "7356789012345678901",
@@ -640,7 +640,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4300000,
         "duration": "1:15",
         "engagement": 9.68,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-peluqueria-G9c7yT7eMUjLLQneHLfxc8.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-pelu-4-aTrZi4bZuj4KEuwBSXLCND.webp"
       },
       {
         "id": "7378901234567890123",
@@ -654,7 +654,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3100000,
         "duration": "0:52",
         "engagement": 10.51,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-peluqueria-G9c7yT7eMUjLLQneHLfxc8.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-pelu-5-6FFYhDmfhKgJMYLmt5Z3sd.webp"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-peluqueria-G9c7yT7eMUjLLQneHLfxc8.webp"
@@ -677,7 +677,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 8200000,
         "duration": "0:38",
         "engagement": 9.55,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-restaurantes-fexw28oKp5nfwBdSS2tPNZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-rest-1-WrVzgmBWgxXc4CTFQpeezY.webp"
       },
       {
         "id": "7577654321098765432",
@@ -691,7 +691,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 6800000,
         "duration": "0:25",
         "engagement": 9.08,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-restaurantes-fexw28oKp5nfwBdSS2tPNZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-rest-2-8JnH8nCKEP9rDQurFsbUkf.webp"
       },
       {
         "id": "7599876543210987654",
@@ -705,7 +705,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5600000,
         "duration": "0:55",
         "engagement": 10.32,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-restaurantes-fexw28oKp5nfwBdSS2tPNZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-rest-3-m8u6PnygthyCwErDrY7nJM.webp"
       },
       {
         "id": "7522109876543210987",
@@ -719,7 +719,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4500000,
         "duration": "1:02",
         "engagement": 9.98,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-restaurantes-fexw28oKp5nfwBdSS2tPNZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-rest-4-hhiaiasCMbTvKMxqAfxdrs.webp"
       },
       {
         "id": "7544321098765432109",
@@ -733,7 +733,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3800000,
         "duration": "0:42",
         "engagement": 9.49,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-restaurantes-fexw28oKp5nfwBdSS2tPNZ.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-rest-5-EdQ7u2WmRvY9jxLXPFzSgd.webp"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-restaurantes-fexw28oKp5nfwBdSS2tPNZ.webp"
@@ -756,7 +756,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 7100000,
         "duration": "0:48",
         "engagement": 9.3,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-coaches-UqfTELnZ7Syo3aQd8d7gbj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-coach-1-bkeXUizoS3R4BPFb4zvAU9.webp"
       },
       {
         "id": "7588765432109876543",
@@ -770,7 +770,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 5800000,
         "duration": "1:15",
         "engagement": 9.15,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-coaches-UqfTELnZ7Syo3aQd8d7gbj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-coach-2-8ks52NVAyBbWGKqjp2UQjc.webp"
       },
       {
         "id": "7510987654321098765",
@@ -784,7 +784,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 4800000,
         "duration": "0:55",
         "engagement": 9.64,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-coaches-UqfTELnZ7Syo3aQd8d7gbj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-coach-3-hU8dC4d9Fodr2959Rh8v7s.webp"
       },
       {
         "id": "7533210987654321098",
@@ -798,7 +798,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3600000,
         "duration": "0:42",
         "engagement": 10.05,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-coaches-UqfTELnZ7Syo3aQd8d7gbj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-coach-4-k4vncUczFQKt2fGy4HZxrQ.webp"
       },
       {
         "id": "7555432109876543210",
@@ -812,7 +812,7 @@ export const businessSectors: BusinessSector[] = [
         "views": 3200000,
         "duration": "0:38",
         "engagement": 10.62,
-        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-coaches-UqfTELnZ7Syo3aQd8d7gbj.webp"
+        "cover": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/thumb-coach-5-eDsiTDC3KfdBUmAWvCD5cb.webp"
       }
     ],
     "image": "https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/YpkX7UBRCFyoNjYW5eCLWn/sector-coaches-UqfTELnZ7Syo3aQd8d7gbj.webp"

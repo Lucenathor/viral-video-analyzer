@@ -58,4 +58,20 @@
 - [x] Actualizar businessSectorVideos.ts con URLs persistentes (50 covers + 10 sector images)
 - [x] Actualizar Calendar.tsx y Library.tsx para usar las nuevas imágenes
 - [x] Verificar en navegador que todas las imágenes cargan (Calendar, Library, Inspiration)
-- [ ] Guardar checkpoint final
+- [x] Guardar checkpoint final (1aebbc32)
+
+## Thumbnails Únicos por Vídeo (50 imágenes)
+- [x] Generar 5 imágenes únicas para Clínica Estética
+- [x] Generar 5 imágenes únicas para Inmobiliaria
+- [x] Generar 5 imágenes únicas para Abogados
+- [x] Generar 5 imágenes únicas para Marketing Digital
+- [x] Generar 5 imágenes únicas para Personal Trainer
+- [x] Generar 5 imágenes únicas para Manicura y Uñas
+- [x] Generar 5 imágenes únicas para Micropigmentación
+- [x] Generar 5 imágenes únicas para Peluquería
+- [x] Generar 5 imágenes únicas para Restaurantes
+- [x] Generar 5 imágenes únicas para Coaches y Consultores
+- [x] Subir 50 imágenes a CDN (todas verificadas HTTP 200)
+- [x] Actualizar businessSectorVideos.ts con 50 URLs únicas por vídeo
+- [x] Verificar en calendario que cada día muestra imagen diferente
+- [ ] Guardar checkpoint
