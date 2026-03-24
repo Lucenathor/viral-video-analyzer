@@ -15,43 +15,20 @@ export const stripeRouter = router({
   }),
 
   // Get current user's subscription status
+  // DEMO MODE: Return enterprise plan for all users
   getSubscription: protectedProcedure.query(async ({ ctx }) => {
-    const subscription = await db.getUserSubscription(ctx.user.id);
-    
-    if (!subscription) {
-      // Return free plan by default
-      return {
-        plan: 'free',
-        status: 'active',
-        features: PLANS.free.features,
-        usage: {
-          analysisCount: 0,
-          storiesCount: 0,
-        },
-        limits: {
-          analysisPerMonth: PLANS.free.features.analysisPerMonth,
-          storiesPerMonth: PLANS.free.features.storiesPerMonth,
-        },
-      };
-    }
-
-    const planData = getPlanById(subscription.plan);
-    
     return {
-      plan: subscription.plan,
-      status: subscription.status,
-      features: planData?.features || PLANS.free.features,
+      plan: 'enterprise',
+      status: 'active',
+      features: PLANS.enterprise.features,
       usage: {
-        analysisCount: subscription.analysisCount,
-        storiesCount: subscription.storiesCount,
+        analysisCount: 0,
+        storiesCount: 0,
       },
       limits: {
-        analysisPerMonth: planData?.features.analysisPerMonth || 2,
-        storiesPerMonth: planData?.features.storiesPerMonth || 5,
+        analysisPerMonth: -1, // unlimited
+        storiesPerMonth: -1, // unlimited
       },
-      currentPeriodEnd: subscription.currentPeriodEnd,
-      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-      stripeCustomerId: subscription.stripeCustomerId,
     };
   }),
 
@@ -97,22 +74,13 @@ export const stripeRouter = router({
   }),
 
   // Check if user can use a feature based on their plan
+  // DEMO MODE: Always return true - no restrictions
   canUseFeature: protectedProcedure
     .input(z.object({
       feature: z.enum(['analysisPerMonth', 'storiesPerMonth', 'prioritySupport', 'teamMembers', 'customBranding', 'apiAccess']),
     }))
     .query(async ({ ctx, input }) => {
-      const subscription = await db.getUserSubscription(ctx.user.id);
-      const plan = subscription?.plan || 'free';
-      
-      let currentUsage: number | undefined;
-      if (input.feature === 'analysisPerMonth') {
-        currentUsage = subscription?.analysisCount || 0;
-      } else if (input.feature === 'storiesPerMonth') {
-        currentUsage = subscription?.storiesCount || 0;
-      }
-
-      return canUseFeature(plan, input.feature, currentUsage);
+      return true; // DEMO MODE: All features unlocked
     }),
 
   // Increment usage counter

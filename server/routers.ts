@@ -927,51 +927,27 @@ Devuelve SOLO el JSON.`;
       }),
 
     // Get user's subscription config for calendar
+    // DEMO MODE: All restrictions removed for live demo
     getSubscriptionConfig: protectedProcedure
       .query(async ({ ctx }) => {
-        const subscription = await db.getUserSubscription(ctx.user.id);
-        const billingType = await db.getUserBillingType(ctx.user.id);
-        
-        const plan = subscription?.plan || 'free';
-        const isAnnual = billingType?.billingType === 'annual';
-        
-        // Determine visible months
-        const visibleMonths = isAnnual ? 12 : 1;
-        
-        // Reels per day based on plan
-        const reelsPerDay = {
-          free: 1,
-          basic: 2,
-          pro: 2,
-          enterprise: 3,
-        }[plan] || 1;
-        
-        // Calculate allowed month range
+        // Generate 24 months of access (12 past + 12 future)
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         
-        let allowedMonths: { month: number; year: number }[] = [];
-        
-        if (isAnnual && billingType?.startMonth && billingType?.startYear) {
-          // Annual: show from start month to end month
-          for (let i = 0; i < 12; i++) {
-            const m = (billingType.startMonth - 1 + i) % 12;
-            const y = billingType.startYear + Math.floor((billingType.startMonth - 1 + i) / 12);
-            allowedMonths.push({ month: m, year: y });
-          }
-        } else {
-          // Monthly: only current month
-          allowedMonths = [{ month: currentMonth, year: currentYear }];
+        const allowedMonths: { month: number; year: number }[] = [];
+        for (let i = -12; i <= 12; i++) {
+          const date = new Date(currentYear, currentMonth + i, 1);
+          allowedMonths.push({ month: date.getMonth(), year: date.getFullYear() });
         }
         
         return {
-          plan,
-          isAnnual,
-          visibleMonths,
-          reelsPerDay,
+          plan: 'enterprise',
+          isAnnual: true,
+          visibleMonths: 24,
+          reelsPerDay: 5,
           allowedMonths,
-          currentPeriodEnd: subscription?.currentPeriodEnd,
+          currentPeriodEnd: new Date(currentYear + 1, currentMonth, 1),
         };
       }),
     

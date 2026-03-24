@@ -74,4 +74,15 @@
 - [x] Subir 50 imágenes a CDN (todas verificadas HTTP 200)
 - [x] Actualizar businessSectorVideos.ts con 50 URLs únicas por vídeo
 - [x] Verificar en calendario que cada día muestra imagen diferente
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint (7be2db57)
+
+## Quitar Restricciones de Pago (Demo en Directo)
+- [x] Identificar todas las restricciones de suscripción en frontend
+- [x] Identificar todas las restricciones de suscripción en backend
+- [x] Calendario: permitir ver todas las semanas sin restricción (frontend + backend)
+- [x] Analizador: quitar límite de análisis por plan (canUseFeature siempre true)
+- [x] Biblioteca: sin restricciones reales (solo badges decorativos)
+- [x] Stories/Lanzamientos: quitar límite de generaciones (canUseFeature siempre true)
+- [x] Inspiración Viral: sin restricciones (siempre fue público)
+- [x] Verificar todas las páginas en navegador (Calendar Marzo→Abril→Mayo OK)
+- [x] Guardar checkpoint demo mode (todos los 62 tests pasan)

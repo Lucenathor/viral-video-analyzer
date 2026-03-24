@@ -192,14 +192,8 @@ export default function Calendar() {
     { enabled: !!selectedSector && !!user && !!dbSectorSlug }
   );
 
-  // Check if a month is allowed based on subscription
-  const isMonthAllowed = useMemo(() => {
-    if (!subscriptionConfig) return true;
-    const { allowedMonths } = subscriptionConfig;
-    return allowedMonths.some(
-      (m: { month: number; year: number }) => m.month === currentMonth && m.year === currentYear
-    );
-  }, [subscriptionConfig, currentMonth, currentYear]);
+  // DEMO MODE: All months are allowed
+  const isMonthAllowed = true;
 
   // Fetch progress from database
   const { data: progressData, refetch: refetchProgress } = trpc.calendar.getProgress.useQuery(
@@ -304,29 +298,11 @@ export default function Calendar() {
   }, [videoSchedule]);
 
   // Navegación del calendario con restricción de suscripción
-  const canNavigateToPreviousMonth = useMemo(() => {
-    if (!subscriptionConfig) return true;
-    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    return subscriptionConfig.allowedMonths.some(
-      (m: { month: number; year: number }) => m.month === prevMonth && m.year === prevYear
-    );
-  }, [subscriptionConfig, currentMonth, currentYear]);
-
-  const canNavigateToNextMonth = useMemo(() => {
-    if (!subscriptionConfig) return true;
-    const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
-    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-    return subscriptionConfig.allowedMonths.some(
-      (m: { month: number; year: number }) => m.month === nextMonth && m.year === nextYear
-    );
-  }, [subscriptionConfig, currentMonth, currentYear]);
+  // DEMO MODE: All navigation is allowed
+  const canNavigateToPreviousMonth = true;
+  const canNavigateToNextMonth = true;
 
   const goToPreviousMonth = () => {
-    if (!canNavigateToPreviousMonth) {
-      setShowUpgradeModal(true);
-      return;
-    }
     if (currentMonth === 0) {
       setCurrentMonth(11);
       setCurrentYear(currentYear - 1);
@@ -336,10 +312,6 @@ export default function Calendar() {
   };
 
   const goToNextMonth = () => {
-    if (!canNavigateToNextMonth) {
-      setShowUpgradeModal(true);
-      return;
-    }
     if (currentMonth === 11) {
       setCurrentMonth(0);
       setCurrentYear(currentYear + 1);
