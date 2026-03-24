@@ -1,0 +1,20 @@
+{
+  "query": "SELECT ca.id, ca.sectorSlug, ca.dayOfMonth, ca.month, ca.year, ca.orderInDay, ar.likes, LEFT(ar.title, 40) as title FROM calendar_assignments ca JOIN approved_reels ar ON ca.approvedReelId = ar.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute SELECT ca.id, ca.sectorSlug, ca.dayOfMonth, ca.month, ca.year, ca.orderInDay, ar.likes, LEFT(ar.title, 40) as title FROM calendar_assignments ca JOIN approved_reels ar ON ca.approvedReelId = ar.id;",
+  "rows": [
+    {
+      "id": "1",
+      "sectorSlug": "personal-trainer",
+      "dayOfMonth": "5",
+      "month": "2",
+      "year": "2026",
+      "orderInDay": "1",
+      "likes": "648738",
+      "title": "sabrán disculpar a su humilde servidora "
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsectorSlug\tdayOfMonth\tmonth\tyear\torderInDay\tlikes\ttitle\n1\tpersonal-trainer\t5\t2\t2026\t1\t648738\tsabrán disculpar a su humilde servidora \n",
+  "stderr": "",
+  "execution_time_ms": 1637
+}

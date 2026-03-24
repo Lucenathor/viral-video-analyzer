@@ -1,0 +1,18 @@
+{
+  "query": "SELECT status, COUNT(*) as count FROM video_analyses GROUP BY status ORDER BY count DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute SELECT status, COUNT(*) as count FROM video_analyses GROUP BY status ORDER BY count DESC;",
+  "rows": [
+    {
+      "status": "failed",
+      "count": "84"
+    },
+    {
+      "status": "completed",
+      "count": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "status\tcount\nfailed\t84\ncompleted\t3\n",
+  "stderr": "",
+  "execution_time_ms": 1664
+}

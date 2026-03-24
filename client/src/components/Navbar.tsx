@@ -12,23 +12,35 @@ import {
   X,
   Sparkles,
   CalendarDays,
-  Flame
+  Flame,
+  CreditCard,
+  Shield,
+  Brain
 } from "lucide-react";
 import { useState } from "react";
 
-// Navegación reorganizada: Biblioteca primero, luego Calendario, Stories
+// Navegación principal
 const navItems = [
   { href: "/library", label: "Biblioteca", icon: Library },
   { href: "/calendar", label: "Calendario", icon: CalendarDays },
   { href: "/stories", label: "Lanzamientos", icon: Flame },
   { href: "/analyzer", label: "Analizador", icon: Video },
   { href: "/support", label: "Soporte 24h", icon: Headphones },
+  { href: "/pricing", label: "Precios", icon: CreditCard },
+];
+
+// Navegación admin (solo visible para admins)
+const adminItems = [
+  { href: "/admin/training", label: "Training", icon: Brain },
+  { href: "/admin/reels", label: "Admin Reels", icon: Shield },
 ];
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const isAdmin = user?.role === "admin";
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-primary/10">
@@ -40,22 +52,22 @@ export default function Navbar() {
               <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              {/* Glow effect on hover */}
               <div className="absolute inset-0 rounded-xl bg-primary/50 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300" />
             </div>
             <span className="font-bold text-xl text-gradient">ViralPro</span>
           </Link>
 
-          {/* Desktop Navigation con animaciones */}
-          <div className="hidden md:flex items-center gap-1 ml-16">
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center gap-0.5 ml-6 flex-1 justify-center">
             {navItems.map((item, index) => {
               const isActive = location === item.href || location.startsWith(item.href + "/");
               return (
                 <Link key={item.href} href={item.href}>
                   <Button
                     variant={isActive ? "secondary" : "ghost"}
+                    size="sm"
                     className={`
-                      gap-2 relative overflow-hidden transition-all duration-300
+                      gap-1.5 relative overflow-hidden transition-all duration-300 text-xs
                       ${isActive 
                         ? "bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]" 
                         : "hover:bg-primary/10 hover:text-primary"
@@ -63,26 +75,53 @@ export default function Navbar() {
                     `}
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
-                    <item.icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                    <item.icon className={`w-3.5 h-3.5 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} />
                     {item.label}
-                    {/* Shimmer effect on hover */}
-                    <span className="absolute inset-0 -translate-x-full hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                   </Button>
                 </Link>
               );
             })}
+            
+            {/* Admin items - solo visible para admins */}
+            {isAdmin && (
+              <>
+                <div className="w-px h-6 bg-primary/20 mx-1" />
+                {adminItems.map((item) => {
+                  const isActive = location === item.href;
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        size="sm"
+                        className={`
+                          gap-1.5 relative overflow-hidden transition-all duration-300 text-xs
+                          ${isActive 
+                            ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" 
+                            : "hover:bg-orange-500/10 hover:text-orange-400"
+                          }
+                        `}
+                      >
+                        <item.icon className="w-3.5 h-3.5" />
+                        {item.label}
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </>
+            )}
           </div>
 
-          {/* Auth Section con animaciones */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Auth Section */}
+          <div className="hidden lg:flex items-center gap-3">
             {isAuthenticated ? (
               <>
                 <Link href="/dashboard">
                   <Button 
                     variant="ghost" 
-                    className="gap-2 hover:bg-primary/10 hover:text-primary transition-all duration-300"
+                    size="sm"
+                    className="gap-1.5 hover:bg-primary/10 hover:text-primary transition-all duration-300 text-xs"
                   >
-                    <LayoutDashboard className="w-4 h-4" />
+                    <LayoutDashboard className="w-3.5 h-3.5" />
                     Dashboard
                   </Button>
                 </Link>
@@ -93,6 +132,11 @@ export default function Navbar() {
                   <span className="text-sm font-medium max-w-[100px] truncate">
                     {user?.name || "Usuario"}
                   </span>
+                  {isAdmin && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                      Admin
+                    </span>
+                  )}
                 </div>
                 <Button 
                   variant="ghost" 
@@ -112,11 +156,11 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button con animación */}
+          {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden relative overflow-hidden"
+            className="lg:hidden relative overflow-hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             <div className={`transition-all duration-300 ${mobileMenuOpen ? 'rotate-90 scale-110' : ''}`}>
@@ -125,10 +169,10 @@ export default function Navbar() {
           </Button>
         </div>
 
-        {/* Mobile Menu con animaciones */}
+        {/* Mobile Menu */}
         <div className={`
-          md:hidden overflow-hidden transition-all duration-300 ease-out
-          ${mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+          lg:hidden overflow-hidden transition-all duration-300 ease-out
+          ${mobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
         `}>
           <div className="py-4 border-t border-primary/10">
             <div className="flex flex-col gap-2">
@@ -155,6 +199,33 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+              
+              {/* Admin items en mobile */}
+              {isAdmin && (
+                <>
+                  <div className="h-px bg-orange-500/20 my-1" />
+                  <p className="text-xs text-orange-400/70 px-4 font-medium">Panel Admin</p>
+                  {adminItems.map((item) => {
+                    const isActive = location === item.href;
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <Button
+                          variant={isActive ? "secondary" : "ghost"}
+                          className={`
+                            w-full justify-start gap-2 transition-all duration-300
+                            ${isActive ? "bg-orange-500/20 text-orange-400" : "text-orange-400/70 hover:text-orange-400"}
+                          `}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </Button>
+                      </Link>
+                    );
+                  })}
+                </>
+              )}
+              
               {isAuthenticated && (
                 <Link href="/dashboard">
                   <Button

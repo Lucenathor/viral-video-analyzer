@@ -19,9 +19,12 @@ import {
   X,
   ExternalLink,
   Lock,
-  Crown
+  Crown,
+  Database,
+  AlertCircle
 } from "lucide-react";
 import { Link } from "wouter";
+import Navbar from "@/components/Navbar";
 import { businessSectors } from "@/data/businessSectorVideos";
 
 // Obtener el mes actual y año
@@ -64,9 +67,27 @@ const getDaysInMonth = (year: number, month: number) => {
   return days;
 };
 
-// Función para distribuir vídeos en el calendario (2 por semana, martes y jueves, solo desde hoy)
-const distributeVideosInCalendar = (videos: typeof businessSectors[0]["videos"], year: number, month: number) => {
-  const schedule: { [day: number]: typeof videos[0] } = {};
+// Type for a unified video in the calendar schedule
+interface CalendarVideo {
+  id: string;
+  url: string;
+  username: string;
+  authorName: string;
+  description: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  views: number;
+  cover: string;
+  duration: string;
+  engagement: number;
+  viralityExplanation?: string;
+  isFromDatabase?: boolean;
+}
+
+// Función para distribuir vídeos estáticos en el calendario (fallback)
+const distributeStaticVideosInCalendar = (videos: typeof businessSectors[0]["videos"], year: number, month: number) => {
+  const schedule: { [day: number]: CalendarVideo } = {};
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   const todayDay = today.getDate();
@@ -79,12 +100,10 @@ const distributeVideosInCalendar = (videos: typeof businessSectors[0]["videos"],
     const date = new Date(year, month, day);
     const dayOfWeek = date.getDay();
     
-    // Solo incluir días desde hoy en adelante
     const isCurrentMonth = year === todayYear && month === todayMonth;
     const isFutureMonth = year > todayYear || (year === todayYear && month > todayMonth);
     const isFutureOrToday = isFutureMonth || (isCurrentMonth && day >= todayDay);
     
-    // Martes (2) y Jueves (4), solo si es hoy o futuro
     if ((dayOfWeek === 2 || dayOfWeek === 4) && isFutureOrToday) {
       publishDays.push(day);
     }
@@ -93,11 +112,28 @@ const distributeVideosInCalendar = (videos: typeof businessSectors[0]["videos"],
   // Asignar vídeos a los días de publicación
   videos.forEach((video, index) => {
     if (index < publishDays.length) {
-      schedule[publishDays[index]] = video;
+      schedule[publishDays[index]] = {
+        ...video,
+        isFromDatabase: false,
+      };
     }
   });
   
   return schedule;
+};
+
+// Map sector slugs between static data IDs and database slugs
+const SECTOR_SLUG_MAP: Record<string, string> = {
+  "peluqueria": "peluqueria",
+  "clinica-estetica": "clinica-estetica",
+  "personal-trainer": "personal-trainer",
+  "restaurantes": "restaurantes",
+  "abogados": "abogados",
+  "psicologos": "psicologos",
+  "nutricionistas": "nutricionistas",
+  "fotografos": "fotografos",
+  "disenadores": "disenadores",
+  "contables": "contables",
 };
 
 export default function Calendar() {
@@ -117,10 +153,21 @@ export default function Calendar() {
     { enabled: !!user }
   );
 
+  // Determine the database sector slug
+  const dbSectorSlug = useMemo(() => {
+    if (!selectedSector) return "";
+    return SECTOR_SLUG_MAP[selectedSector] || selectedSector;
+  }, [selectedSector]);
+
+  // Fetch approved reels from database for the selected sector and month
+  const { data: approvedReelsData, isLoading: isLoadingReels } = trpc.calendar.getApprovedReels.useQuery(
+    { sectorSlug: dbSectorSlug, month: currentMonth, year: currentYear },
+    { enabled: !!selectedSector && !!user && !!dbSectorSlug }
+  );
+
   // Check if a month is allowed based on subscription
   const isMonthAllowed = useMemo(() => {
-    if (!subscriptionConfig) return true; // Allow while loading
-    
+    if (!subscriptionConfig) return true;
     const { allowedMonths } = subscriptionConfig;
     return allowedMonths.some(
       (m: { month: number; year: number }) => m.month === currentMonth && m.year === currentYear
@@ -172,21 +219,62 @@ export default function Calendar() {
     });
   };
 
-  // Obtener el sector seleccionado
+  // Obtener el sector seleccionado (static data)
   const sector = useMemo(() => {
     return businessSectors.find(s => s.id === selectedSector);
   }, [selectedSector]);
 
-  // Obtener el calendario de vídeos para el sector seleccionado
+  // Determine if we're using real data or static fallback
+  const usingRealData = useMemo(() => {
+    return approvedReelsData && !approvedReelsData.fallbackToStatic && approvedReelsData.assignments.length > 0;
+  }, [approvedReelsData]);
+
+  // Build the video schedule - prioritize real data, fallback to static
   const videoSchedule = useMemo(() => {
+    // If we have real data from the database, use it
+    if (usingRealData && approvedReelsData) {
+      const schedule: { [day: number]: CalendarVideo } = {};
+      for (const assignment of approvedReelsData.assignments) {
+        const reel = assignment.reel;
+        schedule[assignment.dayOfMonth] = {
+          id: reel.tiktokId,
+          url: reel.tiktokUrl,
+          username: reel.authorUsername ? `@${reel.authorUsername}` : "@unknown",
+          authorName: reel.authorName || "Unknown",
+          description: reel.description || reel.title || "Vídeo viral aprobado",
+          likes: reel.likes,
+          comments: reel.comments,
+          shares: reel.shares,
+          views: reel.views,
+          cover: reel.coverUrl || "",
+          duration: reel.duration ? `${Math.floor(reel.duration / 60)}:${String(reel.duration % 60).padStart(2, '0')}` : "0:30",
+          engagement: reel.views > 0 ? ((reel.likes + reel.comments + reel.shares) / reel.views) * 100 : 0,
+          viralityExplanation: reel.viralityExplanation || undefined,
+          isFromDatabase: true,
+        };
+      }
+      return schedule;
+    }
+
+    // Fallback to static data
     if (!sector) return {};
-    return distributeVideosInCalendar(sector.videos, currentYear, currentMonth);
-  }, [sector, currentYear, currentMonth]);
+    return distributeStaticVideosInCalendar(sector.videos, currentYear, currentMonth);
+  }, [usingRealData, approvedReelsData, sector, currentYear, currentMonth]);
 
   // Obtener los días del mes actual
   const days = useMemo(() => {
     return getDaysInMonth(currentYear, currentMonth);
   }, [currentYear, currentMonth]);
+
+  // Calculate stats
+  const calendarStats = useMemo(() => {
+    const videos = Object.values(videoSchedule);
+    return {
+      totalReels: videos.length,
+      totalLikes: videos.reduce((sum, v) => sum + v.likes, 0),
+      totalViews: videos.reduce((sum, v) => sum + v.views, 0),
+    };
+  }, [videoSchedule]);
 
   // Navegación del calendario con restricción de suscripción
   const canNavigateToPreviousMonth = useMemo(() => {
@@ -237,7 +325,9 @@ export default function Calendar() {
   const selectedVideo = selectedDay ? videoSchedule[selectedDay] : null;
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="pt-20 pb-12">
       {/* Hero Section */}
       <section className="relative py-16 overflow-hidden">
         {/* Background effects */}
@@ -358,6 +448,18 @@ export default function Calendar() {
                   <p className="text-sm text-muted-foreground mt-1">
                     Calendario de contenido para <span className="text-primary font-medium">{sector.name}</span>
                   </p>
+                  {/* Data source indicator */}
+                  {usingRealData ? (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <Database className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-xs text-green-400 font-medium">Datos curados por el equipo</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-xs text-amber-400 font-medium">Datos de referencia (pendiente de curación)</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -380,151 +482,178 @@ export default function Calendar() {
                 </div>
               </div>
 
+              {/* Loading state */}
+              {isLoadingReels && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  <span className="ml-3 text-muted-foreground">Cargando calendario...</span>
+                </div>
+              )}
+
               {/* Days of week header */}
-              <div className="grid grid-cols-7 gap-2 mb-4">
-                {DAYS_OF_WEEK.map((day) => (
-                  <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-                    {day}
+              {!isLoadingReels && (
+                <>
+                  <div className="grid grid-cols-7 gap-2 mb-4">
+                    {DAYS_OF_WEEK.map((day) => (
+                      <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                        {day}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {days.map((day, index) => {
-                  const hasVideo = day && videoSchedule[day];
-                  const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
-                  const isPast = day && new Date(currentYear, currentMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                  
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => {
-                        if (hasVideo) {
-                          setSelectedDay(day);
-                          setShowVideoModal(true);
-                        }
-                      }}
-                      className={`
-                        relative aspect-square rounded-xl border transition-all duration-300
-                        ${!day ? "bg-transparent border-transparent" : ""}
-                        ${day && !hasVideo ? "border-border/30 bg-background/50" : ""}
-                        ${hasVideo ? "border-primary/50 bg-primary/10 cursor-pointer hover:bg-primary/20 hover:border-primary hover:scale-105 hover:shadow-lg hover:shadow-primary/20" : ""}
-                        ${isToday ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}
-                        ${isPast && !hasVideo ? "opacity-50" : ""}
-                      `}
-                    >
-                      {day && (
-                        <>
-                          {/* Day number */}
-                          <span className={`
-                            absolute top-2 left-2 text-sm font-medium
-                            ${isToday ? "text-accent" : hasVideo ? "text-primary" : "text-muted-foreground"}
-                          `}>
-                            {day}
-                          </span>
-                          
-                          {/* Video indicator */}
-                          {hasVideo && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="relative">
-                                {/* Thumbnail */}
-                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden border-2 border-primary/50 shadow-lg">
-                                  {videoSchedule[day]?.cover ? (
-                                    <img 
-                                      src={videoSchedule[day]?.cover} 
-                                      alt="Video thumbnail"
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        target.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>';
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
-                                      <Play className="w-4 h-4 text-white" />
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {days.map((day, index) => {
+                      const hasVideo = day && videoSchedule[day];
+                      const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+                      const isPast = day && new Date(currentYear, currentMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                      
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            if (hasVideo) {
+                              setSelectedDay(day);
+                              setShowVideoModal(true);
+                            }
+                          }}
+                          className={`
+                            relative aspect-square rounded-xl border transition-all duration-300
+                            ${!day ? "bg-transparent border-transparent" : ""}
+                            ${day && !hasVideo ? "border-border/30 bg-background/50" : ""}
+                            ${hasVideo ? "border-primary/50 bg-primary/10 cursor-pointer hover:bg-primary/20 hover:border-primary hover:scale-105 hover:shadow-lg hover:shadow-primary/20" : ""}
+                            ${isToday ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}
+                            ${isPast && !hasVideo ? "opacity-50" : ""}
+                          `}
+                        >
+                          {day && (
+                            <>
+                              {/* Day number */}
+                              <span className={`
+                                absolute top-2 left-2 text-sm font-medium
+                                ${isToday ? "text-accent" : hasVideo ? "text-primary" : "text-muted-foreground"}
+                              `}>
+                                {day}
+                              </span>
+                              
+                              {/* Video indicator */}
+                              {hasVideo && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="relative">
+                                    {/* Thumbnail */}
+                                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden border-2 border-primary/50 shadow-lg">
+                                      {videoSchedule[day]?.cover ? (
+                                        <img 
+                                          src={videoSchedule[day]?.cover} 
+                                          alt="Video thumbnail"
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                            target.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>';
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
+                                          <Play className="w-4 h-4 text-white" />
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                                
-                                {/* Play button overlay */}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 hover:opacity-100 transition-opacity">
-                                  <Play className="w-6 h-6 text-white fill-white" />
-                                </div>
-                                
-                                {/* Completed indicator - based on user progress */}
-                                {videoSchedule[day] && completedVideos.has(videoSchedule[day]!.id) && (
-                                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                                    <CheckCircle2 className="w-3 h-3 text-white" />
+                                    
+                                    {/* Play button overlay */}
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 hover:opacity-100 transition-opacity">
+                                      <Play className="w-6 h-6 text-white fill-white" />
+                                    </div>
+                                    
+                                    {/* Completed indicator */}
+                                    {videoSchedule[day] && completedVideos.has(videoSchedule[day]!.id) && (
+                                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                                        <CheckCircle2 className="w-3 h-3 text-white" />
+                                      </div>
+                                    )}
+
+                                    {/* Database indicator for curated content */}
+                                    {videoSchedule[day]?.isFromDatabase && (
+                                      <div className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                                        <Database className="w-3 h-3 text-white" />
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </div>
+                                </div>
+                              )}
+                              
+                              {/* "Publicar" label for video days */}
+                              {hasVideo && (
+                                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium text-primary bg-primary/20 px-2 py-0.5 rounded-full">
+                                  Publicar
+                                </span>
+                              )}
+                            </>
                           )}
-                          
-                          {/* "Publicar" label for video days */}
-                          {hasVideo && (
-                            <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium text-primary bg-primary/20 px-2 py-0.5 rounded-full">
-                              Publicar
-                            </span>
-                          )}
-                        </>
-                      )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-border/50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded border border-primary/50 bg-primary/10" />
+                      <span className="text-sm text-muted-foreground">Día de publicación</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded ring-2 ring-accent ring-offset-2 ring-offset-background" />
+                      <span className="text-sm text-muted-foreground">Hoy</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">Completado</span>
+                    </div>
+                    {usingRealData && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+                          <Database className="w-2.5 h-2.5 text-white" />
+                        </div>
+                        <span className="text-sm text-muted-foreground">Curado por expertos</span>
+                      </div>
+                    )}
+                  </div>
 
-              {/* Legend */}
-              <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-border/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-primary/20 border border-primary/50" />
-                  <span className="text-sm text-muted-foreground">Día de publicación</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded ring-2 ring-accent ring-offset-2 ring-offset-background" />
-                  <span className="text-sm text-muted-foreground">Hoy</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                    <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                    <div className="text-center p-4 rounded-xl glass border border-border/50">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                        <Target className="w-5 h-5 text-primary" />
+                      </div>
+                      <p className="text-2xl font-bold text-primary">{calendarStats.totalReels}</p>
+                      <p className="text-xs text-muted-foreground">Reels este mes</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl glass border border-border/50">
+                      <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-2">
+                        <Clock className="w-5 h-5 text-accent" />
+                      </div>
+                      <p className="text-2xl font-bold text-accent">2</p>
+                      <p className="text-xs text-muted-foreground">Por semana</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl glass border border-border/50">
+                      <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center mx-auto mb-2">
+                        <Heart className="w-5 h-5 text-pink-500" />
+                      </div>
+                      <p className="text-2xl font-bold text-pink-500">{formatNumber(calendarStats.totalLikes)}</p>
+                      <p className="text-xs text-muted-foreground">Likes referencia</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl glass border border-border/50">
+                      <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2">
+                        <Eye className="w-5 h-5 text-green-500" />
+                      </div>
+                      <p className="text-2xl font-bold text-green-500">{formatNumber(calendarStats.totalViews)}</p>
+                      <p className="text-xs text-muted-foreground">Views referencia</p>
+                    </div>
                   </div>
-                  <span className="text-sm text-muted-foreground">Completado</span>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-                <div className="text-center p-4 rounded-xl glass border border-border/50">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
-                    <Target className="w-5 h-5 text-primary" />
-                  </div>
-                  <p className="text-2xl font-bold text-primary">{Object.keys(videoSchedule).length}</p>
-                  <p className="text-xs text-muted-foreground">Reels este mes</p>
-                </div>
-                <div className="text-center p-4 rounded-xl glass border border-border/50">
-                  <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-2">
-                    <Clock className="w-5 h-5 text-accent" />
-                  </div>
-                  <p className="text-2xl font-bold text-accent">2</p>
-                  <p className="text-xs text-muted-foreground">Por semana</p>
-                </div>
-                <div className="text-center p-4 rounded-xl glass border border-border/50">
-                  <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center mx-auto mb-2">
-                    <Heart className="w-5 h-5 text-pink-500" />
-                  </div>
-                  <p className="text-2xl font-bold text-pink-500">{formatNumber(sector.videos.reduce((sum, v) => sum + v.likes, 0))}</p>
-                  <p className="text-xs text-muted-foreground">Likes referencia</p>
-                </div>
-                <div className="text-center p-4 rounded-xl glass border border-border/50">
-                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2">
-                    <Eye className="w-5 h-5 text-green-500" />
-                  </div>
-                  <p className="text-2xl font-bold text-green-500">{formatNumber(sector.videos.reduce((sum, v) => sum + v.views, 0))}</p>
-                  <p className="text-xs text-muted-foreground">Views referencia</p>
-                </div>
-              </div>
+                </>
+              )}
             </Card>
           </div>
         </section>
@@ -555,6 +684,12 @@ export default function Calendar() {
                 <span className="text-sm text-muted-foreground">
                   {selectedDay} de {MONTHS[currentMonth]} - Día de publicación
                 </span>
+                {selectedVideo.isFromDatabase && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
+                    <Database className="w-3 h-3" />
+                    Curado
+                  </span>
+                )}
               </div>
               <h3 className="text-xl font-bold">Reel a replicar</h3>
             </div>
@@ -569,6 +704,16 @@ export default function Calendar() {
                       src={selectedVideo.cover} 
                       alt={selectedVideo.description}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        if (target.parentElement) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center';
+                          fallback.innerHTML = '<svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+                          target.parentElement.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
@@ -594,7 +739,7 @@ export default function Calendar() {
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-accent" />
                     <span className="text-sm text-muted-foreground">
-                      @{selectedVideo.username} • {selectedVideo.authorName}
+                      {selectedVideo.username} {selectedVideo.authorName && `• ${selectedVideo.authorName}`}
                     </span>
                   </div>
 
@@ -617,6 +762,17 @@ export default function Calendar() {
                       <span>{formatNumber(selectedVideo.views)}</span>
                     </div>
                   </div>
+
+                  {/* Virality explanation (from curated data) */}
+                  {selectedVideo.viralityExplanation && (
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 mb-3">
+                      <p className="text-xs font-medium text-blue-400 mb-1 flex items-center gap-1">
+                        <Database className="w-3 h-3" />
+                        Por qué es viral
+                      </p>
+                      <p className="text-xs text-muted-foreground">{selectedVideo.viralityExplanation}</p>
+                    </div>
+                  )}
 
                   {/* Tips */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
@@ -768,6 +924,7 @@ export default function Calendar() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,15 @@
+{
+  "query": "SELECT MIN(createdAt) as earliest, MAX(createdAt) as latest, COUNT(*) as total FROM video_analyses WHERE status = 'failed';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute SELECT MIN(createdAt) as earliest, MAX(createdAt) as latest, COUNT(*) as total FROM video_analyses WHERE status = 'failed';",
+  "rows": [
+    {
+      "earliest": "2026-01-18 23:12:57",
+      "latest": "2026-03-18 20:43:23",
+      "total": "84"
+    }
+  ],
+  "messages": [],
+  "stdout": "earliest\tlatest\ttotal\n2026-01-18 23:12:57\t2026-03-18 20:43:23\t84\n",
+  "stderr": "",
+  "execution_time_ms": 1590
+}

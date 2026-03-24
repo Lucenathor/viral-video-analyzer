@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { sectorsDatabase, SectorData, getObjectivesForSector } from "@/data/sectorsDatabase";
 import StoryPreview from "@/components/StoryPreview";
+import Navbar from "@/components/Navbar";
 
 // Types for the generated stories
 interface Story {
@@ -264,7 +265,9 @@ export default function Stories() {
   const selectedSector = sectorsDatabase.find((s: SectorData) => s.id === sectorId);
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950">
+      <Navbar />
+      <div className="pt-24 pb-8 px-4">
       <div className="container max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12 animate-fade-in">
@@ -940,6 +943,7 @@ export default function Stories() {
             )}
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );

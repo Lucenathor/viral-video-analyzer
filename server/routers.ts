@@ -591,7 +591,7 @@ Responde siempre en español y en formato JSON válido.`
             userMessage = error.message;
           }
           
-          await db.updateVideoAnalysis(analysisId, { status: "failed" });
+          await db.updateVideoAnalysis(analysisId, { status: "failed", errorMessage: userMessage });
           
           throw new Error(userMessage);
         }
@@ -857,6 +857,73 @@ Devuelve SOLO el JSON.`;
 
   // Calendar Progress Router
   calendar: router({
+    // Get approved reels with calendar assignments for a sector
+    getApprovedReels: protectedProcedure
+      .input(z.object({
+        sectorSlug: z.string(),
+        month: z.number().min(0).max(11), // JS month (0-11)
+        year: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const dbInstance = await db.getDb();
+        if (!dbInstance) return { assignments: [], fallbackToStatic: true };
+
+        // Import tables
+        const { calendarAssignments, approvedReels } = await import('../drizzle/schema');
+        const { eq, and } = await import('drizzle-orm');
+
+        // Calendar assignments use 1-indexed months
+        const dbMonth = input.month + 1;
+
+        const assignments = await dbInstance
+          .select({
+            id: calendarAssignments.id,
+            dayOfMonth: calendarAssignments.dayOfMonth,
+            month: calendarAssignments.month,
+            year: calendarAssignments.year,
+            orderInDay: calendarAssignments.orderInDay,
+            reel: {
+              id: approvedReels.id,
+              tiktokId: approvedReels.tiktokId,
+              tiktokUrl: approvedReels.tiktokUrl,
+              authorUsername: approvedReels.authorUsername,
+              authorName: approvedReels.authorName,
+              title: approvedReels.title,
+              description: approvedReels.description,
+              coverUrl: approvedReels.coverUrl,
+              videoUrl: approvedReels.videoUrl,
+              duration: approvedReels.duration,
+              likes: approvedReels.likes,
+              comments: approvedReels.comments,
+              shares: approvedReels.shares,
+              views: approvedReels.views,
+              sectorSlug: approvedReels.sectorSlug,
+              viralityExplanation: approvedReels.viralityExplanation,
+            },
+          })
+          .from(calendarAssignments)
+          .innerJoin(approvedReels, eq(calendarAssignments.approvedReelId, approvedReels.id))
+          .where(and(
+            eq(calendarAssignments.sectorSlug, input.sectorSlug),
+            eq(calendarAssignments.month, dbMonth),
+            eq(calendarAssignments.year, input.year),
+            eq(calendarAssignments.isActive, true)
+          ))
+          .orderBy(calendarAssignments.dayOfMonth, calendarAssignments.orderInDay);
+
+        return {
+          assignments,
+          fallbackToStatic: assignments.length === 0,
+        };
+      }),
+
+    // Get all approved reels for a sector (across all months) for stats
+    getApprovedReelsBySector: protectedProcedure
+      .input(z.object({ sectorSlug: z.string() }))
+      .query(async ({ input }) => {
+        return db.getApprovedReels(input.sectorSlug);
+      }),
+
     // Get user's subscription config for calendar
     getSubscriptionConfig: protectedProcedure
       .query(async ({ ctx }) => {

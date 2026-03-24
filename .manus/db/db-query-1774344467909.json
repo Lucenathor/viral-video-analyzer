@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE video_analyses SET status = 'failed', errorMessage = 'Análisis expirado - tiempo de procesamiento excedido' WHERE status = 'processing' AND createdAt < DATE_SUB(NOW(), INTERVAL 1 HOUR);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute UPDATE video_analyses SET status = 'failed', errorMessage = 'Análisis expirado - tiempo de procesamiento excedido' WHERE status = 'processing' AND createdAt < DATE_SUB(NOW(), INTERVAL 1 HOUR);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1666
+}

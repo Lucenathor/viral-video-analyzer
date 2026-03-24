@@ -15,6 +15,7 @@ import {
   Share2, Play, ExternalLink, Brain, TrendingUp, Filter, Loader2,
   CheckCircle, XCircle, BarChart3, CalendarPlus
 } from "lucide-react";
+import Navbar from "@/components/Navbar";
 
 interface VideoResult {
   tiktokId: string;
@@ -202,7 +203,8 @@ export default function AdminTraining() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950">
-      <div className="container py-8">
+      <Navbar />
+      <div className="container pt-24 pb-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">

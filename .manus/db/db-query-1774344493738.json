@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, overallScore, hookScore, pacingScore, engagementScore, status FROM video_analyses WHERE status = 'completed' AND (overallScore = 0 OR overallScore IS NULL);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute SELECT id, overallScore, hookScore, pacingScore, engagementScore, status FROM video_analyses WHERE status = 'completed' AND (overallScore = 0 OR overallScore IS NULL);",
+  "rows": [
+    {
+      "id": "60005",
+      "overallScore": "0",
+      "hookScore": "0",
+      "pacingScore": "0",
+      "engagementScore": "0",
+      "status": "completed"
+    },
+    {
+      "id": "90002",
+      "overallScore": "0",
+      "hookScore": "0",
+      "pacingScore": "0",
+      "engagementScore": "0",
+      "status": "completed"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\toverallScore\thookScore\tpacingScore\tengagementScore\tstatus\n60005\t0\t0\t0\t0\tcompleted\n90002\t0\t0\t0\t0\tcompleted\n",
+  "stderr": "",
+  "execution_time_ms": 1654
+}

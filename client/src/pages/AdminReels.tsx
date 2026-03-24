@@ -17,6 +17,7 @@ import {
   ChevronLeft, ChevronRight, Play, Filter, RefreshCw, LayoutGrid,
   Calendar, Target, Zap, BarChart3
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 // Sectores disponibles
 const SECTORS = [
@@ -195,8 +196,9 @@ export default function AdminReels() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <Navbar />
       {/* Header */}
-      <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-16 z-10">
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

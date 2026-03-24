@@ -24,7 +24,6 @@ import {
   BarChart3,
   FileVideo,
   Lock,
-  Calendar,
   Link as LinkIcon,
   Crown,
   Flame,
@@ -61,30 +60,7 @@ interface AnalysisResult {
   engagementScore: number;
 }
 
-// Unlock dates
-const UNLOCK_DATE_USER_VIDEO = new Date('2026-01-30T00:00:00');
-const UNLOCK_DATE_VIRAL_VIDEO = new Date('2026-02-05T00:00:00');
 
-// Check if feature is unlocked
-function isFeatureUnlocked(unlockDate: Date): boolean {
-  return new Date() >= unlockDate;
-}
-
-// Format date for display
-function formatUnlockDate(date: Date): string {
-  return date.toLocaleDateString('es-ES', { 
-    day: 'numeric', 
-    month: 'long',
-    year: 'numeric'
-  });
-}
-
-// Calculate days until unlock
-function daysUntilUnlock(date: Date): number {
-  const now = new Date();
-  const diff = date.getTime() - now.getTime();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
 
 // Upload file in chunks through the server
 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -127,78 +103,6 @@ async function uploadFileInChunks(
   }
 }
 
-// Locked Feature Card Component
-function LockedFeatureCard({ 
-  title, 
-  description, 
-  unlockDate, 
-  icon: Icon,
-  gradient 
-}: { 
-  title: string; 
-  description: string; 
-  unlockDate: Date;
-  icon: React.ElementType;
-  gradient: string;
-}) {
-  const days = daysUntilUnlock(unlockDate);
-  
-  return (
-    <Card className="relative overflow-hidden bg-card/30 border-primary/20 backdrop-blur-xl">
-      {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
-      <div className="absolute inset-0 gradient-mesh opacity-30" />
-      
-      <CardContent className="relative p-8 text-center">
-        {/* Lock icon with glow */}
-        <div className="relative inline-block mb-6">
-          <div className={`w-24 h-24 rounded-3xl ${gradient} flex items-center justify-center mx-auto shadow-2xl`}>
-            <Lock className="w-10 h-10 text-white" />
-          </div>
-          <div className="absolute -inset-2 bg-primary/20 rounded-3xl blur-xl -z-10 animate-pulse-glow" />
-        </div>
-        
-        {/* Badge */}
-        <Badge className="mb-4 bg-primary/20 text-primary border-primary/30 px-4 py-1.5">
-          <Calendar className="w-3 h-3 mr-2" />
-          Se desbloquea el {formatUnlockDate(unlockDate)}
-        </Badge>
-        
-        <h3 className="text-2xl font-bold mb-3 text-gradient">{title}</h3>
-        <p className="text-muted-foreground mb-6 max-w-md mx-auto">{description}</p>
-        
-        {/* Countdown */}
-        <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-background/50 border border-primary/20">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gradient">{days}</div>
-            <div className="text-xs text-muted-foreground">días</div>
-          </div>
-          <div className="w-px h-10 bg-border" />
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm">para el desbloqueo</span>
-          </div>
-        </div>
-        
-        {/* Features preview */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="p-3 rounded-xl bg-background/30 border border-border/30">
-            <Sparkles className="w-5 h-5 text-primary mx-auto mb-2" />
-            <span className="text-xs text-muted-foreground">Análisis IA</span>
-          </div>
-          <div className="p-3 rounded-xl bg-background/30 border border-border/30">
-            <BarChart3 className="w-5 h-5 text-accent mx-auto mb-2" />
-            <span className="text-xs text-muted-foreground">Métricas</span>
-          </div>
-          <div className="p-3 rounded-xl bg-background/30 border border-border/30">
-            <Target className="w-5 h-5 text-pink-500 mx-auto mb-2" />
-            <span className="text-xs text-muted-foreground">Mejoras</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function Analyzer() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -218,10 +122,6 @@ export default function Analyzer() {
   // TikTok URL state
   const [tiktokUrl, setTiktokUrl] = useState<string>("");
   const [isDownloadingTiktok, setIsDownloadingTiktok] = useState(false);
-  
-  // Check unlock status
-  const isUserVideoUnlocked = isFeatureUnlocked(UNLOCK_DATE_USER_VIDEO);
-  const isViralVideoUnlocked = isFeatureUnlocked(UNLOCK_DATE_VIRAL_VIDEO);
   
   // Tips to show while waiting
   const analysisTips = [
@@ -393,7 +293,7 @@ export default function Analyzer() {
     toast.info("Descargando vídeo de TikTok...");
     
     try {
-      toast.info("Esta función estará disponible el 5 de febrero");
+      toast.info("Función próximamente disponible. Estamos trabajando en la integración con TikTok.");
     } catch (error: any) {
       toast.error("Error al descargar el vídeo de TikTok");
     } finally {
@@ -520,7 +420,6 @@ export default function Analyzer() {
               >
                 <Video className="w-4 h-4" />
                 Analizar Tu Vídeo
-                {!isUserVideoUnlocked && <Lock className="w-3 h-3 ml-1" />}
               </TabsTrigger>
               <TabsTrigger 
                 value="viral-reference" 
@@ -528,21 +427,11 @@ export default function Analyzer() {
               >
                 <TrendingUp className="w-4 h-4" />
                 Analizar Vídeo Viral
-                {!isViralVideoUnlocked && <Lock className="w-3 h-3 ml-1" />}
               </TabsTrigger>
             </TabsList>
 
             {/* Analyze Your Video Tab */}
             <TabsContent value="analyze" className="space-y-6 animate-fade-in-up">
-              {!isUserVideoUnlocked ? (
-                <LockedFeatureCard
-                  title="Analiza Tu Propio Vídeo"
-                  description="Sube tu vídeo y obtén un análisis completo de su potencial viral con recomendaciones de mejora personalizadas."
-                  unlockDate={UNLOCK_DATE_USER_VIDEO}
-                  icon={Video}
-                  gradient="gradient-primary"
-                />
-              ) : (
                 <Card className="glass-card border-primary/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -647,7 +536,6 @@ export default function Analyzer() {
                     )}
                   </CardContent>
                 </Card>
-              )}
 
               {/* Analysis Results */}
               {analysisResult && (
@@ -735,15 +623,6 @@ export default function Analyzer() {
 
             {/* Analyze Viral Video Tab */}
             <TabsContent value="viral-reference" className="space-y-6 animate-fade-in-up">
-              {!isViralVideoUnlocked ? (
-                <LockedFeatureCard
-                  title="Analiza Vídeos Virales de TikTok"
-                  description="Pega la URL de cualquier vídeo viral de TikTok y obtén un análisis detallado de por qué se volvió viral."
-                  unlockDate={UNLOCK_DATE_VIRAL_VIDEO}
-                  icon={TrendingUp}
-                  gradient="gradient-accent"
-                />
-              ) : (
                 <Card className="glass-card border-primary/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -784,7 +663,6 @@ export default function Analyzer() {
                     </p>
                   </CardContent>
                 </Card>
-              )}
             </TabsContent>
           </Tabs>
 

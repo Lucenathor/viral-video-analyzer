@@ -42,7 +42,7 @@ const features = [
     description: "Sube tu vídeo y descubre su potencial viral: hooks, cortes, timing y estructura completa con recomendaciones de mejora.",
     href: "/analyzer",
     color: "gradient-accent",
-    badge: "30 Enero"
+    badge: "IA Avanzada"
   },
   {
     icon: Target,
@@ -50,7 +50,7 @@ const features = [
     description: "Compara tu vídeo con uno viral de tu sector y recibe puntos de mejora específicos y recomendaciones de edición.",
     href: "/analyzer",
     color: "bg-gradient-to-br from-pink-500 to-rose-600",
-    badge: "5 Febrero"
+    badge: "Nuevo"
   },
   {
     icon: Headphones,
@@ -233,6 +233,10 @@ export default function Home() {
                               ? 'bg-primary/20 text-primary border-primary/30' 
                               : feature.badge === 'Premium'
                               ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                              : feature.badge === 'IA Avanzada'
+                              ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                              : feature.badge === 'Nuevo'
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                               : 'bg-muted/50 text-muted-foreground border-border/50'
                           }`}
                         >

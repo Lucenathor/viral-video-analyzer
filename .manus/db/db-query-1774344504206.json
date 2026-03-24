@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE video_analyses SET status = 'failed', errorMessage = 'Análisis completado sin resultados válidos' WHERE status = 'completed' AND overallScore = 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute UPDATE video_analyses SET status = 'failed', errorMessage = 'Análisis completado sin resultados válidos' WHERE status = 'completed' AND overallScore = 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1635
+}

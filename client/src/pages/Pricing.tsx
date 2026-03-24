@@ -13,6 +13,7 @@ import {
   Video, Calendar, MessageSquare, Users, Palette, Code,
   ArrowRight, Loader2
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 const FEATURES = [
   { key: 'analysisPerMonth', label: 'Análisis de vídeos/mes', icon: Video },
@@ -99,8 +100,9 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <Navbar />
       {/* Hero Section */}
-      <div className="container py-16 text-center">
+      <div className="container pt-24 pb-16 text-center">
         <Badge className="mb-4 bg-purple-500/20 text-purple-300 border-purple-500/30">
           <Sparkles className="w-3 h-3 mr-1" />
           Planes y Precios

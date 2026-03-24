@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, sectorSlug, LEFT(title, 40) as title, likes, views, LEFT(coverUrl, 50) as cover FROM approved_reels LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute SELECT id, sectorSlug, LEFT(title, 40) as title, likes, views, LEFT(coverUrl, 50) as cover FROM approved_reels LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "sectorSlug": "personal-trainer",
+      "title": "sabrán disculpar a su humilde servidora ",
+      "likes": "648738",
+      "views": "5895085",
+      "cover": "https://p77-sign-va.tiktokcdn.com/tos-maliva-p-006"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsectorSlug\ttitle\tlikes\tviews\tcover\n1\tpersonal-trainer\tsabrán disculpar a su humilde servidora \t648738\t5895085\thttps://p77-sign-va.tiktokcdn.com/tos-maliva-p-006\n",
+  "stderr": "",
+  "execution_time_ms": 1671
+}

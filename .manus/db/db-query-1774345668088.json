@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, errorMessage, createdAt FROM video_analyses WHERE status = 'failed' ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 31C4iMxDJJnqeCT.3c78779329cc --database YpkX7UBRCFyoNjYW5eCLWn --execute SELECT id, errorMessage, createdAt FROM video_analyses WHERE status = 'failed' ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "690004",
+      "errorMessage": "Análisis expirado - tiempo de procesamiento excedido",
+      "createdAt": "2026-03-18 20:43:23"
+    },
+    {
+      "id": "690003",
+      "errorMessage": "Análisis expirado - tiempo de procesamiento excedido",
+      "createdAt": "2026-03-18 20:42:53"
+    },
+    {
+      "id": "690002",
+      "errorMessage": "Análisis expirado - tiempo de procesamiento excedido",
+      "createdAt": "2026-03-18 20:42:17"
+    },
+    {
+      "id": "690001",
+      "errorMessage": "Análisis expirado - tiempo de procesamiento excedido",
+      "createdAt": "2026-03-18 20:40:06"
+    },
+    {
+      "id": "660002",
+      "errorMessage": "Análisis expirado - tiempo de procesamiento excedido",
+      "createdAt": "2026-03-03 20:50:20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\terrorMessage\tcreatedAt\n690004\tAnálisis expirado - tiempo de procesamiento excedido\t2026-03-18 20:43:23\n690003\tAnálisis expirado - tiempo de procesamiento excedido\t2026-03-18 20:42:53\n690002\tAnálisis expirado - tiempo de procesamiento excedido\t2026-03-18 20:42:17\n690001\tAnálisis expirado - tiempo de procesamiento excedido\t2026-03-18 20:40:06\n660002\tAnálisis expirado - tiempo de procesamiento excedido\t2026-03-03 20:50:20\n",
+  "stderr": "",
+  "execution_time_ms": 1510
+}
