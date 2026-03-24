@@ -27,6 +27,33 @@ import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import { businessSectors } from "@/data/businessSectorVideos";
 
+// ─── VideoThumbnail Component ─────────────────────────────────────────
+// Handles TikTok CDN expired URLs gracefully with a beautiful gradient fallback
+function VideoThumbnail({ cover, className = "", iconSize = "w-6 h-6" }: { cover: string; className?: string; iconSize?: string }) {
+  const [failed, setFailed] = useState(false);
+  
+  if (!cover || failed) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-purple-600/40 via-primary/30 to-accent/40 flex items-center justify-center`}>
+        <div className="flex flex-col items-center gap-1">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+            <Play className={`${iconSize} text-white/80 ml-0.5`} fill="currentColor" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={cover}
+      alt="Video thumbnail"
+      className={`${className} object-cover`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 // Obtener el mes actual y año
 const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -542,22 +569,11 @@ export default function Calendar() {
                                   <div className="relative">
                                     {/* Thumbnail */}
                                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden border-2 border-primary/50 shadow-lg">
-                                      {videoSchedule[day]?.cover ? (
-                                        <img 
-                                          src={videoSchedule[day]?.cover} 
-                                          alt="Video thumbnail"
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            target.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>';
-                                          }}
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
-                                          <Play className="w-4 h-4 text-white" />
-                                        </div>
-                                      )}
+                                      <VideoThumbnail 
+                                        cover={videoSchedule[day]?.cover || ""}
+                                        className="w-full h-full"
+                                        iconSize="w-4 h-4"
+                                      />
                                     </div>
                                     
                                     {/* Play button overlay */}
@@ -699,27 +715,11 @@ export default function Calendar() {
               <div className="flex gap-6">
                 {/* Thumbnail */}
                 <div className="relative w-32 h-48 rounded-xl overflow-hidden flex-shrink-0 border border-primary/30">
-                  {selectedVideo.cover ? (
-                    <img 
-                      src={selectedVideo.cover} 
-                      alt={selectedVideo.description}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        if (target.parentElement) {
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center';
-                          fallback.innerHTML = '<svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-                          target.parentElement.appendChild(fallback);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
-                      <Play className="w-8 h-8 text-white" />
-                    </div>
-                  )}
+                  <VideoThumbnail 
+                    cover={selectedVideo.cover}
+                    className="w-full h-full"
+                    iconSize="w-8 h-8"
+                  />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                     <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                       <Play className="w-6 h-6 text-white fill-white" />

@@ -27,6 +27,30 @@ import {
   Star
 } from 'lucide-react';
 
+// ─── VideoThumbnail Component ─────────────────────────────────────────
+function VideoThumbnail({ cover, className = "", iconSize = "w-6 h-6" }: { cover: string; className?: string; iconSize?: string }) {
+  const [failed, setFailed] = useState(false);
+  
+  if (!cover || failed) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-purple-600/40 via-primary/30 to-accent/40 flex items-center justify-center`}>
+        <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+          <Play className={`${iconSize} text-white/80 ml-0.5`} fill="currentColor" />
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={cover}
+      alt="Video thumbnail"
+      className={`${className} object-cover`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 // Animated counter hook
 function useAnimatedCounter(end: number, duration: number = 2000) {
   const [count, setCount] = useState(0);
@@ -412,19 +436,12 @@ export default function Library() {
                   <CardContent className="p-4">
                     <div className="flex gap-4">
                       {/* Real Thumbnail */}
-                      <div className={`w-28 h-28 md:w-36 md:h-36 rounded-xl flex-shrink-0 relative overflow-hidden ${!video.cover ? 'bg-gradient-to-br from-primary/30 to-accent/30' : ''}`}>
-                        {video.cover && (
-                          <img 
-                            src={video.cover}
-                            alt={video.description}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            onError={(e) => {
-                              // Fallback to gradient if image fails
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-primary/30', 'to-accent/30');
-                            }}
-                          />
-                        )}
+                      <div className="w-28 h-28 md:w-36 md:h-36 rounded-xl flex-shrink-0 relative overflow-hidden">
+                        <VideoThumbnail 
+                          cover={video.cover}
+                          className="w-full h-full"
+                          iconSize="w-6 h-6"
+                        />
                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
                         
                         {/* Play overlay */}

@@ -136,6 +136,15 @@
   ::-webkit-scrollbar-thumb:hover {
     background: oklch(0.5 0.15 290 / 0.7);
   }
+  
+  /* Hide scrollbar utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),

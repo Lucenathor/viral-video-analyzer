@@ -44,4 +44,9 @@
 - [x] Embeber reels de TikTok/Instagram en ficha de sector
 - [x] Añadir ruta /inspiration y nav item 'Inspiración' con icono Compass
 - [x] Probar end-to-end en navegador (búsqueda, filtros, modal, vistas grid/lista)
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint (5df09f8a)
+
+## Bugs Reportados por Usuario - Marzo 24
+- [x] Bug: Calendario - thumbnails reemplazadas con gradientes fallback bonitos (URLs TikTok CDN expiradas)
+- [x] Bug: Calendario modal - gradiente fallback con icono play y duración
+- [x] Bug: Inspiración Viral - añadido shrink-0, scrollbar-hide CSS, fade edges laterales

@@ -181,7 +181,7 @@ function CategoryPill({
     <button
       onClick={onClick}
       className={`
-        flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap
+        flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap shrink-0
         ${isActive 
           ? 'text-white shadow-lg scale-105' 
           : 'bg-white/[0.05] text-white/60 hover:bg-white/[0.08] hover:text-white/80 border border-white/5'
@@ -533,31 +533,39 @@ export default function InspirationViral() {
       {/* Categories Section */}
       <section className="pb-6">
         <div className="container">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {/* All button */}
-            <button
-              onClick={() => setActiveCategory(null)}
-              className={`
-                flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap
-                ${!activeCategory 
-                  ? 'bg-white/10 text-white border border-white/20' 
-                  : 'bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/70 border border-white/5'
-                }
-              `}
-            >
-              <Globe className="w-4 h-4" />
-              Todos
-              <span className="text-xs px-1.5 py-0.5 rounded-md bg-white/10">{data?.total || 0}</span>
-            </button>
+          {/* Scrollable categories with fade edges */}
+          <div className="relative">
+            {/* Left fade */}
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            {/* Right fade */}
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
             
-            {categories.map(cat => (
-              <CategoryPill
-                key={cat.name}
-                category={cat}
-                isActive={activeCategory === cat.name}
-                onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
-              />
-            ))}
+            <div className="flex items-center gap-2 overflow-x-auto pb-3 pt-1 px-2 scrollbar-hide">
+              {/* All button */}
+              <button
+                onClick={() => setActiveCategory(null)}
+                className={`
+                  flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap shrink-0
+                  ${!activeCategory 
+                    ? 'bg-white/10 text-white border border-white/20' 
+                    : 'bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/70 border border-white/5'
+                  }
+                `}
+              >
+                <Globe className="w-4 h-4 shrink-0" />
+                <span>Todos</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-md bg-white/10">{data?.total || 0}</span>
+              </button>
+              
+              {categories.map(cat => (
+                <CategoryPill
+                  key={cat.name}
+                  category={cat}
+                  isActive={activeCategory === cat.name}
+                  onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
