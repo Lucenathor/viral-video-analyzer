@@ -1,4 +1,4 @@
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, ne, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, 
@@ -661,4 +661,63 @@ export async function deleteCalendarAssignment(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(calendarAssignments).where(eq(calendarAssignments.id, id));
+}
+
+
+// ==================== ADMIN MANAGEMENT FUNCTIONS ====================
+
+/**
+ * Get all users with their role info (admin only)
+ */
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: users.id,
+    openId: users.openId,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  }).from(users).orderBy(desc(users.lastSignedIn));
+}
+
+/**
+ * Get user by ID
+ */
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Update user role (promote to admin or demote to user)
+ */
+export async function updateUserRole(userId: number, role: 'admin' | 'user') {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+/**
+ * Get count of admins
+ */
+export async function getAdminCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'admin'));
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Get count of total users
+ */
+export async function getTotalUserCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: sql<number>`count(*)` }).from(users);
+  return result[0]?.count ?? 0;
 }

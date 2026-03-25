@@ -6,6 +6,7 @@ import { stripeRouter } from "./routers/stripeRouter";
 import { adminRouter } from "./routers/adminRouter";
 import { trainingRouter } from "./routers/trainingRouter";
 import { inspirationRouter } from "./routers/inspirationRouter";
+import { userManagementRouter } from "./routers/userManagementRouter";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storageGet } from "./storage";
@@ -25,6 +26,7 @@ export const appRouter = router({
   admin: adminRouter,
   training: trainingRouter,
   inspiration: inspirationRouter,
+  userManagement: userManagementRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

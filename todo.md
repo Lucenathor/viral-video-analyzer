@@ -86,3 +86,15 @@
 - [x] Inspiración Viral: sin restricciones (siempre fue público)
 - [x] Verificar todas las páginas en navegador (Calendar Marzo→Abril→Mayo OK)
 - [x] Guardar checkpoint demo mode (todos los 62 tests pasan)
+
+## Sistema de Gestión de Administradores
+- [x] Analizar sistema actual de roles (schema, routers, frontend)
+- [x] Campo 'role' ya existía en schema (user/admin enum)
+- [x] Crear endpoints tRPC: getUsers, getStats, promoteToAdmin, demoteToUser
+- [x] Proteger endpoints con adminProcedure (role check + owner check)
+- [x] Crear página AdminUsers.tsx con stats, búsqueda, lista de admins/usuarios, modal de confirmación
+- [x] Secciones admin visibles solo para admins (Navbar ya filtraba por role)
+- [x] Owner puede promover/degradar usuarios (protegido: no se puede degradar al owner ni a uno mismo)
+- [x] 10 tests en userManagement.test.ts (72 tests totales pasan)
+- [x] Verificado en navegador: 67 usuarios, 1 admin, búsqueda, badges, botones
+- [x] Guardar checkpoint

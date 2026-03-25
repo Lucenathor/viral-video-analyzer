@@ -16,7 +16,8 @@ import {
   CreditCard,
   Shield,
   Brain,
-  Compass
+  Compass,
+  Users
 } from "lucide-react";
 import { useState } from "react";
 
@@ -35,6 +36,7 @@ const navItems = [
 const adminItems = [
   { href: "/admin/training", label: "Training", icon: Brain },
   { href: "/admin/reels", label: "Admin Reels", icon: Shield },
+  { href: "/admin/users", label: "Usuarios", icon: Users },
 ];
 
 export default function Navbar() {

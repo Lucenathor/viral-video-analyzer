@@ -16,6 +16,7 @@ import Pricing from "./pages/Pricing";
 import AdminReels from "./pages/AdminReels";
 import AdminTraining from "./pages/AdminTraining";
 import InspirationViral from "./pages/InspirationViral";
+import AdminUsers from "./pages/AdminUsers";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/admin/reels" component={AdminReels} />
       <Route path="/inspiration" component={InspirationViral} />
       <Route path="/admin/training" component={AdminTraining} />
+      <Route path="/admin/users" component={AdminUsers} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
