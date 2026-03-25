@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Video, 
   Library, 
-  Headphones, 
+  Instagram, 
   Sparkles, 
   TrendingUp, 
   Zap,
@@ -53,12 +53,12 @@ const features = [
     badge: "Nuevo"
   },
   {
-    icon: Headphones,
-    title: "Soporte 24h de Expertos",
-    description: "Envía tu vídeo y recibe análisis personalizado de expertos en contenido viral con un Loom explicativo.",
-    href: "/support",
-    color: "bg-gradient-to-br from-orange-500 to-amber-600",
-    badge: "Premium"
+    icon: Instagram,
+    title: "Generador de Bios IG",
+    description: "Crea biografías profesionales de Instagram con CTA inteligente, enlace web y slot de urgencia. La IA decide si usar lead magnet, auditoría o consultoría.",
+    href: "/bio-generator",
+    color: "bg-gradient-to-br from-pink-500 to-purple-600",
+    badge: "Nuevo"
   }
 ];
 
@@ -66,7 +66,7 @@ const stats = [
   { value: "10K+", label: "Vídeos Analizados", icon: Video },
   { value: "500+", label: "Reels Virales", icon: Flame },
   { value: "98%", label: "Satisfacción", icon: Star },
-  { value: "24/7", label: "Soporte Experto", icon: Headphones }
+  { value: "IA", label: "Bio Generator", icon: Instagram }
 ];
 
 const benefits = [

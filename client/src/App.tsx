@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Analyzer from "./pages/Analyzer";
 import Library from "./pages/Library";
 import SectorDetail from "./pages/SectorDetail";
-import Support from "./pages/Support";
+import BioGenerator from "./pages/BioGenerator";
 import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
 import Stories from "./pages/Stories";
@@ -26,7 +26,7 @@ function Router() {
       <Route path="/analyzer" component={Analyzer} />
       <Route path="/library" component={Library} />
       <Route path="/library/:slug" component={SectorDetail} />
-      <Route path="/support" component={Support} />
+      <Route path="/bio-generator" component={BioGenerator} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/calendar" component={Calendar} />
       <Route path="/stories" component={Stories} />

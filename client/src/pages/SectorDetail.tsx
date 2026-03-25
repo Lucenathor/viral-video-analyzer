@@ -113,9 +113,9 @@ export default function SectorDetail() {
                     Analizar mi Vídeo
                   </Button>
                 </Link>
-                <Link href="/support">
+                <Link href="/bio-generator">
                   <Button variant="outline" className="gap-2">
-                    Solicitar Análisis Experto
+                    Crear Bio para este Sector
                   </Button>
                 </Link>
               </div>
@@ -182,9 +182,9 @@ export default function SectorDetail() {
                   Estamos preparando una colección de reels virales para este sector. 
                   ¡Vuelve pronto para ver los ejemplos!
                 </p>
-                <Link href="/support">
+                <Link href="/bio-generator">
                   <Button variant="outline">
-                    Solicitar Contenido
+                    Crear Bio para este Sector
                   </Button>
                 </Link>
               </div>

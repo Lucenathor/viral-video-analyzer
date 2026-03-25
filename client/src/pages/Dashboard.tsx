@@ -216,17 +216,17 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/support">
-              <Card className="bg-card/50 border-border/50 hover:border-green-500/50 transition-all cursor-pointer group">
+            <Link href="/bio-generator">
+              <Card className="bg-card/50 border-border/50 hover:border-pink-500/50 transition-all cursor-pointer group">
                 <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <MessageSquare className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold group-hover:text-green-400 transition-colors">Soporte</h3>
-                    <p className="text-sm text-muted-foreground">Contacta con expertos</p>
+                    <h3 className="font-semibold group-hover:text-pink-400 transition-colors">Bio IG</h3>
+                    <p className="text-sm text-muted-foreground">Genera bios profesionales</p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-green-400 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-pink-400 group-hover:translate-x-1 transition-all" />
                 </CardContent>
               </Card>
             </Link>

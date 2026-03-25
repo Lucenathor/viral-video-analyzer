@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { 
   Video, 
   Library, 
-  Headphones, 
+  Instagram, 
   LayoutDashboard, 
   LogOut, 
   Menu, 
@@ -26,7 +26,7 @@ const navItems = [
   { href: "/calendar", label: "Calendario", icon: CalendarDays },
   { href: "/stories", label: "Lanzamientos", icon: Flame },
   { href: "/analyzer", label: "Analizador", icon: Video },
-  { href: "/support", label: "Soporte 24h", icon: Headphones },
+  { href: "/bio-generator", label: "Bio IG", icon: Instagram },
   { href: "/inspiration", label: "Inspiración", icon: Compass },
   { href: "/pricing", label: "Precios", icon: CreditCard },
 ];

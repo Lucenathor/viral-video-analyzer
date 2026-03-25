@@ -616,21 +616,141 @@ Responde siempre en español y en formato JSON válido.`
     }),
   }),
 
-  // Support router
-  support: router({
-    submit: protectedProcedure
+  // Bio Generator router - Generador profesional de biografías de Instagram
+  bioGenerator: router({
+    generate: protectedProcedure
       .input(z.object({
-        subject: z.string().min(1),
-        message: z.string().min(1),
-        category: z.enum(["bug", "feature", "question", "other"]),
+        businessName: z.string().min(1, "Nombre del negocio requerido"),
+        businessDescription: z.string().min(10, "Describe tu negocio en al menos 10 caracteres"),
+        sector: z.string().min(1, "Sector requerido"),
+        city: z.string().optional(),
+        targetAudience: z.string().optional(),
+        tone: z.enum(["profesional", "cercano", "premium", "divertido"]).default("profesional"),
       }))
       .mutation(async ({ ctx, input }) => {
-        await notifyOwner({
-          title: `[ViralPro Support] ${input.category}: ${input.subject}`,
-          content: `User: ${ctx.user.name} (${ctx.user.openId})\n\nCategory: ${input.category}\nSubject: ${input.subject}\n\nMessage:\n${input.message}`,
-        });
+        console.log('[BioGenerator] Generating bio for:', input.businessName);
         
-        return { success: true };
+        const systemPrompt = `Eres un EXPERTO ABSOLUTO en marketing digital y biografías de Instagram para negocios. Llevas 10 años optimizando perfiles de Instagram que convierten seguidores en clientes.
+
+Tu trabajo es crear biografías de Instagram PERFECTAS que:
+1. Captan la atención en 0.5 segundos
+2. Comunican el valor del negocio al instante
+3. Incluyen un CTA irresistible
+4. Usan emojis estratégicos (no decorativos)
+5. Aprovechan cada carácter de los 150 disponibles
+
+REGLAS DE DECISIÓN PARA EL CTA:
+- Si el negocio es de SERVICIOS (clínica, abogados, consultoría, coaching, personal trainer, etc.) → CTA de AUDITORÍA GRATUITA o CONSULTORÍA GRATUITA
+- Si el negocio es de PRODUCTOS o E-COMMERCE → CTA de LEAD MAGNET (guía gratis, descuento, catálogo)
+- Si el negocio es de FORMACIÓN o EDUCACIÓN → CTA de LEAD MAGNET (masterclass gratis, ebook, webinar)
+- Si el negocio es INMOBILIARIA → CTA de AUDITORÍA (valoración gratuita de tu propiedad)
+- Si el negocio es RESTAURANTE o HOSTELERÍA → CTA de LEAD MAGNET (reserva + descuento)
+- Si el negocio es de SALUD/BIENESTAR → CTA de CONSULTORÍA (primera consulta gratis)
+
+REGLAS PARA EL ENLACE WEB:
+- Genera un enlace FICTICIO pero REALISTA usando el nombre del negocio
+- Formato: nombre-negocio.es/link o similar
+- El enlace debe parecer un Linktree o landing page real
+- Ejemplo: clinica-estetica-madrid.es/cita-gratis
+
+REGLAS PARA EL SLOT:
+- Incluye siempre un "slot" de disponibilidad que genere urgencia
+- Ejemplos: "Solo 3 huecos esta semana", "Últimas 5 plazas de marzo", "Agenda abierta solo hasta viernes"
+
+SIEMPRE responde en español de España.`;
+
+        const userPrompt = `Genera una biografía de Instagram PROFESIONAL para este negocio:
+
+NOMBRE: ${input.businessName}
+DESCRIPCIÓN: ${input.businessDescription}
+SECTOR: ${input.sector}
+CIUDAD: ${input.city || "No especificada"}
+PÚBLICO OBJETIVO: ${input.targetAudience || "General"}
+TONO: ${input.tone}
+
+Devuelve un JSON con esta estructura EXACTA:
+{
+  "profileName": "Nombre optimizado para el perfil (máx 30 chars, con keywords)",
+  "bio": "La biografía completa (máx 150 chars, con emojis estratégicos y saltos de línea con \\n)",
+  "ctaType": "lead_magnet" | "auditoria" | "consultoria",
+  "ctaText": "Texto del botón CTA (ej: Pide tu auditoría gratis)",
+  "ctaReason": "Explicación de por qué elegiste este tipo de CTA para este negocio",
+  "websiteUrl": "URL ficticia pero realista del negocio",
+  "slot": "Texto de urgencia/disponibilidad",
+  "hashtags": ["5 hashtags relevantes sin #"],
+  "category": "Categoría de Instagram recomendada",
+  "tips": ["3 consejos extra para optimizar el perfil"],
+  "alternativeBios": [
+    {
+      "style": "nombre del estilo alternativo",
+      "bio": "versión alternativa de la bio"
+    },
+    {
+      "style": "nombre del estilo alternativo 2",
+      "bio": "otra versión alternativa"
+    }
+  ]
+}`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "instagram_bio",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  profileName: { type: "string", description: "Nombre optimizado del perfil" },
+                  bio: { type: "string", description: "Biografía completa con emojis" },
+                  ctaType: { type: "string", enum: ["lead_magnet", "auditoria", "consultoria"], description: "Tipo de CTA elegido" },
+                  ctaText: { type: "string", description: "Texto del botón CTA" },
+                  ctaReason: { type: "string", description: "Razón de la elección del CTA" },
+                  websiteUrl: { type: "string", description: "URL ficticia del negocio" },
+                  slot: { type: "string", description: "Texto de urgencia/disponibilidad" },
+                  hashtags: { type: "array", items: { type: "string" }, description: "Hashtags relevantes" },
+                  category: { type: "string", description: "Categoría de Instagram" },
+                  tips: { type: "array", items: { type: "string" }, description: "Consejos para el perfil" },
+                  alternativeBios: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        style: { type: "string" },
+                        bio: { type: "string" }
+                      },
+                      required: ["style", "bio"],
+                      additionalProperties: false
+                    },
+                    description: "Bios alternativas"
+                  }
+                },
+                required: ["profileName", "bio", "ctaType", "ctaText", "ctaReason", "websiteUrl", "slot", "hashtags", "category", "tips", "alternativeBios"],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        const content = response.choices[0]?.message?.content;
+        if (!content || typeof content !== 'string') {
+          throw new Error("No se pudo generar la biografía");
+        }
+
+        const bioData = JSON.parse(content);
+        console.log('[BioGenerator] Bio generated successfully for:', input.businessName);
+        console.log('[BioGenerator] CTA type:', bioData.ctaType);
+        
+        return {
+          success: true,
+          ...bioData,
+          businessName: input.businessName,
+          sector: input.sector,
+        };
       }),
   }),
 

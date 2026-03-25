@@ -112,3 +112,14 @@
 - [x] 13 tests en passwordAuth.test.ts (85 tests totales pasan)
 - [x] Verificado: login/register/logout via curl + página login carga correctamente
 - [x] Guardar checkpoint
+
+## Reemplazar Soporte 24h por Generador de Bios de Instagram
+- [x] Analizar código actual de Soporte 24h y rutas
+- [x] Crear endpoint tRPC bioGenerator.generate con LLM (JSON schema strict)
+- [x] Lógica IA: decidir CTA (lead magnet, auditoría o consultoría) según tipo de empresa
+- [x] Generar: nombre optimizado, descripción, emojis, CTA, web ficticia, slot + bios alternativas + hashtags + tips
+- [x] Crear página BioGenerator.tsx con formulario, vista previa Instagram, copiar elementos, versiones alternativas
+- [x] Reemplazar Soporte 24h por Bio IG en Navbar, App.tsx, Home, Dashboard, SectorDetail + eliminar Support.tsx
+- [x] 15 tests en bioGenerator.test.ts + 1 actualizado en video.test.ts (102 tests totales pasan)
+- [x] TypeScript compila sin errores, 102 tests pasan
+- [x] Guardar checkpoint

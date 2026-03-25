@@ -160,28 +160,15 @@ describe("video router", () => {
   });
 });
 
-describe("support router", () => {
-  it("submits support ticket (authenticated)", async () => {
-    const ctx = createAuthContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const result = await caller.support.submit({
-      subject: "Test ticket",
-      message: "Test message",
-      category: "question",
-    });
-
-    expect(result).toHaveProperty("success", true);
-  });
-
-  it("rejects unauthenticated support submission", async () => {
+describe("bioGenerator router", () => {
+  it("rejects unauthenticated bio generation", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.support.submit({
-      subject: "Test",
-      message: "Test",
-      category: "question",
+    await expect(caller.bioGenerator.generate({
+      businessName: "Test Business",
+      businessDescription: "A test business description for testing",
+      sector: "Marketing Digital",
     })).rejects.toThrow();
   });
 });
