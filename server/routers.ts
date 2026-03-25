@@ -1,5 +1,3 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { stripeRouter } from "./routers/stripeRouter";
@@ -7,6 +5,7 @@ import { adminRouter } from "./routers/adminRouter";
 import { trainingRouter } from "./routers/trainingRouter";
 import { inspirationRouter } from "./routers/inspirationRouter";
 import { userManagementRouter } from "./routers/userManagementRouter";
+import { authRouter } from "./routers/authRouter";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storageGet } from "./storage";
@@ -28,14 +27,7 @@ export const appRouter = router({
   inspiration: inspirationRouter,
   userManagement: userManagementRouter,
   
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
-  }),
+  auth: authRouter,
 
   // Sectors router
   sectors: router({

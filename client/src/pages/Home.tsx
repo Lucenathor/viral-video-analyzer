@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getLoginUrl } from "@/const";
+
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
@@ -137,7 +137,7 @@ export default function Home() {
                   </Button>
                 </Link>
               ) : (
-                <a href={getLoginUrl()}>
+                <a href="/login">
                   <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-8 h-14 rounded-xl">
                     <Zap className="w-5 h-5" />
                     Comenzar Gratis
@@ -427,7 +427,7 @@ export default function Home() {
                   </Button>
                 </Link>
               ) : (
-                <a href={getLoginUrl()}>
+                <a href="/login">
                   <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-10 h-14 rounded-xl">
                     <Zap className="w-5 h-5" />
                     Comenzar Gratis

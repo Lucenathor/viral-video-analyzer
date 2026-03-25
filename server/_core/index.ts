@@ -3,7 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
+// OAuth removed - using password auth
 import { appRouter } from "../routers";
 import { handleStripeWebhook } from "../stripe/webhookHandler";
 import { createContext } from "./context";
@@ -39,8 +39,7 @@ async function startServer() {
   app.use(express.json({ limit: "150mb" }));
   app.use(express.urlencoded({ limit: "150mb", extended: true }));
   
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
+  // Password auth handled via tRPC auth router
   // tRPC API
   app.use(
     "/api/trpc",

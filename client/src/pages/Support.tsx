@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getLoginUrl } from "@/const";
+
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { useState, useRef, useCallback } from "react";
@@ -155,7 +155,7 @@ export default function Support() {
                 Inicia sesión para acceder al soporte personalizado y recibir análisis 
                 de expertos para tus vídeos.
               </p>
-              <a href={getLoginUrl()}>
+              <a href="/login">
                 <Button size="lg" className="gradient-primary glow-primary gap-2">
                   <Zap className="w-5 h-5" />
                   Iniciar Sesión para Continuar

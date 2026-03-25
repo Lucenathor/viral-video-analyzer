@@ -17,6 +17,7 @@ import AdminReels from "./pages/AdminReels";
 import AdminTraining from "./pages/AdminTraining";
 import InspirationViral from "./pages/InspirationViral";
 import AdminUsers from "./pages/AdminUsers";
+import Login from "./pages/Login";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/inspiration" component={InspirationViral} />
       <Route path="/admin/training" component={AdminTraining} />
       <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/login" component={Login} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

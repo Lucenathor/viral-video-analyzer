@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getLoginUrl } from "@/const";
+
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { 
@@ -88,7 +88,7 @@ export default function AdminUsers() {
             <Shield className="w-16 h-16 text-muted-foreground mb-4" />
             <h2 className="text-2xl font-bold mb-2">Acceso Restringido</h2>
             <p className="text-muted-foreground mb-6">Necesitas iniciar sesión para acceder a esta página.</p>
-            <a href={getLoginUrl()}>
+            <a href="/login">
               <Button className="gradient-primary text-white">Iniciar Sesión</Button>
             </a>
           </div>

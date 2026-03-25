@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getLoginUrl } from "@/const";
+
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -101,7 +101,7 @@ export default function Dashboard() {
                 Inicia sesión para acceder a tu dashboard y ver el historial 
                 de tus análisis y tickets de soporte.
               </p>
-              <a href={getLoginUrl()}>
+              <a href="/login">
                 <Button size="lg" className="gradient-primary glow-primary gap-2">
                   <Zap className="w-5 h-5" />
                   Iniciar Sesión

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { getLoginUrl } from '@/const';
+
 import { 
   Check, X, Sparkles, Zap, Crown, Building2, 
   Video, Calendar, MessageSquare, Users, Palette, Code,
@@ -64,7 +64,7 @@ export default function Pricing() {
 
   const handleSubscribe = (planId: string) => {
     if (!user) {
-      window.location.href = getLoginUrl();
+      window.location.href = "/login";
       return;
     }
     

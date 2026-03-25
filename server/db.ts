@@ -721,3 +721,53 @@ export async function getTotalUserCount(): Promise<number> {
   const result = await db.select({ count: sql<number>`count(*)` }).from(users);
   return result[0]?.count ?? 0;
 }
+
+
+// ==================== PASSWORD AUTH FUNCTIONS ====================
+
+/**
+ * Get user by email (for password login)
+ */
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Create a new user with password hash
+ */
+export async function createUserWithPassword(data: {
+  name: string;
+  email: string;
+  passwordHash: string;
+  role?: 'admin' | 'user';
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Generate a unique openId for password-based users
+  const openId = `pwd_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+  
+  const result = await db.insert(users).values({
+    openId,
+    name: data.name,
+    email: data.email,
+    passwordHash: data.passwordHash,
+    loginMethod: 'password',
+    role: data.role || 'user',
+    lastSignedIn: new Date(),
+  });
+  
+  return result[0].insertId;
+}
+
+/**
+ * Update user's password hash
+ */
+export async function updateUserPassword(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}

@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
 import { Link, useLocation } from "wouter";
 import { 
   Video, 
@@ -152,11 +151,11 @@ export default function Navbar() {
                 </Button>
               </>
             ) : (
-              <a href={getLoginUrl()}>
+              <Link href="/login">
                 <Button className="btn-premium gradient-primary text-white border-0 shadow-lg shadow-primary/25">
                   Iniciar Sesión
                 </Button>
-              </a>
+              </Link>
             )}
           </div>
 
@@ -256,11 +255,11 @@ export default function Navbar() {
                     Cerrar Sesión
                   </Button>
                 ) : (
-                  <a href={getLoginUrl()} className="block">
+                  <Link href="/login">
                     <Button className="w-full gradient-primary text-white">
                       Iniciar Sesión
                     </Button>
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>

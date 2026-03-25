@@ -98,3 +98,17 @@
 - [x] 10 tests en userManagement.test.ts (72 tests totales pasan)
 - [x] Verificado en navegador: 67 usuarios, 1 admin, búsqueda, badges, botones
 - [x] Guardar checkpoint
+
+## Reemplazar Manus OAuth por Login Usuario/Contraseña
+- [x] Analizar sistema auth actual (OAuth flow, context, middleware, hooks)
+- [x] Añadir campo passwordHash al schema de usuarios + db:push
+- [x] Crear authRouter con login/register/logout/me endpoints (bcrypt + JWT)
+- [x] Reemplazar context.ts para usar JWT propio con userId
+- [x] Crear página Login.tsx con formulario email/contraseña + registro
+- [x] Eliminar todas las referencias a getLoginUrl/OAuth de 8 archivos frontend
+- [x] Eliminar registerOAuthRoutes del server index.ts
+- [x] Actualizar useAuth hook para redirigir a /login
+- [x] Crear cuenta admin: admin@viralpro.io / ViralPro2024!
+- [x] 13 tests en passwordAuth.test.ts (85 tests totales pasan)
+- [x] Verificado: login/register/logout via curl + página login carga correctamente
+- [x] Guardar checkpoint

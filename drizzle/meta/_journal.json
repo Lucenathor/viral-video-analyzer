@@ -64,6 +64,13 @@
       "when": 1774347816027,
       "tag": "0008_left_franklin_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1774427904068,
+      "tag": "0009_burly_manta",
+      "breakpoints": true
     }
   ]
 }

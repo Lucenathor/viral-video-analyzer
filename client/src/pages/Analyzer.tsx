@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -329,7 +328,7 @@ export default function Analyzer() {
             </CardHeader>
             <CardContent>
               <Button className="w-full btn-premium gradient-primary text-white" asChild>
-                <a href={getLoginUrl()}>
+                <a href="/login">
                   <Zap className="w-4 h-4 mr-2" />
                   Iniciar Sesión
                 </a>
