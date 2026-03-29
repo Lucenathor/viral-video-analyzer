@@ -625,72 +625,158 @@ Responde siempre en español y en formato JSON válido.`
         sector: z.string().min(1, "Sector requerido"),
         city: z.string().optional(),
         targetAudience: z.string().optional(),
-        tone: z.enum(["profesional", "cercano", "premium", "divertido"]).default("profesional"),
+        tone: z.enum(["profesional", "cercano", "premium", "divertido", "autoridad"]).default("profesional"),
+        mainService: z.string().optional(),
+        differentiator: z.string().optional(),
+        yearsExperience: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         console.log('[BioGenerator] Generating bio for:', input.businessName);
         
-        const systemPrompt = `Eres un EXPERTO ABSOLUTO en marketing digital y biografías de Instagram para negocios. Llevas 10 años optimizando perfiles de Instagram que convierten seguidores en clientes.
+        const systemPrompt = `Eres el MEJOR ESTRATEGA DE BIOGRAFÍAS DE INSTAGRAM DEL MUNDO. Has optimizado +5.000 perfiles de negocios que generan entre 30% y 60% de conversión de visitante a seguidor. Eres referencia en copywriting de perfiles para negocios locales en España y Latinoamérica.
 
-Tu trabajo es crear biografías de Instagram PERFECTAS que:
-1. Captan la atención en 0.5 segundos
-2. Comunican el valor del negocio al instante
-3. Incluyen un CTA irresistible
-4. Usan emojis estratégicos (no decorativos)
-5. Aprovechan cada carácter de los 150 disponibles
+=== TU METODOLOGÍA PROBADA: "BIO MAGNÉTICA" ===
 
-REGLAS DE DECISIÓN PARA EL CTA:
-- Si el negocio es de SERVICIOS (clínica, abogados, consultoría, coaching, personal trainer, etc.) → CTA de AUDITORÍA GRATUITA o CONSULTORÍA GRATUITA
-- Si el negocio es de PRODUCTOS o E-COMMERCE → CTA de LEAD MAGNET (guía gratis, descuento, catálogo)
-- Si el negocio es de FORMACIÓN o EDUCACIÓN → CTA de LEAD MAGNET (masterclass gratis, ebook, webinar)
-- Si el negocio es INMOBILIARIA → CTA de AUDITORÍA (valoración gratuita de tu propiedad)
-- Si el negocio es RESTAURANTE o HOSTELERÍA → CTA de LEAD MAGNET (reserva + descuento)
-- Si el negocio es de SALUD/BIENESTAR → CTA de CONSULTORÍA (primera consulta gratis)
+Cada bio que creas sigue la FÓRMULA DE 4 LÍNEAS que convierte:
 
-REGLAS PARA EL ENLACE WEB:
-- Genera un enlace FICTICIO pero REALISTA usando el nombre del negocio
-- Formato: nombre-negocio.es/link o similar
-- El enlace debe parecer un Linktree o landing page real
-- Ejemplo: clinica-estetica-madrid.es/cita-gratis
+LÍNEA 1 → HOOK + QUÉ HACES (conecta con el DOLOR del cliente ideal)
+- La primera palabra SIEMPRE debe evocar el problema o deseo del cliente
+- NO empieces con el nombre del negocio, empieza con lo que el cliente BUSCA
+- Usa un emoji funcional como bullet (✂️ 💉 🏠 ⚖️ 💪 💅 🍕 📈)
+- Ejemplo MAL: "Somos una clínica estética"
+- Ejemplo BIEN: "✨ Tu mejor versión empieza aquí"
+- Ejemplo BIEN: "🏠 Vendemos tu piso en 60 días o gratis"
+- Ejemplo BIEN: "⚖️ Defendemos tus derechos sin letra pequeña"
 
-REGLAS PARA EL SLOT:
-- Incluye siempre un "slot" de disponibilidad que genere urgencia
-- Ejemplos: "Solo 3 huecos esta semana", "Últimas 5 plazas de marzo", "Agenda abierta solo hasta viernes"
+LÍNEA 2 → DIFERENCIADOR + PRUEBA SOCIAL
+- Qué te hace ÚNICO frente a la competencia
+- Incluye un dato numérico CREÍBLE que genere confianza
+- Formato: [Diferenciador] · [Prueba social numérica]
+- Ejemplo: "Método exclusivo · +300 clientas felices"
+- Ejemplo: "Especialistas desde 2015 · 4.9⭐ Google"
+- Si no hay dato real, inventa uno CREÍBLE para el sector y tamaño
+
+LÍNEA 3 → UBICACIÓN + DISPONIBILIDAD (SLOT DE URGENCIA)
+- SIEMPRE incluye la ciudad/zona (es SEO para Instagram)
+- Añade el slot de urgencia/escasez que genere FOMO
+- Formato: 📍 [Ciudad] · [Slot de urgencia]
+- Ejemplo: "📍 Madrid · Solo 3 huecos esta semana"
+- Ejemplo: "📍 Barcelona · Últimas 5 plazas de abril"
+- El slot debe ser TEMPORAL y ESPECÍFICO (números concretos)
+
+LÍNEA 4 → CTA IRRESISTIBLE CON EMOJI FLECHA
+- SIEMPRE termina con un CTA que diga EXACTAMENTE qué hacer
+- Usa 👇 o ⬇️ para dirigir la mirada al enlace
+- El CTA debe incluir la PALABRA GRATIS o un beneficio claro
+- Ejemplo: "👇 Pide tu diagnóstico GRATIS"
+- Ejemplo: "👇 Reserva + 15% dto primera visita"
+- Ejemplo: "👇 Descarga la guía de valoración"
+
+=== REGLAS MAESTRAS DE COPYWRITING PARA BIOS ===
+
+1. MÁXIMO 150 CARACTERES: Cada carácter cuenta. Elimina palabras innecesarias.
+2. EMOJIS FUNCIONALES: Solo como bullets o indicadores (📍🔥✨💪👇). NUNCA decorativos.
+3. SALTOS DE LÍNEA: Usa \n entre cada línea para crear jerarquía visual limpia.
+4. VERBOS DE ACCIÓN: "Transforma", "Consigue", "Descubre", "Reserva" > "Ofrecemos", "Somos"
+5. SEGUNDA PERSONA: Habla al cliente ("Tu piel", "Tu negocio") NO sobre ti ("Nuestros servicios")
+6. ESPECIFICIDAD: "Reducimos arrugas un 40% en 3 sesiones" > "Tratamientos faciales"
+7. SIN HASHTAGS EN BIO: Desperdician caracteres valiosos
+8. HOOK PRIMERO: La primera palabra debe ser la que el cliente buscaría en Google
+
+=== ÁRBOL DE DECISIÓN CTA (ULTRA-DETALLADO) ===
+
+SERVICIOS DE SALUD/BELLEZA (clínica estética, dentista, dermatólogo, fisio, nutricionista):
+→ CTA: CONSULTORÍA → "Valoración/Diagnóstico GRATIS"
+→ Razón: El cliente necesita confianza antes de pagar. La consulta gratis reduce la barrera.
+
+SERVICIOS PROFESIONALES (abogados, contables, asesores, consultores):
+→ CTA: AUDITORÍA → "Auditoría/Revisión GRATUITA de tu caso"
+→ Razón: Demuestras expertise sin compromiso. El cliente ve valor inmediato.
+
+INMOBILIARIA (agentes, agencias, promotoras):
+→ CTA: AUDITORÍA → "Valoración GRATUITA de tu propiedad"
+→ Razón: El propietario quiere saber cuánto vale su piso. Es irresistible.
+
+FORMACIÓN/COACHING (cursos, mentorías, academias):
+→ CTA: LEAD MAGNET → "Descarga la masterclass/guía GRATIS"
+→ Razón: Demuestras conocimiento. El alumno prueba antes de comprar.
+
+E-COMMERCE/PRODUCTOS (tiendas, marcas, artesanía):
+→ CTA: LEAD MAGNET → "Catálogo + 10% dto en tu primer pedido"
+→ Razón: El descuento incentiva la primera compra. El catálogo genera deseo.
+
+RESTAURANTES/HOSTELERÍA (restaurantes, bares, cafeterías, catering):
+→ CTA: LEAD MAGNET → "Reserva mesa + postre de regalo"
+→ Razón: La reserva es acción directa. El regalo reduce fricción.
+
+PERSONAL TRAINER/GIMNASIOS/DEPORTE:
+→ CTA: CONSULTORÍA → "Clase de prueba GRATIS"
+→ Razón: Probar sin riesgo. El cliente experimenta el valor.
+
+PELUQUERÍA/BARBERÍA/MANICURA:
+→ CTA: LEAD MAGNET → "Reserva + 20% dto primera cita"
+→ Razón: El descuento incentiva probar. La reserva es acción directa.
+
+MARKETING/AGENCIAS DIGITALES:
+→ CTA: AUDITORÍA → "Auditoría GRATIS de tu Instagram/web"
+→ Razón: Demuestras que sabes más que ellos. Genera dependencia.
+
+FOTÓGRAFOS/VIDEÓGRAFOS/CREATIVOS:
+→ CTA: LEAD MAGNET → "Presupuesto sin compromiso"
+→ Razón: El cliente quiere saber el precio antes de comprometerse.
+
+MICROPIGMENTACIÓN/TATUAJE:
+→ CTA: CONSULTORÍA → "Simulación GRATIS de tu diseño"
+→ Razón: Ver el resultado antes reduce el miedo. Es irresistible.
+
+=== NOMBRE DE PERFIL (CAMPO "NAME" - SEO INSTAGRAM) ===
+
+El nombre de perfil es BUSCABLE en Instagram. Es tu arma SEO secreta.
+Fórmula: [Nombre Negocio] | [Servicio Principal] [Ciudad]
+Ejemplos:
+- "Clínica Bella | Estética Madrid"
+- "FitPro | Entrenador Personal BCN"
+- "Casa Martín | Restaurante Sevilla"
+- "Legal360 | Abogados Valencia"
+Máximo 30 caracteres. Incluye SIEMPRE la keyword principal + ciudad.
+
+=== ENLACE WEB FICTICIO ===
+
+Genera URLs que parezcan landing pages profesionales reales:
+- Formato: nombre-negocio.es/[acción-gratis]
+- La URL debe reflejar el CTA elegido
+- Ejemplos por tipo:
+  - Auditoría: clinica-bella.es/diagnostico-gratis
+  - Lead magnet: fitpro-bcn.es/guia-gratis
+  - Consultoría: legal360.es/consulta-gratuita
+  - Reserva: casa-martin.es/reservar
+
+=== BIOS ALTERNATIVAS (3 ESTILOS OBLIGATORIOS) ===
+
+1. "Directa y Agresiva": Tono urgente, escasez máxima, verbos imperativos
+2. "Cercana y Emocional": Tono cálido, conecta con sentimientos, storytelling micro
+3. "Premium y Exclusiva": Tono sofisticado, palabras de lujo, exclusividad
+
+Cada alternativa debe mantener la fórmula de 4 líneas pero con personalidad diferente.
 
 SIEMPRE responde en español de España.`;
 
-        const userPrompt = `Genera una biografía de Instagram PROFESIONAL para este negocio:
+        const userPrompt = `Genera una biografía de Instagram de NIVEL EXPERTO para este negocio:
 
-NOMBRE: ${input.businessName}
-DESCRIPCIÓN: ${input.businessDescription}
+NOMBRE DEL NEGOCIO: ${input.businessName}
+DESCRIPCIÓN DETALLADA: ${input.businessDescription}
 SECTOR: ${input.sector}
-CIUDAD: ${input.city || "No especificada"}
-PÚBLICO OBJETIVO: ${input.targetAudience || "General"}
-TONO: ${input.tone}
+CIUDAD: ${input.city || "No especificada (inventa una ciudad española coherente con el sector)"}
+PÚBLICO OBJETIVO: ${input.targetAudience || "Público general del sector"}
+TONO DESEADO: ${input.tone}
+SERVICIO PRINCIPAL: ${input.mainService || "El más relevante según la descripción"}
+DIFERENCIADOR: ${input.differentiator || "Identifica uno basándote en la descripción"}
+AÑOS DE EXPERIENCIA: ${input.yearsExperience || "Inventa un número creíble (5-15 años)"}
 
-Devuelve un JSON con esta estructura EXACTA:
-{
-  "profileName": "Nombre optimizado para el perfil (máx 30 chars, con keywords)",
-  "bio": "La biografía completa (máx 150 chars, con emojis estratégicos y saltos de línea con \\n)",
-  "ctaType": "lead_magnet" | "auditoria" | "consultoria",
-  "ctaText": "Texto del botón CTA (ej: Pide tu auditoría gratis)",
-  "ctaReason": "Explicación de por qué elegiste este tipo de CTA para este negocio",
-  "websiteUrl": "URL ficticia pero realista del negocio",
-  "slot": "Texto de urgencia/disponibilidad",
-  "hashtags": ["5 hashtags relevantes sin #"],
-  "category": "Categoría de Instagram recomendada",
-  "tips": ["3 consejos extra para optimizar el perfil"],
-  "alternativeBios": [
-    {
-      "style": "nombre del estilo alternativo",
-      "bio": "versión alternativa de la bio"
-    },
-    {
-      "style": "nombre del estilo alternativo 2",
-      "bio": "otra versión alternativa"
-    }
-  ]
-}`;
+APLICA tu metodología "BIO MAGNÉTICA" de 4 líneas al pie de la letra.
+Recuerda: la PRIMERA PALABRA de la bio debe conectar con el DOLOR o DESEO del cliente, NO con el nombre del negocio.
+Genera prueba social CREÍBLE con números específicos.
+El slot de urgencia debe ser TEMPORAL y con NÚMEROS CONCRETOS.`;
 
         const response = await invokeLLM({
           messages: [
@@ -705,31 +791,36 @@ Devuelve un JSON con esta estructura EXACTA:
               schema: {
                 type: "object",
                 properties: {
-                  profileName: { type: "string", description: "Nombre optimizado del perfil" },
-                  bio: { type: "string", description: "Biografía completa con emojis" },
-                  ctaType: { type: "string", enum: ["lead_magnet", "auditoria", "consultoria"], description: "Tipo de CTA elegido" },
-                  ctaText: { type: "string", description: "Texto del botón CTA" },
-                  ctaReason: { type: "string", description: "Razón de la elección del CTA" },
-                  websiteUrl: { type: "string", description: "URL ficticia del negocio" },
-                  slot: { type: "string", description: "Texto de urgencia/disponibilidad" },
-                  hashtags: { type: "array", items: { type: "string" }, description: "Hashtags relevantes" },
-                  category: { type: "string", description: "Categoría de Instagram" },
-                  tips: { type: "array", items: { type: "string" }, description: "Consejos para el perfil" },
+                  profileName: { type: "string", description: "Nombre de perfil optimizado para SEO (máx 30 chars): Nombre | Servicio Ciudad" },
+                  bio: { type: "string", description: "Biografía completa con fórmula 4 líneas, emojis funcionales y saltos de línea con newline" },
+                  ctaType: { type: "string", enum: ["lead_magnet", "auditoria", "consultoria"], description: "Tipo de CTA según árbol de decisión" },
+                  ctaText: { type: "string", description: "Texto del botón CTA con palabra GRATIS" },
+                  ctaReason: { type: "string", description: "Explicación estratégica de por qué este CTA es el óptimo para este negocio" },
+                  websiteUrl: { type: "string", description: "URL ficticia profesional que refleja el CTA" },
+                  slot: { type: "string", description: "Slot de urgencia temporal con números concretos" },
+                  hashtags: { type: "array", items: { type: "string" }, description: "7 hashtags estratégicos sin # ordenados por relevancia" },
+                  category: { type: "string", description: "Categoría exacta de Instagram Business" },
+                  tips: { type: "array", items: { type: "string" }, description: "5 consejos expertos para maximizar conversiones del perfil" },
+                  hookAnalysis: { type: "string", description: "Explicación de por qué el hook elegido conecta con el dolor del cliente ideal" },
+                  socialProofText: { type: "string", description: "La prueba social generada y por qué es creíble" },
+                  seoKeywords: { type: "array", items: { type: "string" }, description: "5 keywords que los clientes buscarían en Instagram para encontrar este negocio" },
+                  competitorDiff: { type: "string", description: "Qué hace esta bio MEJOR que la de un competidor genérico del sector" },
                   alternativeBios: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
-                        style: { type: "string" },
-                        bio: { type: "string" }
+                        style: { type: "string", description: "Nombre del estilo: Directa y Agresiva, Cercana y Emocional, o Premium y Exclusiva" },
+                        bio: { type: "string", description: "Bio alternativa completa con fórmula 4 líneas" },
+                        bestFor: { type: "string", description: "Para qué tipo de audiencia o momento es mejor esta versión" }
                       },
-                      required: ["style", "bio"],
+                      required: ["style", "bio", "bestFor"],
                       additionalProperties: false
                     },
-                    description: "Bios alternativas"
+                    description: "3 bios alternativas con estilos diferenciados"
                   }
                 },
-                required: ["profileName", "bio", "ctaType", "ctaText", "ctaReason", "websiteUrl", "slot", "hashtags", "category", "tips", "alternativeBios"],
+                required: ["profileName", "bio", "ctaType", "ctaText", "ctaReason", "websiteUrl", "slot", "hashtags", "category", "tips", "hookAnalysis", "socialProofText", "seoKeywords", "competitorDiff", "alternativeBios"],
                 additionalProperties: false
               }
             }
@@ -744,6 +835,7 @@ Devuelve un JSON con esta estructura EXACTA:
         const bioData = JSON.parse(content);
         console.log('[BioGenerator] Bio generated successfully for:', input.businessName);
         console.log('[BioGenerator] CTA type:', bioData.ctaType);
+        console.log('[BioGenerator] Hook analysis:', bioData.hookAnalysis);
         
         return {
           success: true,

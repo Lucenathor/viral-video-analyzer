@@ -131,3 +131,13 @@
 - [x] Dashboard usa new Date() dinámicamente - ya correcto
 - [x] Verificado: Marzo 2026, día 29 resaltado con cyan, 9 reels en mes, Publicado/Publicar correcto
 - [x] Guardar checkpoint
+
+## Mejorar Bio Generator a Nivel Experto Mundial
+- [x] Investigar mejores prácticas: fórmula 4 líneas, hook al dolor, prueba social, SEO en nombre, CTA por sector
+- [x] Analizar prompt actual: bueno pero faltaba profundidad en hook, prueba social y diferenciación
+- [x] Reescribir prompt: metodología 'Bio Magnética' 4 líneas, 12 sectores con CTA específico, triggers psicológicos
+- [x] Árbol de decisión CTA expandido: 12 categorías de sector con razón estratégica por cada una
+- [x] Nuevos campos: hookAnalysis, socialProofText, seoKeywords, competitorDiff, bestFor en alternativas
+- [x] Frontend mejorado: nuevos campos (servicio principal, diferenciador, años exp), panel Análisis Experto, tono Autoridad
+- [x] 102 tests pasan (15 archivos), TypeScript compila sin errores, verificado en navegador
+- [x] Guardar checkpoint

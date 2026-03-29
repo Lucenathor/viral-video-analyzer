@@ -22,19 +22,21 @@ import {
   Target,
   Lightbulb,
   Hash,
-  ArrowRight,
   RefreshCw,
-  ExternalLink,
   Clock,
   BadgeCheck,
-  MessageSquare,
   Grid3x3,
-  Heart,
-  Bookmark,
   Send as SendIcon,
   MoreHorizontal,
   User,
   ChevronDown,
+  Brain,
+  Search,
+  Trophy,
+  TrendingUp,
+  Shield,
+  Eye,
+  MessageCircle,
 } from "lucide-react";
 
 const SECTORS = [
@@ -43,14 +45,15 @@ const SECTORS = [
   "Restaurante", "Coaching", "Psicología", "Fisioterapia",
   "Dentista", "Veterinario", "Fotografía", "Arquitectura",
   "Contabilidad", "E-commerce", "Formación Online", "Nutrición",
-  "Otro"
+  "Gimnasio", "Barbería", "Tatuaje", "Catering", "Otro"
 ];
 
 const TONES = [
-  { value: "profesional", label: "Profesional", desc: "Serio, confiable, corporativo" },
-  { value: "cercano", label: "Cercano", desc: "Amigable, accesible, humano" },
-  { value: "premium", label: "Premium", desc: "Exclusivo, lujoso, aspiracional" },
-  { value: "divertido", label: "Divertido", desc: "Desenfadado, creativo, fresco" },
+  { value: "profesional", label: "Profesional", desc: "Serio, confiable, corporativo", icon: "🏢" },
+  { value: "cercano", label: "Cercano", desc: "Amigable, accesible, humano", icon: "🤝" },
+  { value: "premium", label: "Premium", desc: "Exclusivo, lujoso, aspiracional", icon: "✨" },
+  { value: "divertido", label: "Divertido", desc: "Desenfadado, creativo, fresco", icon: "🎨" },
+  { value: "autoridad", label: "Autoridad", desc: "Experto, líder del sector, datos", icon: "👑" },
 ];
 
 type BioResult = {
@@ -65,7 +68,11 @@ type BioResult = {
   hashtags: string[];
   category: string;
   tips: string[];
-  alternativeBios: Array<{ style: string; bio: string }>;
+  hookAnalysis: string;
+  socialProofText: string;
+  seoKeywords: string[];
+  competitorDiff: string;
+  alternativeBios: Array<{ style: string; bio: string; bestFor: string }>;
   businessName: string;
   sector: string;
 };
@@ -78,14 +85,19 @@ export default function BioGenerator() {
   const [city, setCity] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [tone, setTone] = useState<string>("profesional");
+  const [mainService, setMainService] = useState("");
+  const [differentiator, setDifferentiator] = useState("");
+  const [yearsExperience, setYearsExperience] = useState("");
   const [result, setResult] = useState<BioResult | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [selectedBioIndex, setSelectedBioIndex] = useState<number>(-1); // -1 = main bio
+  const [selectedBioIndex, setSelectedBioIndex] = useState<number>(-1);
+  const [showExpertAnalysis, setShowExpertAnalysis] = useState(false);
 
   const generateMutation = trpc.bioGenerator.generate.useMutation({
     onSuccess: (data) => {
       setResult(data as BioResult);
       setSelectedBioIndex(-1);
+      setShowExpertAnalysis(false);
       toast.success("¡Biografía generada con éxito!");
     },
     onError: (error) => {
@@ -104,9 +116,12 @@ export default function BioGenerator() {
       sector,
       city: city.trim() || undefined,
       targetAudience: targetAudience.trim() || undefined,
-      tone: tone as "profesional" | "cercano" | "premium" | "divertido",
+      tone: tone as "profesional" | "cercano" | "premium" | "divertido" | "autoridad",
+      mainService: mainService.trim() || undefined,
+      differentiator: differentiator.trim() || undefined,
+      yearsExperience: yearsExperience.trim() || undefined,
     });
-  }, [businessName, businessDescription, sector, city, targetAudience, tone, generateMutation]);
+  }, [businessName, businessDescription, sector, city, targetAudience, tone, mainService, differentiator, yearsExperience, generateMutation]);
 
   const copyToClipboard = useCallback((text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -161,13 +176,16 @@ export default function BioGenerator() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-pink-500/30 mb-4">
             <Instagram className="w-4 h-4 text-pink-400" />
             <span className="text-sm font-medium text-pink-400">Bio Generator Pro</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gradient-to-r from-pink-500/20 to-purple-500/20 border-pink-500/30">
+              Metodología Bio Magnética
+            </Badge>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-3">
             Crea tu <span className="text-gradient">Bio Perfecta</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Describe tu negocio y nuestra IA generará una biografía de Instagram 
-            profesional con CTA inteligente, enlace web y slot de urgencia.
+            Nuestra IA aplica la metodología "Bio Magnética" de 4 líneas: Hook + Diferenciador + Ubicación + CTA. 
+            Cada bio está diseñada para convertir visitantes en clientes.
           </p>
         </div>
 
@@ -181,14 +199,14 @@ export default function BioGenerator() {
                   Datos del Negocio
                 </CardTitle>
                 <CardDescription>
-                  Cuéntanos sobre tu negocio para generar la bio perfecta
+                  Cuanto más información nos des, más precisa y potente será la bio
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 {/* Business Name */}
                 <div className="space-y-2">
                   <Label htmlFor="businessName" className="text-sm font-medium">
-                    Nombre del Negocio *
+                    Nombre del Negocio <span className="text-red-400">*</span>
                   </Label>
                   <Input
                     id="businessName"
@@ -201,7 +219,7 @@ export default function BioGenerator() {
 
                 {/* Sector */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Sector *</Label>
+                  <Label className="text-sm font-medium">Sector <span className="text-red-400">*</span></Label>
                   <Select value={sector} onValueChange={setSector}>
                     <SelectTrigger className="bg-card border-border/50">
                       <SelectValue placeholder="Selecciona tu sector" />
@@ -217,32 +235,63 @@ export default function BioGenerator() {
                 {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="description" className="text-sm font-medium">
-                    Descripción del Negocio *
+                    Descripción del Negocio <span className="text-red-400">*</span>
                   </Label>
                   <Textarea
                     id="description"
-                    placeholder="Ej: Somos una clínica estética en Madrid especializada en tratamientos faciales y corporales. Ofrecemos botox, ácido hialurónico, liposucción y medicina estética avanzada. Nuestro equipo tiene 15 años de experiencia..."
+                    placeholder="Describe qué hace tu negocio, qué servicios ofrece, qué lo hace especial, quiénes son tus clientes típicos..."
                     value={businessDescription}
                     onChange={(e) => setBusinessDescription(e.target.value)}
                     className="bg-card border-border/50 focus:border-primary/50 min-h-[120px]"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Cuanto más detallada sea la descripción, mejor será la bio generada
+                    Mínimo 10 caracteres. Cuanto más detallada, mejor será la bio.
+                  </p>
+                </div>
+
+                {/* Main Service */}
+                <div className="space-y-2">
+                  <Label htmlFor="mainService" className="text-sm font-medium">
+                    Servicio/Producto Principal
+                  </Label>
+                  <Input
+                    id="mainService"
+                    placeholder="Ej: Botox y ácido hialurónico / Venta de pisos / Clases de CrossFit"
+                    value={mainService}
+                    onChange={(e) => setMainService(e.target.value)}
+                    className="bg-card border-border/50 focus:border-primary/50"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    El servicio estrella que quieres destacar en la bio
                   </p>
                 </div>
 
                 {/* City */}
-                <div className="space-y-2">
-                  <Label htmlFor="city" className="text-sm font-medium">
-                    Ciudad / Zona
-                  </Label>
-                  <Input
-                    id="city"
-                    placeholder="Ej: Madrid, Barrio Salamanca"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="bg-card border-border/50 focus:border-primary/50"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-sm font-medium">
+                      Ciudad / Zona
+                    </Label>
+                    <Input
+                      id="city"
+                      placeholder="Ej: Madrid Centro"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="bg-card border-border/50 focus:border-primary/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="years" className="text-sm font-medium">
+                      Años de Experiencia
+                    </Label>
+                    <Input
+                      id="years"
+                      placeholder="Ej: 10"
+                      value={yearsExperience}
+                      onChange={(e) => setYearsExperience(e.target.value)}
+                      className="bg-card border-border/50 focus:border-primary/50"
+                    />
+                  </div>
                 </div>
 
                 {/* Target Audience */}
@@ -259,10 +308,24 @@ export default function BioGenerator() {
                   />
                 </div>
 
+                {/* Differentiator */}
+                <div className="space-y-2">
+                  <Label htmlFor="differentiator" className="text-sm font-medium">
+                    ¿Qué te diferencia de la competencia?
+                  </Label>
+                  <Input
+                    id="differentiator"
+                    placeholder="Ej: Único centro con láser de última generación / Garantía de venta en 60 días"
+                    value={differentiator}
+                    onChange={(e) => setDifferentiator(e.target.value)}
+                    className="bg-card border-border/50 focus:border-primary/50"
+                  />
+                </div>
+
                 {/* Tone */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">Tono de la Bio</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {TONES.map((t) => (
                       <button
                         key={t.value}
@@ -274,7 +337,7 @@ export default function BioGenerator() {
                         }`}
                       >
                         <p className={`text-sm font-medium ${tone === t.value ? "text-primary" : ""}`}>
-                          {t.label}
+                          {t.icon} {t.label}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
                       </button>
@@ -291,12 +354,12 @@ export default function BioGenerator() {
                   {generateMutation.isPending ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Generando bio profesional...
+                      Aplicando metodología Bio Magnética...
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5" />
-                      Generar Biografía
+                      Generar Biografía Experta
                     </>
                   )}
                 </Button>
@@ -313,10 +376,28 @@ export default function BioGenerator() {
                     <Instagram className="w-10 h-10 text-white" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Vista Previa</h3>
-                  <p className="text-muted-foreground">
-                    Rellena los datos de tu negocio y pulsa "Generar Biografía" 
+                  <p className="text-muted-foreground mb-6">
+                    Rellena los datos de tu negocio y pulsa "Generar Biografía Experta" 
                     para ver aquí la vista previa de tu perfil de Instagram.
                   </p>
+                  <div className="grid grid-cols-2 gap-3 text-left max-w-sm mx-auto">
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-card/30">
+                      <Target className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">CTA inteligente según sector</p>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-card/30">
+                      <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">Hook conectado al dolor</p>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-card/30">
+                      <Search className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">SEO optimizado para IG</p>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-card/30">
+                      <Trophy className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">Prueba social creíble</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -327,13 +408,24 @@ export default function BioGenerator() {
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-orange-500 flex items-center justify-center mx-auto mb-6 animate-pulse">
                     <Sparkles className="w-10 h-10 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">Generando tu bio...</h3>
+                  <h3 className="text-xl font-semibold mb-2">Aplicando Bio Magnética...</h3>
                   <p className="text-muted-foreground mb-4">
-                    Analizando tu negocio, eligiendo el CTA perfecto y creando una bio que convierte.
+                    Analizando sector, eligiendo hook, construyendo prueba social, 
+                    optimizando SEO y seleccionando el CTA perfecto.
                   </p>
-                  <div className="flex items-center justify-center gap-2 text-sm text-primary">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Esto puede tardar unos segundos
+                  <div className="space-y-2 max-w-xs mx-auto text-left">
+                    <div className="flex items-center gap-2 text-xs text-primary/70">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Analizando dolor del cliente ideal...</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-primary/50">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Construyendo fórmula de 4 líneas...</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-primary/30">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Generando versiones alternativas...</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -368,7 +460,7 @@ export default function BioGenerator() {
                       {/* Top bar */}
                       <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-1">
-                          <span className="font-bold text-sm">{result.profileName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}</span>
+                          <span className="font-bold text-sm">{result.profileName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_áéíóúñ]/g, '')}</span>
                           <BadgeCheck className="w-4 h-4 text-blue-400" />
                           <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         </div>
@@ -434,6 +526,9 @@ export default function BioGenerator() {
                           {result.ctaText}
                         </Button>
                         <Button variant="outline" className="h-9 text-sm rounded-lg bg-card/50 border-border/50">
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" className="h-9 text-sm rounded-lg bg-card/50 border-border/50">
                           <SendIcon className="w-4 h-4" />
                         </Button>
                       </div>
@@ -446,6 +541,97 @@ export default function BioGenerator() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Expert Analysis Toggle */}
+                <button
+                  onClick={() => setShowExpertAnalysis(!showExpertAnalysis)}
+                  className="w-full p-4 rounded-xl glass border border-cyan-500/30 flex items-center justify-between hover:border-cyan-500/50 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                      <Brain className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-cyan-400">Análisis Experto</p>
+                      <p className="text-xs text-muted-foreground">Hook, SEO, prueba social y diferenciador competitivo</p>
+                    </div>
+                  </div>
+                  <ChevronDown className={`w-5 h-5 text-cyan-400 transition-transform ${showExpertAnalysis ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showExpertAnalysis && (
+                  <div className="space-y-4">
+                    {/* Hook Analysis */}
+                    <Card className="glass border-cyan-500/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center shrink-0">
+                            <Eye className="w-4 h-4 text-cyan-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-cyan-400 mb-1">Análisis del Hook</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{result.hookAnalysis}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Social Proof */}
+                    <Card className="glass border-green-500/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
+                            <Trophy className="w-4 h-4 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-green-400 mb-1">Prueba Social</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{result.socialProofText}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Competitor Diff */}
+                    <Card className="glass border-orange-500/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center shrink-0">
+                            <Shield className="w-4 h-4 text-orange-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-orange-400 mb-1">Ventaja Competitiva</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{result.competitorDiff}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* SEO Keywords */}
+                    {result.seoKeywords && result.seoKeywords.length > 0 && (
+                      <Card className="glass border-blue-500/20">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                              <Search className="w-4 h-4 text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-blue-400 mb-2">Keywords SEO Instagram</p>
+                              <p className="text-xs text-muted-foreground mb-2">Los usuarios buscan estas palabras para encontrar negocios como el tuyo:</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {result.seoKeywords.map((kw, idx) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs bg-blue-500/10 border-blue-500/20 text-blue-300">
+                                    <Search className="w-3 h-3 mr-1" />
+                                    {kw}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
 
                 {/* CTA Strategy */}
                 <Card className="glass border-primary/20">
@@ -480,7 +666,7 @@ export default function BioGenerator() {
                     {/* Profile Name */}
                     <div className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">Nombre del Perfil</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">Nombre del Perfil (SEO)</p>
                         <p className="text-sm font-medium">{result.profileName}</p>
                       </div>
                       <Button
@@ -496,7 +682,7 @@ export default function BioGenerator() {
                     {/* Bio */}
                     <div className="flex items-start justify-between p-3 rounded-lg bg-card/50 border border-border/30">
                       <div className="flex-1 mr-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Biografía</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">Biografía (4 líneas)</p>
                         <p className="text-sm whitespace-pre-line">{getCurrentBio()}</p>
                       </div>
                       <Button
@@ -541,12 +727,28 @@ export default function BioGenerator() {
                       </Button>
                     </div>
 
+                    {/* Slot */}
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Slot de Urgencia</p>
+                        <p className="text-sm font-medium text-orange-400">{result.slot}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(result.slot, "slot")}
+                        className="shrink-0"
+                      >
+                        {copiedField === "slot" ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                      </Button>
+                    </div>
+
                     {/* Copy All */}
                     <Button
                       variant="outline"
                       className="w-full gap-2 mt-2"
                       onClick={() => {
-                        const fullText = `📱 PERFIL DE INSTAGRAM\n\n👤 Nombre: ${result.profileName}\n📝 Categoría: ${result.category}\n\n✍️ Biografía:\n${getCurrentBio()}\n\n🔗 Enlace: ${result.websiteUrl}\n🎯 CTA: ${result.ctaText}\n⏰ Slot: ${result.slot}\n\n#️⃣ Hashtags: ${result.hashtags.map(h => '#' + h).join(' ')}`;
+                        const fullText = `📱 PERFIL DE INSTAGRAM - ${result.businessName}\n\n👤 Nombre: ${result.profileName}\n📝 Categoría: ${result.category}\n\n✍️ Biografía:\n${getCurrentBio()}\n\n🔗 Enlace: ${result.websiteUrl}\n🎯 CTA: ${result.ctaText}\n⏰ Slot: ${result.slot}\n\n#️⃣ Hashtags: ${result.hashtags.map(h => '#' + h).join(' ')}\n\n🔍 Keywords SEO: ${result.seoKeywords?.join(', ') || 'N/A'}`;
                         copyToClipboard(fullText, "all");
                       }}
                     >
@@ -577,7 +779,10 @@ export default function BioGenerator() {
                             : "border-border/30 bg-card/50 hover:border-primary/30"
                         }`}
                       >
-                        <p className="text-xs font-medium text-primary mb-1">Original</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-medium text-primary">Original (Recomendada)</p>
+                          {selectedBioIndex === -1 && <Badge variant="secondary" className="text-[10px] bg-primary/20">Activa</Badge>}
+                        </div>
                         <p className="text-sm whitespace-pre-line">{result.bio}</p>
                       </button>
                       {result.alternativeBios.map((alt, idx) => (
@@ -590,8 +795,15 @@ export default function BioGenerator() {
                               : "border-border/30 bg-card/50 hover:border-primary/30"
                           }`}
                         >
-                          <p className="text-xs font-medium text-primary mb-1">{alt.style}</p>
-                          <p className="text-sm whitespace-pre-line">{alt.bio}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-medium text-primary">{alt.style}</p>
+                            {selectedBioIndex === idx && <Badge variant="secondary" className="text-[10px] bg-primary/20">Activa</Badge>}
+                          </div>
+                          <p className="text-sm whitespace-pre-line mb-1.5">{alt.bio}</p>
+                          <p className="text-xs text-muted-foreground italic">
+                            <TrendingUp className="w-3 h-3 inline mr-1" />
+                            Mejor para: {alt.bestFor}
+                          </p>
                         </button>
                       ))}
                     </CardContent>
