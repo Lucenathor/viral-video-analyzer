@@ -113,37 +113,30 @@ interface CalendarVideo {
 }
 
 // Función para distribuir vídeos estáticos en el calendario (fallback)
+// DEMO MODE: Distribuye vídeos en martes y jueves de TODO el mes (pasado y futuro)
 const distributeStaticVideosInCalendar = (videos: typeof businessSectors[0]["videos"], year: number, month: number) => {
   const schedule: { [day: number]: CalendarVideo } = {};
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  const todayDay = today.getDate();
-  const todayMonth = today.getMonth();
-  const todayYear = today.getFullYear();
   
-  // Encontrar todos los martes y jueves del mes (solo desde hoy en adelante)
+  // Encontrar todos los martes y jueves del mes COMPLETO (para demo)
   const publishDays: number[] = [];
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     const dayOfWeek = date.getDay();
     
-    const isCurrentMonth = year === todayYear && month === todayMonth;
-    const isFutureMonth = year > todayYear || (year === todayYear && month > todayMonth);
-    const isFutureOrToday = isFutureMonth || (isCurrentMonth && day >= todayDay);
-    
-    if ((dayOfWeek === 2 || dayOfWeek === 4) && isFutureOrToday) {
+    // Martes (2) y Jueves (4) - todo el mes
+    if (dayOfWeek === 2 || dayOfWeek === 4) {
       publishDays.push(day);
     }
   }
   
-  // Asignar vídeos a los días de publicación
-  videos.forEach((video, index) => {
-    if (index < publishDays.length) {
-      schedule[publishDays[index]] = {
-        ...video,
-        isFromDatabase: false,
-      };
-    }
+  // Asignar vídeos ciclando si hay más días que vídeos
+  publishDays.forEach((day, index) => {
+    const videoIndex = index % videos.length;
+    schedule[day] = {
+      ...videos[videoIndex],
+      isFromDatabase: false,
+    };
   });
   
   return schedule;
@@ -522,7 +515,7 @@ export default function Calendar() {
                             ${day && !hasVideo ? "border-border/30 bg-background/50" : ""}
                             ${hasVideo ? "border-primary/50 bg-primary/10 cursor-pointer hover:bg-primary/20 hover:border-primary hover:scale-105 hover:shadow-lg hover:shadow-primary/20" : ""}
                             ${isToday ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}
-                            ${isPast && !hasVideo ? "opacity-50" : ""}
+                            ${isPast && !hasVideo ? "opacity-40" : ""}
                           `}
                         >
                           {day && (
@@ -570,10 +563,12 @@ export default function Calendar() {
                                 </div>
                               )}
                               
-                              {/* "Publicar" label for video days */}
+                              {/* "Publicar" / "Publicado" label for video days */}
                               {hasVideo && (
-                                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium text-primary bg-primary/20 px-2 py-0.5 rounded-full">
-                                  Publicar
+                                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                                  isPast ? "text-green-400 bg-green-500/20" : "text-primary bg-primary/20"
+                                }`}>
+                                  {isPast ? "Publicado" : isToday ? "¡Hoy!" : "Publicar"}
                                 </span>
                               )}
                             </>
@@ -587,7 +582,11 @@ export default function Calendar() {
                   <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-border/50">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded border border-primary/50 bg-primary/10" />
-                      <span className="text-sm text-muted-foreground">Día de publicación</span>
+                      <span className="text-sm text-muted-foreground">Próxima publicación</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded border border-green-500/50 bg-green-500/10" />
+                      <span className="text-sm text-muted-foreground">Ya publicado</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded ring-2 ring-accent ring-offset-2 ring-offset-background" />

@@ -123,3 +123,11 @@
 - [x] 15 tests en bioGenerator.test.ts + 1 actualizado en video.test.ts (102 tests totales pasan)
 - [x] TypeScript compila sin errores, 102 tests pasan
 - [x] Guardar checkpoint
+
+## Actualizar Fechas para Demo 29 Marzo 2026 (100 empresas)
+- [x] Identificar todos los archivos con fechas hardcodeadas (Calendar.tsx, Stories.tsx, Dashboard.tsx, Home.tsx)
+- [x] Actualizar calendario: vídeos en martes y jueves de TODO el mes, etiquetas Publicado/¡Hoy!/Publicar, leyenda actualizada
+- [x] Lanzamientos/stories usan new Date() dinámicamente - ya correcto
+- [x] Dashboard usa new Date() dinámicamente - ya correcto
+- [x] Verificado: Marzo 2026, día 29 resaltado con cyan, 9 reels en mes, Publicado/Publicar correcto
+- [x] Guardar checkpoint
