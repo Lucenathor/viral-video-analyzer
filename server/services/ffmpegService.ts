@@ -62,13 +62,13 @@ export async function compressVideo(
       '-y', // Overwrite output file
       // Video codec settings - force H.264 with maximum compatibility
       '-c:v', 'libx264',
-      '-preset', 'fast',
-      '-crf', '23', // Slightly better quality for analysis
+      '-preset', 'ultrafast',
+      '-crf', '28', // Good enough quality for AI analysis
       '-profile:v', 'high', // High profile for better quality
       '-level', '4.1', // Compatible with most devices
       '-pix_fmt', 'yuv420p', // Required for compatibility
-      // Scale to max 1080p while maintaining aspect ratio
-      '-vf', 'scale=\'min(1080,iw)\':\'min(1920,ih)\':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2',
+      // Scale to max 720p while maintaining aspect ratio (faster + smaller for AI analysis)
+      '-vf', "scale='min(720,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
       // Audio codec settings - force AAC
       '-c:a', 'aac',
       '-b:a', '128k',

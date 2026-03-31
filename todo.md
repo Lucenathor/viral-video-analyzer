@@ -204,11 +204,28 @@
 
 ## Optimizar Procesamiento de Vídeos Pesados (299MB+)
 - [x] Investigar alternativas: Coconut.co API, Gemini file_url nativo
-- [x] Solución: enviar vídeos directamente a Gemini por URL (file_url) - SIN FFmpeg local
-- [x] Pipeline nuevo: Resolver URL → Subir viral a S3 → Enviar ambas URLs a Gemini → Análisis nativo
-- [x] Eliminado: descarga local, compresión FFmpeg, extracción frames, Whisper local
-- [x] Nuevos prompts: buildDirectVideoAnalysisPrompt() y buildDirectVideoComparisonPrompt()
-- [x] Gemini analiza vídeo completo nativamente (todos los frames, audio, subtítulos)
-- [x] Frontend actualizado: pasos de loading reflejan pipeline optimizado (1-2 min vs 3-5 min)
-- [x] 131 tests pasan (17 archivos), TS compila sin errores
+- [x] Descubierto: Gemini file_url NO puede acceder a URLs de CloudFront/S3
+- [x] Solución final: FFmpeg compresión ultrafast (299MB→34MB en 45s) + extracción frames + base64 a Gemini
+- [x] Pipeline: Descargar → Comprimir FFmpeg ultrafast 720p → Extraer 10 frames → Transcribir audio → Gemini con imágenes base64
+- [x] Error handling robusto: fallback con scores 0 si Gemini falla, cleanup de archivos temp
+- [x] Frontend actualizado: pasos de loading reflejan pipeline real
+- [x] Guardar checkpoint
+
+## Fix Error 431 en Comparación de Vídeos
+- [x] Reproducido: error 431 en deploy (proxy limit), 500 en local (Gemini file_url no soportado)
+- [x] Causa raíz: Gemini no puede acceder a URLs S3 + file_url no soportado por la API
+- [x] Solución: volver a FFmpeg local (ultrafast) + frames base64 + Whisper transcripción
+- [x] Probado end-to-end: vídeo 299MB MOV 4K → compresión 45s → análisis Gemini OK
+- [x] Guardar checkpoint
+
+## Integrar RapidAPI para descarga de vídeos Instagram/TikTok
+- [x] Configurar RAPIDAPI_KEY y RAPIDAPI_TIKTOK_KEY como secrets
+- [x] Instagram Scraper Stable API (instagram-scraper-stable-api.p.rapidapi.com) - devuelve video_url directo
+- [x] TikTok Scraper 7 (tiktok-scraper7.p.rapidapi.com) - devuelve play/hdplay URLs
+- [x] Reescrito videoUrlResolver.ts completo para usar RapidAPI (eliminado GraphQL scraping)
+- [x] 4 tests en rapidapi.test.ts (validación de claves + llamadas reales a ambas APIs)
+- [x] 11 tests en videoUrlResolver.test.ts (resolución + descarga Instagram y TikTok)
+- [x] Test end-to-end completo: Instagram reel + vídeo 299MB MOV → análisis completo en ~2 min
+- [x] Resultados: Viral 85/100, Usuario 45/100, 5 correcciones prioritarias, 3 puntos fuertes
+- [x] 135/136 tests pasan (1 fallo en test viejo TikTok search no relacionado)
 - [x] Guardar checkpoint

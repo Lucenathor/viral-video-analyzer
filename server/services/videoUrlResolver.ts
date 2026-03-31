@@ -1,7 +1,7 @@
 /**
  * Video URL Resolver Service
- * Extracts direct video download URLs from Instagram Reels and TikTok URLs.
- * Falls back to the original URL if extraction fails (for direct .mp4 links).
+ * Extracts direct video download URLs from Instagram Reels and TikTok URLs
+ * using RapidAPI services.
  */
 
 import { ENV } from "../_core/env";
@@ -18,16 +18,12 @@ interface ResolvedVideo {
   };
 }
 
-// ============================================================
-// Instagram Reel URL Extraction (GraphQL - No Cookie Needed)
-// ============================================================
-
-const IG_GRAPHQL_URL = "https://www.instagram.com/api/graphql";
-const IG_DOC_ID = "10015901848480474";
-const IG_LSD = "AVqbxe3J_YA";
-const IG_APP_ID = "936619743392459";
-const IG_USER_AGENT =
+const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+// ============================================================
+// Instagram Reel URL Extraction (via RapidAPI - Instagram Scraper Stable API)
+// ============================================================
 
 /**
  * Extract the shortcode from an Instagram URL.
@@ -41,7 +37,7 @@ function getInstagramShortcode(url: string): string | null {
 }
 
 /**
- * Resolve an Instagram Reel/Post URL to a direct video URL using GraphQL API.
+ * Resolve an Instagram Reel/Post URL to a direct video URL using RapidAPI.
  */
 async function resolveInstagramUrl(url: string): Promise<ResolvedVideo | null> {
   const shortcode = getInstagramShortcode(url);
@@ -50,96 +46,73 @@ async function resolveInstagramUrl(url: string): Promise<ResolvedVideo | null> {
     return null;
   }
 
-  console.log(`[VideoResolver] Resolving Instagram shortcode: ${shortcode}`);
+  const apiKey = ENV.RAPIDAPI_KEY;
+  if (!apiKey) {
+    console.log("[VideoResolver] No RAPIDAPI_KEY available for Instagram");
+    return null;
+  }
+
+  console.log(`[VideoResolver] Resolving Instagram shortcode: ${shortcode} via RapidAPI`);
 
   try {
-    const params = new URLSearchParams({
-      variables: JSON.stringify({ shortcode }),
-      doc_id: IG_DOC_ID,
-      lsd: IG_LSD,
-    });
-
-    const response = await fetch(IG_GRAPHQL_URL, {
-      method: "POST",
+    const apiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/get_media_data.php?reel_post_code_or_url=${encodeURIComponent(url)}&type=reel`;
+    
+    const response = await fetch(apiUrl, {
+      method: "GET",
       headers: {
-        "User-Agent": IG_USER_AGENT,
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-IG-App-ID": IG_APP_ID,
-        "X-FB-LSD": IG_LSD,
-        "X-ASBD-ID": "129477",
-        "Sec-Fetch-Site": "same-origin",
+        "Content-Type": "application/json",
+        "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
+        "x-rapidapi-key": apiKey,
       },
-      body: params.toString(),
     });
 
     if (!response.ok) {
-      console.log(`[VideoResolver] Instagram GraphQL returned ${response.status}`);
+      console.log(`[VideoResolver] Instagram RapidAPI returned ${response.status}`);
       return null;
     }
 
     const json = await response.json();
-    const media = json?.data?.xdt_shortcode_media;
 
-    if (!media) {
-      console.log("[VideoResolver] No media data in Instagram response (reel may be private)");
+    // The API returns video_url directly in the response
+    const videoUrl = json?.video_url;
+    if (!videoUrl) {
+      console.log("[VideoResolver] No video_url in Instagram RapidAPI response");
+      console.log("[VideoResolver] Response keys:", Object.keys(json || {}).join(", "));
       return null;
     }
 
-    if (!media.is_video || !media.video_url) {
-      console.log("[VideoResolver] Instagram post is not a video or has no video_url");
-      return null;
-    }
-
-    console.log(`[VideoResolver] Instagram video resolved: duration=${media.video_duration}s`);
+    console.log(`[VideoResolver] Instagram video resolved via RapidAPI`);
 
     return {
-      directUrl: media.video_url,
+      directUrl: videoUrl,
       platform: "instagram",
       metadata: {
-        duration: media.video_duration,
-        hasAudio: media.has_audio,
-        caption: media.edge_media_to_caption?.edges?.[0]?.node?.text,
-        author: media.owner?.username,
-        viewCount: media.video_play_count || media.video_view_count,
+        duration: json?.video_duration,
+        hasAudio: true,
+        caption: json?.edge_media_to_caption?.edges?.[0]?.node?.text || json?.caption?.text,
+        author: json?.owner?.username,
+        viewCount: json?.video_play_count || json?.video_view_count,
       },
     };
   } catch (error: any) {
-    console.error("[VideoResolver] Instagram GraphQL error:", error.message);
+    console.error("[VideoResolver] Instagram RapidAPI error:", error.message);
     return null;
   }
 }
 
 // ============================================================
-// TikTok URL Extraction (via RapidAPI)
+// TikTok URL Extraction (via RapidAPI - TikTok Scraper 7)
 // ============================================================
 
 /**
- * Extract TikTok video ID from URL
- */
-function getTikTokVideoId(url: string): string | null {
-  // Standard format: https://www.tiktok.com/@user/video/1234567890
-  const standardMatch = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
-  if (standardMatch) return standardMatch[1];
-
-  // Short format: https://vm.tiktok.com/XXXXXXX/
-  // These need to be resolved via redirect
-  if (url.includes("vm.tiktok.com") || url.includes("vt.tiktok.com")) {
-    return null; // Will be handled by following redirects
-  }
-
-  return null;
-}
-
-/**
- * Resolve a TikTok URL to a direct video URL.
- * Uses the RapidAPI TikTok scraper if available.
+ * Resolve a TikTok URL to a direct video URL using RapidAPI.
  */
 async function resolveTikTokUrl(url: string): Promise<ResolvedVideo | null> {
   console.log(`[VideoResolver] Resolving TikTok URL: ${url}`);
 
-  const apiKey = ENV.RAPIDAPI_TIKTOK_KEY;
+  const apiKey = ENV.RAPIDAPI_TIKTOK_KEY || ENV.RAPIDAPI_KEY;
   if (!apiKey) {
-    console.log("[VideoResolver] No RapidAPI TikTok key available");
+    console.log("[VideoResolver] No RapidAPI key available for TikTok");
     return null;
   }
 
@@ -151,22 +124,21 @@ async function resolveTikTokUrl(url: string): Promise<ResolvedVideo | null> {
         const redirectResponse = await fetch(url, {
           method: "HEAD",
           redirect: "follow",
-          headers: {
-            "User-Agent": IG_USER_AGENT,
-          },
+          headers: { "User-Agent": USER_AGENT },
         });
         resolvedUrl = redirectResponse.url;
         console.log(`[VideoResolver] TikTok short URL resolved to: ${resolvedUrl}`);
       } catch {
-        console.log("[VideoResolver] Could not resolve TikTok short URL");
+        console.log("[VideoResolver] Could not resolve TikTok short URL, using original");
       }
     }
 
-    // Use RapidAPI to get video info and download URL
-    const apiUrl = `https://tiktok-scraper7.p.rapidapi.com/video/info?video_url=${encodeURIComponent(resolvedUrl)}`;
+    // Use the correct endpoint format: GET /?url={tiktok_url}&hd=1
+    const apiUrl = `https://tiktok-scraper7.p.rapidapi.com/?url=${encodeURIComponent(resolvedUrl)}&hd=1`;
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
+        "Content-Type": "application/json",
         "x-rapidapi-host": "tiktok-scraper7.p.rapidapi.com",
         "x-rapidapi-key": apiKey,
       },
@@ -178,15 +150,15 @@ async function resolveTikTokUrl(url: string): Promise<ResolvedVideo | null> {
     }
 
     const json = await response.json();
-    
-    // Try to get the download URL from the response
+
+    if (json?.code !== 0) {
+      console.log(`[VideoResolver] TikTok API error: ${json?.msg || "unknown"}`);
+      return null;
+    }
+
     const videoData = json?.data;
-    const downloadUrl =
-      videoData?.play ||
-      videoData?.hdplay ||
-      videoData?.wmplay ||
-      videoData?.download?.wm ||
-      videoData?.download?.nowm;
+    // Prefer HD, then regular play URL
+    const downloadUrl = videoData?.hdplay || videoData?.play;
 
     if (!downloadUrl) {
       console.log("[VideoResolver] No download URL in TikTok response");
@@ -201,7 +173,7 @@ async function resolveTikTokUrl(url: string): Promise<ResolvedVideo | null> {
       metadata: {
         duration: videoData?.duration,
         hasAudio: true,
-        caption: videoData?.title || videoData?.desc,
+        caption: videoData?.title,
         author: videoData?.author?.unique_id || videoData?.author?.nickname,
         viewCount: videoData?.play_count,
       },
@@ -226,7 +198,7 @@ function detectPlatform(url: string): "instagram" | "tiktok" | "direct" {
 }
 
 /**
- * Check if a URL is a direct video link (ends with video extension or has video content-type).
+ * Check if a URL is a direct video link.
  */
 function isDirectVideoUrl(url: string): boolean {
   const videoExtensions = [".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v"];
@@ -237,9 +209,6 @@ function isDirectVideoUrl(url: string): boolean {
 /**
  * Resolve any video URL to a direct download URL.
  * Supports Instagram Reels, TikTok videos, and direct video URLs.
- * 
- * @param url - The URL to resolve (Instagram reel, TikTok, or direct video link)
- * @returns ResolvedVideo with the direct download URL, or null if resolution fails
  */
 export async function resolveVideoUrl(url: string): Promise<ResolvedVideo> {
   console.log(`[VideoResolver] Resolving URL: ${url}`);
@@ -267,18 +236,13 @@ export async function resolveVideoUrl(url: string): Promise<ResolvedVideo> {
   }
 
   // Fallback: try to use the URL directly
-  // This handles cases where:
-  // - The reel is private (Instagram GraphQL returns null)
-  // - The API is temporarily down
-  // - The URL is from an unsupported platform
   console.log(`[VideoResolver] Platform resolution failed, using original URL as fallback`);
-  
-  // Try to check if the URL returns video content
+
   try {
     const headResponse = await fetch(url, {
       method: "HEAD",
       redirect: "follow",
-      headers: { "User-Agent": IG_USER_AGENT },
+      headers: { "User-Agent": USER_AGENT },
     });
     const contentType = headResponse.headers.get("content-type") || "";
     if (contentType.startsWith("video/")) {
@@ -289,7 +253,7 @@ export async function resolveVideoUrl(url: string): Promise<ResolvedVideo> {
     // Ignore HEAD check errors
   }
 
-  // Last resort: return the original URL (will likely fail during download, but let the caller handle it)
+  // Last resort: return the original URL
   return {
     directUrl: url,
     platform,
@@ -299,16 +263,14 @@ export async function resolveVideoUrl(url: string): Promise<ResolvedVideo> {
 
 /**
  * Download a video from a resolved URL and return it as a Buffer.
- * Handles the specific headers needed for each platform.
  */
 export async function downloadResolvedVideo(resolved: ResolvedVideo): Promise<Buffer> {
   console.log(`[VideoResolver] Downloading video from ${resolved.platform}: ${resolved.directUrl.substring(0, 80)}...`);
 
   const headers: Record<string, string> = {
-    "User-Agent": IG_USER_AGENT,
+    "User-Agent": USER_AGENT,
   };
 
-  // Instagram CDN requires specific referer
   if (resolved.platform === "instagram") {
     headers["Referer"] = "https://www.instagram.com/";
   } else if (resolved.platform === "tiktok") {

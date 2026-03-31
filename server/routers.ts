@@ -16,6 +16,7 @@ import { compressVideo as ffmpegCompress, cleanupCompressedFile } from "./servic
 import { performFullAnalysis, cleanupAnalysis, FullVideoAnalysis } from "./services/ffmpegAdvancedAnalysis";
 import { transcribeAudioFile, formatTranscriptionWithTimestamps, extractKeyMoments } from './services/audioTranscription';
 import { resolveVideoUrl, downloadResolvedVideo } from './services/videoUrlResolver';
+import { extractFrames, cleanupFrames, ExtractedFrame } from './services/videoFrameExtractor';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -1448,6 +1449,8 @@ REGLAS:
         console.log('[CompareUpload] Viral URL:', input.viralUrl);
         console.log('[CompareUpload] User file key:', input.userFileKey);
         
+        const tempFiles: string[] = []; // Track temp files for cleanup
+        
         try {
           // ===== STEP 1: RESOLVE VIRAL VIDEO URL =====
           console.log('[CompareUpload] Step 1: Resolving viral video URL...');
@@ -1457,27 +1460,122 @@ REGLAS:
             console.log(`[CompareUpload] Viral metadata: duration=${resolvedViral.metadata.duration}s, author=${resolvedViral.metadata.author}`);
           }
           
-          // ===== STEP 2: UPLOAD VIRAL TO S3 FOR STABLE URL =====
-          console.log('[CompareUpload] Step 2: Uploading viral to S3 for stable URL...');
-          let viralS3Url: string;
+          // ===== STEP 2: DOWNLOAD VIRAL VIDEO & EXTRACT FRAMES =====
+          console.log('[CompareUpload] Step 2: Downloading viral video...');
           let viralFileSize = 0;
+          let viralTempPath: string;
+          let viralFrames: ExtractedFrame[] = [];
+          let viralTranscription = '';
           try {
             const viralBuffer = await downloadResolvedVideo(resolvedViral);
             viralFileSize = viralBuffer.length;
             console.log(`[CompareUpload] Viral downloaded: ${(viralFileSize / 1024 / 1024).toFixed(2)} MB`);
-            const viralKey = `viral-temp/${ctx.user.id}/${nanoid()}.mp4`;
-            const { url } = await storagePut(viralKey, viralBuffer, 'video/mp4');
-            viralS3Url = url;
-            console.log(`[CompareUpload] Viral uploaded to S3: ${viralS3Url.substring(0, 80)}...`);
+            
+            viralTempPath = path.join(os.tmpdir(), `viral_${nanoid()}.mp4`);
+            fs.writeFileSync(viralTempPath, viralBuffer);
+            tempFiles.push(viralTempPath);
+            
+            // Compress if needed for faster frame extraction
+            if (viralFileSize > 20 * 1024 * 1024) {
+              console.log(`[CompareUpload] Compressing viral video for analysis...`);
+              try {
+                const compResult = await ffmpegCompress(viralTempPath, (p) => console.log(`[FFmpeg] Viral: ${p.percent}%`));
+                tempFiles.push(compResult.outputPath);
+                viralTempPath = compResult.outputPath;
+                console.log(`[CompareUpload] Viral compressed: ${(compResult.inputSize / 1024 / 1024).toFixed(0)}MB -> ${(compResult.outputSize / 1024 / 1024).toFixed(0)}MB`);
+              } catch (compErr: any) {
+                console.warn('[CompareUpload] Viral compression failed, using original:', compErr.message);
+              }
+            }
+            
+            // Extract frames
+            console.log('[CompareUpload] Extracting viral video frames...');
+            viralFrames = await extractFrames(viralTempPath, 2, 10);
+            console.log(`[CompareUpload] Viral: ${viralFrames.length} frames extracted`);
+            
+            // Extract and transcribe audio
+            try {
+              const audioPath = path.join(os.tmpdir(), `viral_audio_${nanoid()}.mp3`);
+              tempFiles.push(audioPath);
+              await new Promise<void>((resolve) => {
+                const { spawn } = require('child_process');
+                const ff = spawn('ffmpeg', ['-i', viralTempPath, '-vn', '-acodec', 'libmp3lame', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-y', audioPath]);
+                ff.on('close', () => resolve());
+                ff.on('error', () => resolve());
+              });
+              if (fs.existsSync(audioPath) && fs.statSync(audioPath).size > 1000) {
+                const transcResult = await transcribeAudioFile(audioPath, 'es');
+                if (transcResult.success) {
+                  viralTranscription = transcResult.text;
+                  console.log(`[CompareUpload] Viral transcription: ${viralTranscription.substring(0, 100)}...`);
+                }
+              }
+            } catch (err: any) {
+              console.warn('[CompareUpload] Viral audio transcription failed:', err.message);
+            }
           } catch (dlErr: any) {
-            console.error('[CompareUpload] Failed to download/upload viral:', dlErr.message);
-            throw new Error(`No se pudo descargar el vídeo viral: ${dlErr.message}. Verifica que la URL sea correcta y el vídeo sea público.`);
+            console.error('[CompareUpload] Failed to download viral:', dlErr.message);
+            throw new Error(`No se pudo descargar el v\u00eddeo viral: ${dlErr.message}. Verifica que la URL sea correcta y el v\u00eddeo sea p\u00fablico.`);
           }
           
-          // ===== STEP 3: GET USER VIDEO S3 URL =====
-          console.log('[CompareUpload] Step 3: Getting user video S3 URL...');
-          const { url: userS3Url } = await storageGet(input.userFileKey);
-          console.log(`[CompareUpload] User video S3 URL: ${userS3Url.substring(0, 80)}...`);
+          // ===== STEP 3: DOWNLOAD USER VIDEO & EXTRACT FRAMES =====
+          console.log('[CompareUpload] Step 3: Processing user video...');
+          let userFrames: ExtractedFrame[] = [];
+          let userTranscription = '';
+          let userTempPath: string;
+          try {
+            const { url: userOriginalUrl } = await storageGet(input.userFileKey);
+            const userResp = await fetch(userOriginalUrl);
+            if (!userResp.ok) throw new Error(`Failed to download user video: HTTP ${userResp.status}`);
+            const userBuffer = Buffer.from(await userResp.arrayBuffer());
+            console.log(`[CompareUpload] User video downloaded: ${(userBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+            
+            userTempPath = path.join(os.tmpdir(), `user_${nanoid()}${path.extname(input.userFileName) || '.mov'}`);
+            fs.writeFileSync(userTempPath, userBuffer);
+            tempFiles.push(userTempPath);
+            
+            // Compress if needed
+            if (userBuffer.length > 20 * 1024 * 1024 || !['video/mp4'].includes(input.userMimeType)) {
+              console.log(`[CompareUpload] Compressing user video for analysis...`);
+              try {
+                const compResult = await ffmpegCompress(userTempPath, (p) => console.log(`[FFmpeg] User: ${p.percent}%`));
+                tempFiles.push(compResult.outputPath);
+                userTempPath = compResult.outputPath;
+                console.log(`[CompareUpload] User compressed: ${(compResult.inputSize / 1024 / 1024).toFixed(0)}MB -> ${(compResult.outputSize / 1024 / 1024).toFixed(0)}MB`);
+              } catch (compErr: any) {
+                console.warn('[CompareUpload] User compression failed, using original:', compErr.message);
+              }
+            }
+            
+            // Extract frames
+            console.log('[CompareUpload] Extracting user video frames...');
+            userFrames = await extractFrames(userTempPath, 2, 10);
+            console.log(`[CompareUpload] User: ${userFrames.length} frames extracted`);
+            
+            // Extract and transcribe audio
+            try {
+              const audioPath = path.join(os.tmpdir(), `user_audio_${nanoid()}.mp3`);
+              tempFiles.push(audioPath);
+              await new Promise<void>((resolve) => {
+                const { spawn } = require('child_process');
+                const ff = spawn('ffmpeg', ['-i', userTempPath, '-vn', '-acodec', 'libmp3lame', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-y', audioPath]);
+                ff.on('close', () => resolve());
+                ff.on('error', () => resolve());
+              });
+              if (fs.existsSync(audioPath) && fs.statSync(audioPath).size > 1000) {
+                const transcResult = await transcribeAudioFile(audioPath, 'es');
+                if (transcResult.success) {
+                  userTranscription = transcResult.text;
+                  console.log(`[CompareUpload] User transcription: ${userTranscription.substring(0, 100)}...`);
+                }
+              }
+            } catch (err: any) {
+              console.warn('[CompareUpload] User audio transcription failed:', err.message);
+            }
+          } catch (dlErr: any) {
+            console.error('[CompareUpload] Failed to process user video:', dlErr.message);
+            throw new Error(`No se pudo procesar tu v\u00eddeo: ${dlErr.message}`);
+          }
           
           // Create video records in DB
           const viralVideoId = await db.createVideo({
@@ -1500,17 +1598,34 @@ REGLAS:
             videoType: 'user_video',
           });
           
-          // ===== STEP 4: ANALYZE VIRAL VIDEO WITH GEMINI (direct video URL) =====
-          console.log('[CompareUpload] Step 4: Analyzing viral video with Gemini (direct URL)...');
+          // ===== STEP 4: ANALYZE VIRAL VIDEO WITH GEMINI (frames + transcription) =====
+          console.log('[CompareUpload] Step 4: Analyzing viral video with Gemini (frames + audio)...');
           const viralAnalysisStart = Date.now();
+          
+          // Build content array with text + frame images
+          const viralUserContent: any[] = [];
+          let viralPromptText = `Analiza este v\u00eddeo viral de referencia. Se muestran ${viralFrames.length} frames representativos del v\u00eddeo.`;
+          if (resolvedViral.metadata?.caption) viralPromptText += ` Caption: "${resolvedViral.metadata.caption.substring(0, 200)}"`;
+          if (resolvedViral.metadata?.author) viralPromptText += ` Autor: @${resolvedViral.metadata.author}`;
+          if (resolvedViral.metadata?.viewCount) viralPromptText += ` Views: ${resolvedViral.metadata.viewCount}`;
+          if (viralTranscription) viralPromptText += `\n\nTRANSCRIPCI\u00d3N DEL AUDIO DEL V\u00cdDEO:\n${viralTranscription}`;
+          viralUserContent.push({ type: 'text', text: viralPromptText });
+          for (const frame of viralFrames) {
+            viralUserContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'low' } });
+          }
+          
+          console.log(`[CompareUpload] Step 4 debug: viralUserContent has ${viralUserContent.length} items`);
+          console.log(`[CompareUpload] Step 4 debug: content types: ${viralUserContent.map((c: any) => c.type).join(', ')}`);
+          console.log(`[CompareUpload] Step 4 debug: text content: ${viralPromptText.substring(0, 200)}`);
+          if (viralUserContent.length > 1) {
+            const firstImg = viralUserContent[1];
+            console.log(`[CompareUpload] Step 4 debug: first image url starts with: ${firstImg?.image_url?.url?.substring(0, 50)}`);
+          }
           
           const viralGeminiResponse = await invokeLLM({
             messages: [
               { role: 'system', content: buildDirectVideoAnalysisPrompt() },
-              { role: 'user', content: [
-                { type: 'text', text: `Analiza este vídeo viral de referencia. ${resolvedViral.metadata?.caption ? `Caption: "${resolvedViral.metadata.caption.substring(0, 200)}"` : ''} ${resolvedViral.metadata?.author ? `Autor: @${resolvedViral.metadata.author}` : ''} ${resolvedViral.metadata?.viewCount ? `Views: ${resolvedViral.metadata.viewCount}` : ''}` },
-                { type: 'file_url', file_url: { url: viralS3Url, mime_type: 'video/mp4' } }
-              ]}
+              { role: 'user', content: viralUserContent }
             ],
             response_format: {
               type: 'json_schema',
@@ -1549,6 +1664,12 @@ REGLAS:
           });
           
           console.log(`[CompareUpload] Viral analysis done in ${((Date.now() - viralAnalysisStart) / 1000).toFixed(1)}s`);
+          console.log(`[CompareUpload] Viral Gemini response:`, JSON.stringify(viralGeminiResponse).substring(0, 500));
+          
+          if (!viralGeminiResponse.choices || !viralGeminiResponse.choices[0]) {
+            console.error('[CompareUpload] Gemini returned no choices for viral analysis:', JSON.stringify(viralGeminiResponse));
+            throw new Error('El modelo de IA no pudo analizar el v\u00eddeo viral. Puede que el v\u00eddeo sea demasiado grande o el formato no sea compatible. Intenta con un v\u00eddeo m\u00e1s corto o en formato MP4.');
+          }
           
           const viralContent = viralGeminiResponse.choices[0].message.content;
           let viralAnalysisData: any;
@@ -1609,14 +1730,27 @@ Cortes: ${viralAnalysisData.cutAnalysis}
 Resumen: ${viralAnalysisData.summary}
 `;
           
+          // Build comparison content with frames from both videos
+          const compUserContent: any[] = [];
+          let compPromptText = `${viralContext}\n\nAhora compara el V\u00cdDEO VIRAL con el V\u00cdDEO DEL USUARIO. El v\u00eddeo del usuario se llama "${input.userFileName}".`;
+          if (userTranscription) compPromptText += `\n\nTRANSCRIPCI\u00d3N DEL AUDIO DEL V\u00cdDEO DEL USUARIO:\n${userTranscription}`;
+          compPromptText += `\n\nA continuaci\u00f3n se muestran primero ${viralFrames.length} frames del V\u00cdDEO VIRAL y luego ${userFrames.length} frames del V\u00cdDEO DEL USUARIO:`;
+          compUserContent.push({ type: 'text', text: compPromptText });
+          // Add viral frames
+          compUserContent.push({ type: 'text', text: '--- FRAMES DEL V\u00cdDEO VIRAL ---' });
+          for (const frame of viralFrames) {
+            compUserContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'low' } });
+          }
+          // Add user frames
+          compUserContent.push({ type: 'text', text: '--- FRAMES DEL V\u00cdDEO DEL USUARIO ---' });
+          for (const frame of userFrames) {
+            compUserContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'low' } });
+          }
+          
           const compResponse = await invokeLLM({
             messages: [
               { role: 'system', content: buildDirectVideoComparisonPrompt(viralAnalysisData) },
-              { role: 'user', content: [
-                { type: 'text', text: `${viralContext}\n\nAhora compara el VÍDEO VIRAL (primer vídeo adjunto) con el VÍDEO DEL USUARIO (segundo vídeo adjunto). El vídeo del usuario se llama "${input.userFileName}".` },
-                { type: 'file_url', file_url: { url: viralS3Url, mime_type: 'video/mp4' } },
-                { type: 'file_url', file_url: { url: userS3Url, mime_type: 'video/mp4' } }
-              ]}
+              { role: 'user', content: compUserContent }
             ],
             response_format: {
               type: 'json_schema',
@@ -1743,6 +1877,12 @@ Resumen: ${viralAnalysisData.summary}
           });
           
           console.log(`[CompareUpload] Comparison done in ${((Date.now() - compStart) / 1000).toFixed(1)}s`);
+          console.log(`[CompareUpload] Comparison Gemini response:`, JSON.stringify(compResponse).substring(0, 500));
+          
+          if (!compResponse.choices || !compResponse.choices[0]) {
+            console.error('[CompareUpload] Gemini returned no choices for comparison:', JSON.stringify(compResponse));
+            throw new Error('El modelo de IA no pudo completar la comparaci\u00f3n. Intenta de nuevo.');
+          }
           
           const compContent = compResponse.choices[0].message.content;
           let comparisonData: any;
@@ -1792,7 +1932,12 @@ Resumen: ${viralAnalysisData.summary}
           };
         } catch (error: any) {
           console.error('[CompareUpload] Error:', error);
-          throw new Error(error.message || 'Error durante la comparación');
+          throw new Error(error.message || 'Error durante la comparaci\u00f3n');
+        } finally {
+          // Cleanup temp files
+          for (const f of tempFiles) {
+            try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
+          }
         }
       }),
   }),
