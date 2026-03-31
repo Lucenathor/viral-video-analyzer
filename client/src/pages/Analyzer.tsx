@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { needsCompression, compressVideo } from "@/lib/videoCompressor";
 
 const ACCEPTED_FORMATS = [
   "video/mp4", "video/quicktime", "video/x-msvideo", "video/webm",
@@ -97,47 +98,138 @@ export default function Analyzer() {
     setUploadProgress(0);
 
     try {
-      // Step 1: Upload file directly via FormData (much more robust than base64 chunks)
+      // Step 0: Compress video in browser if too large (>30MB) to stay under proxy limit
+      let fileToUpload = userFile;
+      if (needsCompression(userFile)) {
+        setUploadPhase(`Comprimiendo video (${(userFile.size / 1024 / 1024).toFixed(0)}MB)... Esto puede tardar un momento`);
+        setUploadProgress(0);
+        try {
+          fileToUpload = await compressVideo(userFile, (p) => {
+            if (p.phase === 'compressing') {
+              setUploadProgress(Math.round(p.progress * 0.5)); // 0-50% for compression
+              setUploadPhase(`Comprimiendo video... ${p.progress}%`);
+            } else if (p.phase === 'done' && p.compressedSize) {
+              toast.success(`Video comprimido: ${(p.originalSize / 1024 / 1024).toFixed(0)}MB → ${(p.compressedSize / 1024 / 1024).toFixed(0)}MB`);
+            }
+          });
+        } catch (compErr: any) {
+          console.warn('[Analyzer] Browser compression failed, uploading original:', compErr);
+          toast.info('No se pudo comprimir en el navegador, subiendo original...');
+          fileToUpload = userFile;
+        }
+      }
+
+      // Step 1: Upload file - use direct S3 upload for large files to bypass proxy 413 limit
       setUploadPhase("Subiendo tu video...");
       
-      const formData = new FormData();
-      formData.append('video', userFile);
-
-      const xhr = new XMLHttpRequest();
+      const isLargeFile = false; // Always use standard upload (compression keeps files under proxy limit)
       
-      // Track upload progress
-      const uploadResult = await new Promise<{fileKey: string; url: string; fileName: string; fileSize: number; mimeType: string}>((resolve, reject) => {
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
-            setUploadProgress(pct);
-          }
+      let uploadResult: {fileKey: string; url: string; fileName: string; fileSize: number; mimeType: string};
+      
+      if (isLargeFile) {
+        // DIRECT S3 UPLOAD: Get presigned URL from server, upload directly to S3
+        console.log('[Analyzer] Large file detected, using direct S3 upload');
+        setUploadPhase(`Subiendo video grande (${(fileToUpload.size / 1024 / 1024).toFixed(0)}MB) directamente a S3...`);
+        
+        // Get upload URL from server (use fetch to call tRPC directly)
+        const uploadResp = await fetch('/api/trpc/video.getUploadUrl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ json: { fileName: fileToUpload.name, mimeType: fileToUpload.type || 'video/mp4' } }),
+        });
+        if (!uploadResp.ok) throw new Error('Error al obtener URL de subida');
+        const uploadRespData = await uploadResp.json();
+        const uploadInfo = uploadRespData.result?.data?.json || uploadRespData.result?.data;
+        
+        // Upload directly to forge API (bypasses proxy)
+        const formData = new FormData();
+        formData.append('file', fileToUpload);
+        
+        const s3Result = await new Promise<{url: string}>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              const base = needsCompression(userFile) ? 50 : 0;
+              const range = 40;
+              setUploadProgress(base + Math.round((pct / 100) * range));
+              setUploadPhase(`Subiendo video... ${pct}%`);
+            }
+          });
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch {
+                reject(new Error('Respuesta invalida de S3'));
+              }
+            } else {
+              reject(new Error(`Error al subir a S3: ${xhr.status}`));
+            }
+          });
+          xhr.addEventListener('error', () => reject(new Error('Error de red al subir el video.')));
+          xhr.addEventListener('timeout', () => reject(new Error('Timeout al subir el video.')));
+          xhr.open('POST', uploadInfo.uploadUrl);
+          xhr.setRequestHeader('Authorization', `Bearer ${uploadInfo.authToken}`);
+          xhr.timeout = 10 * 60 * 1000; // 10 min timeout for large files
+          xhr.send(formData);
         });
         
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              resolve(JSON.parse(xhr.responseText));
-            } catch {
-              reject(new Error('Respuesta invalida del servidor'));
+        // Detect mime type
+        const ext = '.' + fileToUpload.name.split('.').pop()?.toLowerCase();
+        const mimeMap: Record<string, string> = {
+          '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.avi': 'video/x-msvideo',
+          '.webm': 'video/webm', '.mkv': 'video/x-matroska', '.mpeg': 'video/mpeg',
+          '.3gp': 'video/3gpp', '.flv': 'video/x-flv', '.ogg': 'video/ogg', '.wmv': 'video/x-ms-wmv'
+        };
+        const mimeType = fileToUpload.type || mimeMap[ext] || 'video/mp4';
+        
+        uploadResult = {
+          fileKey: uploadInfo.fileKey,
+          url: s3Result.url,
+          fileName: fileToUpload.name,
+          fileSize: fileToUpload.size,
+          mimeType,
+        };
+        console.log('[Analyzer] Direct S3 upload complete:', uploadResult.fileKey);
+      } else {
+        // STANDARD UPLOAD: via /api/upload-video (works for files <80MB)
+        const formData = new FormData();
+        formData.append('video', fileToUpload);
+        
+        uploadResult = await new Promise<{fileKey: string; url: string; fileName: string; fileSize: number; mimeType: string}>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              const base = needsCompression(userFile) ? 50 : 0;
+              const range = 40;
+              setUploadProgress(base + Math.round((pct / 100) * range));
             }
-          } else {
-            try {
-              const err = JSON.parse(xhr.responseText);
-              reject(new Error(err.error || `Error ${xhr.status}`));
-            } catch {
-              reject(new Error(`Error al subir: ${xhr.status}`));
+          });
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch {
+                reject(new Error('Respuesta invalida del servidor'));
+              }
+            } else {
+              try {
+                const err = JSON.parse(xhr.responseText);
+                reject(new Error(err.error || `Error ${xhr.status}`));
+              } catch {
+                reject(new Error(`Error al subir: ${xhr.status}`));
+              }
             }
-          }
+          });
+          xhr.addEventListener('error', () => reject(new Error('Error de red al subir el video.')));
+          xhr.addEventListener('timeout', () => reject(new Error('Timeout al subir el video.')));
+          xhr.open('POST', '/api/upload-video');
+          xhr.timeout = 5 * 60 * 1000;
+          xhr.send(formData);
         });
-        
-        xhr.addEventListener('error', () => reject(new Error('Error de red al subir el video. Verifica tu conexion.')));
-        xhr.addEventListener('timeout', () => reject(new Error('Timeout al subir el video. Intenta con un archivo mas pequeno.')));
-        
-        xhr.open('POST', '/api/upload-video');
-        xhr.timeout = 5 * 60 * 1000; // 5 min timeout
-        xhr.send(formData);
-      });
+      }
 
       // Step 2: Compare
       setUploadPhase("Analizando y comparando videos con IA...");

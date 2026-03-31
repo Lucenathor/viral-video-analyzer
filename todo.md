@@ -229,3 +229,13 @@
 - [x] Resultados: Viral 85/100, Usuario 45/100, 5 correcciones prioritarias, 3 puntos fuertes
 - [x] 135/136 tests pasan (1 fallo en test viejo TikTok search no relacionado)
 - [x] Guardar checkpoint
+
+## Fix Error 413 (File Too Large) en Producción
+- [x] Diagnosticar límite de tamaño del proxy de producción (proxy Manus limita ~100MB)
+- [x] Implementar compresión del vídeo en el navegador ANTES de subirlo (umbral bajado de 80MB a 30MB, bitrate de 2Mbps a 1.5Mbps)
+- [x] Alternativa: subida directa a S3 con presigned URL (probada pero forge API tiene problemas CORS, descartada)
+- [x] Solución final: compresión agresiva en navegador + upload estándar /api/upload-video
+- [x] Test end-to-end completo desde el navegador como usuario real (URL directa + archivo subido → análisis completo OK)
+- [x] Instagram API actualizada: get_media_data_v2.php con fallback a v1
+- [x] Guardar checkpoint
+- [x] 136 tests pasan (18 archivos), TypeScript compila sin errores

@@ -6,7 +6,7 @@
 
 import { ENV } from "../_core/env";
 
-interface ResolvedVideo {
+export interface ResolvedVideo {
   directUrl: string;
   platform: "instagram" | "tiktok" | "direct";
   metadata?: {
@@ -38,6 +38,7 @@ function getInstagramShortcode(url: string): string | null {
 
 /**
  * Resolve an Instagram Reel/Post URL to a direct video URL using RapidAPI.
+ * Tries v2 endpoint first (shortcode only), then falls back to v1 (full URL).
  */
 async function resolveInstagramUrl(url: string): Promise<ResolvedVideo | null> {
   const shortcode = getInstagramShortcode(url);
@@ -52,52 +53,89 @@ async function resolveInstagramUrl(url: string): Promise<ResolvedVideo | null> {
     return null;
   }
 
-  console.log(`[VideoResolver] Resolving Instagram shortcode: ${shortcode} via RapidAPI`);
+  console.log(`[VideoResolver] Resolving Instagram shortcode: ${shortcode}`);
 
+  // ---- ATTEMPT 1: v2 endpoint (shortcode only, faster) ----
   try {
-    const apiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/get_media_data.php?reel_post_code_or_url=${encodeURIComponent(url)}&type=reel`;
-    
+    const apiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/get_media_data_v2.php?media_code=${encodeURIComponent(shortcode)}`;
+    console.log(`[VideoResolver] Trying v2 endpoint...`);
+
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
         "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
         "x-rapidapi-key": apiKey,
       },
+      signal: AbortSignal.timeout(15000),
     });
 
-    if (!response.ok) {
-      console.log(`[VideoResolver] Instagram RapidAPI returned ${response.status}`);
-      return null;
+    if (response.ok) {
+      const json = await response.json();
+      const videoUrl = json?.video_url;
+      if (videoUrl) {
+        console.log(`[VideoResolver] Instagram video resolved via v2 endpoint`);
+        return {
+          directUrl: videoUrl,
+          platform: "instagram",
+          metadata: {
+            duration: json?.video_duration,
+            hasAudio: true,
+            caption: json?.edge_media_to_caption?.edges?.[0]?.node?.text || json?.caption?.text,
+            author: json?.owner?.username,
+            viewCount: json?.video_play_count || json?.video_view_count,
+          },
+        };
+      }
+      console.log("[VideoResolver] v2 returned no video_url, keys:", Object.keys(json || {}).join(", "));
+    } else {
+      console.log(`[VideoResolver] v2 returned HTTP ${response.status}`);
     }
-
-    const json = await response.json();
-
-    // The API returns video_url directly in the response
-    const videoUrl = json?.video_url;
-    if (!videoUrl) {
-      console.log("[VideoResolver] No video_url in Instagram RapidAPI response");
-      console.log("[VideoResolver] Response keys:", Object.keys(json || {}).join(", "));
-      return null;
-    }
-
-    console.log(`[VideoResolver] Instagram video resolved via RapidAPI`);
-
-    return {
-      directUrl: videoUrl,
-      platform: "instagram",
-      metadata: {
-        duration: json?.video_duration,
-        hasAudio: true,
-        caption: json?.edge_media_to_caption?.edges?.[0]?.node?.text || json?.caption?.text,
-        author: json?.owner?.username,
-        viewCount: json?.video_play_count || json?.video_view_count,
-      },
-    };
   } catch (error: any) {
-    console.error("[VideoResolver] Instagram RapidAPI error:", error.message);
-    return null;
+    console.warn("[VideoResolver] v2 endpoint failed:", error.message);
   }
+
+  // ---- ATTEMPT 2: v1 endpoint (full URL, slower but more reliable) ----
+  try {
+    const fullUrl = url.includes("instagram.com") ? url : `https://www.instagram.com/reel/${shortcode}/`;
+    const apiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/get_media_data.php?url=${encodeURIComponent(fullUrl)}`;
+    console.log(`[VideoResolver] Trying v1 endpoint with full URL...`);
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
+        "x-rapidapi-key": apiKey,
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (response.ok) {
+      const json = await response.json();
+      const videoUrl = json?.video_url;
+      if (videoUrl) {
+        console.log(`[VideoResolver] Instagram video resolved via v1 endpoint`);
+        return {
+          directUrl: videoUrl,
+          platform: "instagram",
+          metadata: {
+            duration: json?.video_duration,
+            hasAudio: true,
+            caption: json?.edge_media_to_caption?.edges?.[0]?.node?.text || json?.caption?.text,
+            author: json?.owner?.username,
+            viewCount: json?.video_play_count || json?.video_view_count,
+          },
+        };
+      }
+      console.log("[VideoResolver] v1 returned no video_url, keys:", Object.keys(json || {}).join(", "));
+    } else {
+      console.log(`[VideoResolver] v1 returned HTTP ${response.status}`);
+    }
+  } catch (error: any) {
+    console.warn("[VideoResolver] v1 endpoint failed:", error.message);
+  }
+
+  console.log("[VideoResolver] All Instagram API attempts failed");
+  return null;
 }
 
 // ============================================================
@@ -125,6 +163,7 @@ async function resolveTikTokUrl(url: string): Promise<ResolvedVideo | null> {
           method: "HEAD",
           redirect: "follow",
           headers: { "User-Agent": USER_AGENT },
+          signal: AbortSignal.timeout(10000),
         });
         resolvedUrl = redirectResponse.url;
         console.log(`[VideoResolver] TikTok short URL resolved to: ${resolvedUrl}`);
@@ -142,6 +181,7 @@ async function resolveTikTokUrl(url: string): Promise<ResolvedVideo | null> {
         "x-rapidapi-host": "tiktok-scraper7.p.rapidapi.com",
         "x-rapidapi-key": apiKey,
       },
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
@@ -236,13 +276,14 @@ export async function resolveVideoUrl(url: string): Promise<ResolvedVideo> {
   }
 
   // Fallback: try to use the URL directly
-  console.log(`[VideoResolver] Platform resolution failed, using original URL as fallback`);
+  console.log(`[VideoResolver] Platform resolution failed, trying direct URL as fallback`);
 
   try {
     const headResponse = await fetch(url, {
       method: "HEAD",
       redirect: "follow",
       headers: { "User-Agent": USER_AGENT },
+      signal: AbortSignal.timeout(10000),
     });
     const contentType = headResponse.headers.get("content-type") || "";
     if (contentType.startsWith("video/")) {
@@ -253,7 +294,8 @@ export async function resolveVideoUrl(url: string): Promise<ResolvedVideo> {
     // Ignore HEAD check errors
   }
 
-  // Last resort: return the original URL
+  // Last resort: return the original URL and let downstream handle the error
+  console.log(`[VideoResolver] WARNING: Could not resolve video URL, returning original`);
   return {
     directUrl: url,
     platform,
@@ -280,6 +322,7 @@ export async function downloadResolvedVideo(resolved: ResolvedVideo): Promise<Bu
   const response = await fetch(resolved.directUrl, {
     headers,
     redirect: "follow",
+    signal: AbortSignal.timeout(60000), // 60s timeout for large videos
   });
 
   if (!response.ok) {

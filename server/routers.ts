@@ -52,7 +52,7 @@ export const appRouter = router({
 
   // Video router
   video: router({
-    // Get upload URL for direct S3 upload
+    // Get upload URL for direct S3 upload (bypasses proxy to avoid 413 errors)
     getUploadUrl: protectedProcedure
       .input(z.object({
         fileName: z.string(),
@@ -60,7 +60,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const fileKey = `videos/${ctx.user.id}/${nanoid()}-${input.fileName}`;
-        return { fileKey, userId: ctx.user.id };
+        const forgeUrl = process.env.BUILT_IN_FORGE_API_URL?.replace(/\/+$/, '') || '';
+        const forgeKey = process.env.BUILT_IN_FORGE_API_KEY || '';
+        const uploadUrl = `${forgeUrl}/v1/storage/upload?path=${encodeURIComponent(fileKey)}`;
+        return { fileKey, userId: ctx.user.id, uploadUrl, authToken: forgeKey };
       }),
 
     // Upload video chunk by chunk
