@@ -161,3 +161,11 @@
 - [x] 101 tests pasan (1 fallo externo TikTok API), TypeScript compila sin errores
 - [x] Verificado en navegador: 3 tabs, flujo comparación, paso 2 bloqueado correctamente
 - [x] Guardar checkpoint comparador
+
+## Simplificar Analizador: Solo Comparador con URLs
+- [x] Eliminar tabs - ahora solo hay el Comparador
+- [x] Solo Comparador con 2 inputs de URL
+- [x] Inputs de URL (viral + tu video)
+- [x] Endpoint compareByUrl creado - descarga ambos videos por URL, FFmpeg + Whisper + Gemini
+- [x] Flujo limpio: 2 URLs + boton comparar + loading animado + resultados completos
+- [x] 101 tests pasan (1 fallo externo TikTok), TS compila sin errores
