@@ -614,6 +614,384 @@ Responde siempre en español y en formato JSON válido.`
     getUserAnalyses: protectedProcedure.query(async ({ ctx }) => {
       return db.getUserAnalyses(ctx.user.id);
     }),
+
+    // Compare user video against a viral reference video
+    compareVideos: protectedProcedure
+      .input(z.object({
+        // The viral reference analysis ID (already analyzed)
+        viralAnalysisId: z.number(),
+        // The user's video to compare
+        fileKey: z.string(),
+        fileName: z.string(),
+        mimeType: z.string(),
+        fileSize: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        console.log('[Comparison] ====== STARTING VIDEO COMPARISON ======');
+        console.log('[Comparison] User:', ctx.user.id, '| Viral Analysis:', input.viralAnalysisId);
+        
+        // 1. Get the viral reference analysis
+        const viralAnalysis = await db.getVideoAnalysisById(input.viralAnalysisId);
+        if (!viralAnalysis) {
+          throw new Error('No se encontró el análisis del vídeo viral de referencia');
+        }
+        
+        // 2. Create video record for user's video
+        const { url: videoUrl } = await storageGet(input.fileKey + '.chunk0');
+        const userVideoId = await db.createVideo({
+          userId: ctx.user.id,
+          title: input.fileName,
+          videoUrl: videoUrl,
+          videoKey: input.fileKey,
+          mimeType: input.mimeType,
+          fileSize: input.fileSize,
+          videoType: "user_video",
+        });
+        
+        // 3. Create comparison analysis record
+        const comparisonId = await db.createVideoAnalysis({
+          videoId: userVideoId,
+          userId: ctx.user.id,
+          analysisType: "comparison",
+          comparisonVideoId: viralAnalysis.videoId,
+          status: "processing",
+        });
+        
+        let tempInputPath: string | null = null;
+        let compressedFilePath: string | null = null;
+        let fullAnalysis: FullVideoAnalysis | null = null;
+        
+        try {
+          // ===== STEP 1: DOWNLOAD USER VIDEO CHUNKS =====
+          console.log('[Comparison] Step 1: Downloading user video chunks...');
+          const chunks: Buffer[] = [];
+          let chunkIndex = 0;
+          while (true) {
+            try {
+              const chunkKey = `${input.fileKey}.chunk${chunkIndex}`;
+              const { url: chunkUrl } = await storageGet(chunkKey);
+              const chunkResponse = await fetch(chunkUrl);
+              if (!chunkResponse.ok) break;
+              const chunkData = await chunkResponse.arrayBuffer();
+              chunks.push(Buffer.from(chunkData));
+              chunkIndex++;
+            } catch {
+              break;
+            }
+          }
+          
+          if (chunks.length === 0) {
+            throw new Error('No se pudieron descargar los chunks del vídeo');
+          }
+          
+          const combinedBuffer = Buffer.concat(chunks);
+          tempInputPath = path.join(os.tmpdir(), `compare_${Date.now()}_${input.fileName}`);
+          fs.writeFileSync(tempInputPath, combinedBuffer);
+          console.log(`[Comparison] Combined ${chunks.length} chunks, total: ${(combinedBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+          
+          // ===== STEP 2: COMPRESS VIDEO =====
+          console.log('[Comparison] Step 2: Compressing video...');
+          try {
+            const compressionResult = await ffmpegCompress(tempInputPath, (progress) => {
+              console.log(`[FFmpeg] Compression: ${progress.percent}%`);
+            });
+            compressedFilePath = compressionResult.outputPath;
+          } catch {
+            console.warn('[Comparison] Compression failed, using original');
+            compressedFilePath = tempInputPath;
+          }
+          
+          // ===== STEP 3: FULL FFMPEG ANALYSIS OF USER VIDEO =====
+          console.log('[Comparison] Step 3: Analyzing user video...');
+          fullAnalysis = await performFullAnalysis(compressedFilePath || tempInputPath);
+          
+          // ===== STEP 4: TRANSCRIBE USER VIDEO =====
+          let transcription = {
+            success: false, text: '', language: '', duration: 0,
+            segments: [] as Array<{ id: number; start: number; end: number; text: string }>,
+            formattedTranscript: '', keyMoments: [] as Array<{ timestamp: number; text: string; type: string }>
+          };
+          
+          if (fullAnalysis.audioPath && fullAnalysis.metadata.hasAudio) {
+            console.log('[Comparison] Step 4: Transcribing user audio...');
+            const transcriptionResult = await transcribeAudioFile(fullAnalysis.audioPath);
+            if (transcriptionResult.success) {
+              transcription = {
+                success: true, text: transcriptionResult.text, language: transcriptionResult.language,
+                duration: transcriptionResult.duration, segments: transcriptionResult.segments,
+                formattedTranscript: formatTranscriptionWithTimestamps(transcriptionResult.segments),
+                keyMoments: extractKeyMoments(transcriptionResult.segments)
+              };
+            }
+          }
+          
+          // ===== STEP 5: BUILD COMPARISON DATA =====
+          console.log('[Comparison] Step 5: Building comparison with Gemini...');
+          
+          const userVideoDataText = buildComprehensiveDataText(fullAnalysis, transcription);
+          
+          // Build the viral reference context from stored analysis
+          const viralContext = `
+═══════════════════════════════════════════════════════════════
+              ANÁLISIS DEL VÍDEO VIRAL DE REFERENCIA
+═══════════════════════════════════════════════════════════════
+
+Puntuación Viral: ${viralAnalysis.overallScore}/100
+Hook Score: ${viralAnalysis.hookScore}/100
+Ritmo Score: ${viralAnalysis.pacingScore}/100
+Engagement Score: ${viralAnalysis.engagementScore}/100
+
+📌 ANÁLISIS DEL HOOK VIRAL:
+${viralAnalysis.hookAnalysis || 'No disponible'}
+
+📌 RESUMEN DEL VIRAL:
+${viralAnalysis.summary || 'No disponible'}
+
+📌 ESTRUCTURA DEL VIRAL:
+${JSON.stringify(viralAnalysis.structureBreakdown || {}, null, 2)}
+
+📌 FACTORES DE VIRALIDAD:
+${JSON.stringify(viralAnalysis.viralityFactors || {}, null, 2)}
+`;
+          
+          // Build content parts with user video frames
+          const contentParts: any[] = [];
+          contentParts.push({ type: 'text', text: viralContext });
+          contentParts.push({ type: 'text', text: '\n\n═══════════════════════════════════════════════════════════════\n              ANÁLISIS DEL VÍDEO DEL USUARIO (A CORREGIR)\n═══════════════════════════════════════════════════════════════\n' });
+          contentParts.push({ type: 'text', text: userVideoDataText });
+          
+          // Add user video frames
+          for (let i = 0; i < fullAnalysis.frames.length; i++) {
+            const frame = fullAnalysis.frames[i];
+            const frameLabel = frame.type === 'scene_change' ? '🎬 CAMBIO DE ESCENA' :
+                              frame.type === 'thumbnail' ? '📸 THUMBNAIL' : '🎞️ FRAME';
+            contentParts.push({ type: 'text', text: `\n--- ${frameLabel} ${i + 1} (${frame.timestamp.toFixed(1)}s) ---` });
+            contentParts.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'high' } });
+          }
+          
+          // Add comparison prompt
+          contentParts.push({ type: 'text', text: buildComparisonPrompt(fullAnalysis, transcription, viralAnalysis) });
+          
+          const response = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `Eres el MEJOR COACH DE CONTENIDO VIRAL del mundo. Tu trabajo es comparar el vídeo de un usuario con un vídeo viral de referencia y dar correcciones EXACTAS y ACCIONABLES para que el vídeo del usuario se acerque al nivel del viral.
+
+Tienes acceso a:
+- El análisis completo del vídeo VIRAL de referencia (puntuaciones, hook, estructura, factores)
+- Los frames del vídeo del USUARIO
+- La transcripción del vídeo del USUARIO
+- Todos los datos técnicos del vídeo del USUARIO
+
+Tu misión: Identificar EXACTAMENTE qué hace diferente al viral y qué debe cambiar el usuario en su vídeo.
+
+REGLAS:
+1. Sé ESPECÍFICO con timestamps ("en el segundo 3.2, deberías...")
+2. Compara punto por punto: hook, ritmo, CTA, audio, visual
+3. Da correcciones ACCIONABLES, no genéricas
+4. Prioriza las correcciones por impacto
+5. Sé directo pero constructivo
+6. Responde en español y en JSON válido.`
+              },
+              { role: "user", content: contentParts }
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "video_comparison",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    overallVerdict: {
+                      type: "string",
+                      description: "Veredicto general: ¿Qué tan cerca está el vídeo del usuario del viral? Resumen ejecutivo de 2-3 frases."
+                    },
+                    similarityScore: {
+                      type: "number",
+                      description: "Puntuación de similitud con el viral (0-100). Qué tan bien ha replicado el usuario la esencia del viral."
+                    },
+                    hookComparison: {
+                      type: "object",
+                      properties: {
+                        viralHookSummary: { type: "string", description: "Resumen de qué hace el hook del viral" },
+                        userHookAnalysis: { type: "string", description: "Qué hace el hook del usuario" },
+                        whatsMissing: { type: "string", description: "Qué le falta al hook del usuario vs el viral" },
+                        fixInstructions: { type: "string", description: "Instrucciones EXACTAS para arreglar el hook (con timestamps)" },
+                        hookScore: { type: "number", description: "Puntuación del hook del usuario 0-100" }
+                      },
+                      required: ["viralHookSummary", "userHookAnalysis", "whatsMissing", "fixInstructions", "hookScore"],
+                      additionalProperties: false
+                    },
+                    pacingComparison: {
+                      type: "object",
+                      properties: {
+                        viralPacingSummary: { type: "string", description: "Ritmo del viral: cortes/min, duración de shots" },
+                        userPacingAnalysis: { type: "string", description: "Ritmo del usuario: cortes/min, duración de shots" },
+                        whatsMissing: { type: "string", description: "Diferencias clave en ritmo" },
+                        fixInstructions: { type: "string", description: "Instrucciones EXACTAS de edición (dónde cortar, qué acortar)" },
+                        pacingScore: { type: "number", description: "Puntuación del ritmo del usuario 0-100" }
+                      },
+                      required: ["viralPacingSummary", "userPacingAnalysis", "whatsMissing", "fixInstructions", "pacingScore"],
+                      additionalProperties: false
+                    },
+                    contentComparison: {
+                      type: "object",
+                      properties: {
+                        viralContentSummary: { type: "string", description: "De qué trata el viral y cómo lo presenta" },
+                        userContentAnalysis: { type: "string", description: "De qué trata el vídeo del usuario" },
+                        whatsMissing: { type: "string", description: "Qué elementos de contenido faltan" },
+                        fixInstructions: { type: "string", description: "Cómo mejorar el contenido para acercarse al viral" },
+                        contentScore: { type: "number", description: "Puntuación del contenido 0-100" }
+                      },
+                      required: ["viralContentSummary", "userContentAnalysis", "whatsMissing", "fixInstructions", "contentScore"],
+                      additionalProperties: false
+                    },
+                    visualComparison: {
+                      type: "object",
+                      properties: {
+                        viralVisualSummary: { type: "string", description: "Estilo visual del viral" },
+                        userVisualAnalysis: { type: "string", description: "Estilo visual del usuario" },
+                        whatsMissing: { type: "string", description: "Diferencias visuales clave" },
+                        fixInstructions: { type: "string", description: "Cómo mejorar el aspecto visual" },
+                        visualScore: { type: "number", description: "Puntuación visual 0-100" }
+                      },
+                      required: ["viralVisualSummary", "userVisualAnalysis", "whatsMissing", "fixInstructions", "visualScore"],
+                      additionalProperties: false
+                    },
+                    ctaComparison: {
+                      type: "object",
+                      properties: {
+                        viralCtaSummary: { type: "string", description: "CTA del viral" },
+                        userCtaAnalysis: { type: "string", description: "CTA del usuario (o falta de él)" },
+                        fixInstructions: { type: "string", description: "Cómo mejorar el CTA" },
+                        ctaScore: { type: "number", description: "Puntuación del CTA 0-100" }
+                      },
+                      required: ["viralCtaSummary", "userCtaAnalysis", "fixInstructions", "ctaScore"],
+                      additionalProperties: false
+                    },
+                    topCorrections: {
+                      type: "array",
+                      description: "Las 5 correcciones más importantes ordenadas por impacto",
+                      items: {
+                        type: "object",
+                        properties: {
+                          priority: { type: "number", description: "1 = más urgente, 5 = menos urgente" },
+                          category: { type: "string", description: "hook, pacing, content, visual, cta, audio" },
+                          title: { type: "string", description: "Título corto de la corrección" },
+                          currentIssue: { type: "string", description: "Qué está mal ahora" },
+                          exactFix: { type: "string", description: "Instrucción EXACTA de cómo arreglarlo con timestamps" },
+                          expectedImpact: { type: "string", description: "Qué mejora se espera con este cambio" }
+                        },
+                        required: ["priority", "category", "title", "currentIssue", "exactFix", "expectedImpact"],
+                        additionalProperties: false
+                      }
+                    },
+                    whatWorksWell: {
+                      type: "array",
+                      description: "Cosas que el usuario YA hace bien (para motivar)",
+                      items: {
+                        type: "object",
+                        properties: {
+                          aspect: { type: "string", description: "Qué aspecto está bien" },
+                          detail: { type: "string", description: "Por qué está bien y cómo se compara con el viral" }
+                        },
+                        required: ["aspect", "detail"],
+                        additionalProperties: false
+                      }
+                    },
+                    overallScore: { type: "number", description: "Puntuación general del vídeo del usuario 0-100" },
+                    hookScore: { type: "number", description: "Puntuación del hook 0-100" },
+                    pacingScore: { type: "number", description: "Puntuación del ritmo 0-100" },
+                    engagementScore: { type: "number", description: "Puntuación de engagement 0-100" }
+                  },
+                  required: ["overallVerdict", "similarityScore", "hookComparison", "pacingComparison", "contentComparison", "visualComparison", "ctaComparison", "topCorrections", "whatWorksWell", "overallScore", "hookScore", "pacingScore", "engagementScore"],
+                  additionalProperties: false
+                }
+              }
+            }
+          });
+          
+          console.log('[Comparison] Gemini response received');
+          const content = response.choices[0].message.content;
+          
+          let comparisonData;
+          try {
+            if (typeof content === 'string') {
+              comparisonData = JSON.parse(content);
+            } else if (typeof content === 'object' && content !== null) {
+              comparisonData = content;
+            } else {
+              throw new Error('Respuesta vacía de Gemini');
+            }
+          } catch (parseError) {
+            if (typeof content === 'string') {
+              const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                try { comparisonData = JSON.parse(jsonMatch[1] || jsonMatch[0]); } catch { throw new Error('No se pudo parsear la respuesta de comparación'); }
+              } else { throw new Error('Gemini no devolvió un JSON válido'); }
+            } else { throw new Error('Respuesta inesperada de Gemini'); }
+          }
+          
+          // Normalize scores
+          const normalizeScore = (score: number | undefined): number => {
+            if (!score || isNaN(Number(score))) return 50;
+            const n = Number(score);
+            if (n === 0) return 50;
+            if (n <= 10) return Math.round(n * 10);
+            return Math.round(Math.min(100, Math.max(1, n)));
+          };
+          
+          comparisonData.overallScore = normalizeScore(comparisonData.overallScore);
+          comparisonData.hookScore = normalizeScore(comparisonData.hookScore);
+          comparisonData.pacingScore = normalizeScore(comparisonData.pacingScore);
+          comparisonData.engagementScore = normalizeScore(comparisonData.engagementScore);
+          comparisonData.similarityScore = normalizeScore(comparisonData.similarityScore);
+          
+          // Save to DB
+          await db.updateVideoAnalysis(comparisonId, {
+            status: "completed",
+            hookAnalysis: comparisonData.hookComparison ? JSON.stringify(comparisonData.hookComparison) : null,
+            structureBreakdown: JSON.stringify(comparisonData.pacingComparison || {}),
+            viralityFactors: JSON.stringify(comparisonData.topCorrections || []),
+            summary: comparisonData.overallVerdict,
+            improvementPoints: JSON.stringify(comparisonData.topCorrections || []),
+            cutRecommendations: JSON.stringify(comparisonData.pacingComparison || {}),
+            editingSuggestions: comparisonData.pacingComparison?.fixInstructions || null,
+            overallScore: comparisonData.overallScore,
+            hookScore: comparisonData.hookScore,
+            pacingScore: comparisonData.pacingScore,
+            engagementScore: comparisonData.engagementScore,
+          });
+          
+          console.log('[Comparison] ====== COMPARISON COMPLETED ======');
+          
+          // Cleanup
+          if (fullAnalysis) cleanupAnalysis(fullAnalysis);
+          if (compressedFilePath && compressedFilePath !== tempInputPath) cleanupCompressedFile(compressedFilePath);
+          if (tempInputPath && fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+          
+          return {
+            id: comparisonId,
+            videoId: userVideoId,
+            viralAnalysisId: input.viralAnalysisId,
+            ...comparisonData,
+          };
+        } catch (error: any) {
+          console.error('[Comparison] Error:', error);
+          if (fullAnalysis) cleanupAnalysis(fullAnalysis);
+          if (compressedFilePath && compressedFilePath !== tempInputPath) cleanupCompressedFile(compressedFilePath);
+          if (tempInputPath && fs.existsSync(tempInputPath)) try { fs.unlinkSync(tempInputPath); } catch {}
+          
+          let userMessage = 'Error durante la comparación de vídeos';
+          if (error.message?.includes('chunks')) userMessage = 'Error al descargar el vídeo. Intenta subirlo de nuevo.';
+          else if (error.message) userMessage = error.message;
+          
+          await db.updateVideoAnalysis(comparisonId, { status: "failed", errorMessage: userMessage });
+          throw new Error(userMessage);
+        }
+      }),
   }),
 
   // Bio Generator router - Generador profesional de biografías de Instagram
@@ -1355,6 +1733,68 @@ IMPORTANTE:
 - Correlaciona audio con imágenes
 - Da timestamps exactos
 - Justifica TODAS las puntuaciones con evidencia
+`;
+}
+
+/**
+ * Build the comparison prompt for Gemini
+ */
+function buildComparisonPrompt(
+  userAnalysis: FullVideoAnalysis,
+  transcription: { success: boolean; text: string },
+  viralAnalysis: any
+): string {
+  return `
+
+═══════════════════════════════════════════════════════════════
+                    INSTRUCCIONES DE COMPARACIÓN
+═══════════════════════════════════════════════════════════════
+
+Tienes DOS vídeos para comparar:
+
+1. VÍDEO VIRAL DE REFERENCIA: Ya analizado previamente (puntuaciones y análisis arriba)
+2. VÍDEO DEL USUARIO: ${userAnalysis.frames.length} frames, duración ${userAnalysis.metadata.duration.toFixed(1)}s
+${transcription.success ? 'El vídeo del usuario tiene transcripción de audio.' : 'El vídeo del usuario no tiene audio o no se pudo transcribir.'}
+
+Tu trabajo es comparar PUNTO POR PUNTO y dar correcciones EXACTAS:
+
+1. **HOOK (primeros 3 segundos)**:
+   - ¿Qué hace el viral en los primeros 3s?
+   - ¿Qué hace el usuario en los primeros 3s?
+   - ¿Qué le falta? ¿Cómo arreglarlo?
+
+2. **RITMO DE EDICIÓN**:
+   - Viral: ${viralAnalysis.pacingScore || '?'}/100
+   - Usuario: ${userAnalysis.sceneChanges.length} cambios de escena, ${(userAnalysis.shotDurations.length / userAnalysis.metadata.duration * 60).toFixed(1)} cortes/min
+   - ¿Dónde debería cortar? ¿Qué shots son demasiado largos?
+
+3. **CONTENIDO Y MENSAJE**:
+   - ¿El usuario transmite el mismo tipo de mensaje que el viral?
+   - ¿Qué elementos narrativos faltan?
+
+4. **VISUAL**:
+   - Compara iluminación, encuadre, colores, calidad
+   - ¿Qué cambios visuales mejorarían el vídeo?
+
+5. **CTA (Call to Action)**:
+   - ¿El viral tiene CTA? ¿El usuario tiene CTA?
+   - ¿Cómo mejorar el CTA del usuario?
+
+6. **TOP 5 CORRECCIONES** (ordenadas por impacto):
+   - Cada corrección con timestamp EXACTO
+   - Instrucción accionable y específica
+   - Impacto esperado del cambio
+
+7. **LO QUE FUNCIONA BIEN**:
+   - Identifica al menos 2-3 cosas que el usuario ya hace bien
+   - Esto es importante para motivar al creador
+
+IMPORTANTE:
+- Sé ESPECÍFICO con timestamps ("en el segundo 2.3, deberías...")
+- Compara frame por frame cuando sea relevante
+- Prioriza correcciones por IMPACTO en viralidad
+- Sé directo pero constructivo
+- Puntuaciones de 0-100
 `;
 }
 

@@ -149,3 +149,15 @@
 - [x] Checkbox 'Recordar sesión (30 días)' añadido al login, activado por defecto
 - [x] 102 tests pasan, TypeScript compila sin errores
 - [x] Guardar checkpoint
+
+## Comparador de Vídeos (Viral vs Tu Vídeo)
+- [x] Analizar código actual del Analizador (backend + frontend)
+- [x] Crear endpoint compareVideos con FFmpeg + Whisper + Gemini comparison prompt
+- [x] Prompt de comparación experto con 6 categorías: hook, pacing, content, visual, CTA + top5 correcciones
+- [x] Guardar resultados en DB (comparisonVideoId, improvementPoints, etc.)
+- [x] UI de 3 tabs: Analizar Tu Video, Analizar Viral, Comparar
+- [x] Flujo de 3 pasos: Paso 1 sube viral, Paso 2 sube tu vídeo (bloqueado hasta paso 1), Paso 3 correcciones
+- [x] Vista de resultados con similarityScore, comparaciones por categoría, top5 correcciones, whatWorksWell
+- [x] 101 tests pasan (1 fallo externo TikTok API), TypeScript compila sin errores
+- [x] Verificado en navegador: 3 tabs, flujo comparación, paso 2 bloqueado correctamente
+- [x] Guardar checkpoint comparador
