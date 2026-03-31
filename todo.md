@@ -179,3 +179,16 @@
 - [x] Frontend: acepta MP4, MOV, AVI, WebM, MKV, MPEG, 3GP, FLV, OGG, WMV (max 500MB)
 - [x] Frontend: scores de subtítulos y cortes, categoría HOOK con badge CRÍTICO, subtitleComparison
 - [x] 101 tests pasan, TS compila, UI verificada en navegador
+
+## Fix Error Subida de Vídeo en Comparador
+- [x] Diagnosticar error: subida por chunks base64 via tRPC fallaba con archivos grandes
+- [x] Solución: reemplazar chunks base64 por subida directa FormData a /api/upload-video (Express + multer)
+- [x] Backend: nueva ruta /api/upload-video con multer (500MB max), auth JWT, S3 directo
+- [x] Backend: detección inteligente de mime type (fallback por extensión cuando multer devuelve octet-stream)
+- [x] Backend: compareUrlVsUpload actualizado para descargar archivo completo de S3 (no chunks)
+- [x] Frontend: Analyzer.tsx usa XMLHttpRequest con FormData + barra de progreso real
+- [x] Frontend: manejo de errores robusto (red, timeout 5min, respuesta inválida)
+- [x] 19 tests nuevos en upload.test.ts (mime detection, input validation, file size)
+- [x] 121 tests totales pasan (16 archivos), TS compila sin errores
+- [x] Verificado: upload endpoint funciona con video de prueba (44KB → S3 → video/mp4)
+- [x] Guardar checkpoint

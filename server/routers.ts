@@ -1464,28 +1464,15 @@ REGLAS:
           fs.writeFileSync(viralTempPath, viralBuffer);
           console.log(`[CompareUpload] Viral downloaded: ${(viralBuffer.length / 1024 / 1024).toFixed(2)} MB`);
           
-          // ===== STEP 1b: DOWNLOAD USER VIDEO FROM S3 CHUNKS =====
-          console.log('[CompareUpload] Step 1b: Downloading user video from S3 chunks...');
-          const userChunks: Buffer[] = [];
-          let chunkIndex = 0;
-          while (true) {
-            try {
-              const chunkKey = `${input.userFileKey}.chunk${chunkIndex}`;
-              const { url: chunkUrl } = await storageGet(chunkKey);
-              const chunkResponse = await fetch(chunkUrl);
-              if (!chunkResponse.ok) break;
-              const chunkData = await chunkResponse.arrayBuffer();
-              userChunks.push(Buffer.from(chunkData));
-              chunkIndex++;
-            } catch {
-              break;
-            }
-          }
-          if (userChunks.length === 0) throw new Error('No se pudieron descargar los chunks del vídeo del usuario');
-          const userBuffer = Buffer.concat(userChunks);
+          // ===== STEP 1b: DOWNLOAD USER VIDEO FROM S3 (direct upload) =====
+          console.log('[CompareUpload] Step 1b: Downloading user video from S3...');
+          const { url: userFileUrl } = await storageGet(input.userFileKey);
+          const userFileResponse = await fetch(userFileUrl);
+          if (!userFileResponse.ok) throw new Error('No se pudo descargar el vídeo del usuario desde S3');
+          const userBuffer = Buffer.from(await userFileResponse.arrayBuffer());
           userTempPath = path.join(os.tmpdir(), `user_${Date.now()}_${nanoid()}_${input.userFileName}`);
           fs.writeFileSync(userTempPath, userBuffer);
-          console.log(`[CompareUpload] User video: ${userChunks.length} chunks, ${(userBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+          console.log(`[CompareUpload] User video downloaded: ${(userBuffer.length / 1024 / 1024).toFixed(2)} MB`);
           
           // Create video records
           const viralVideoId = await db.createVideo({
@@ -1847,13 +1834,15 @@ ${viralAnalysisData.summary || 'No disponible'}
           if (typeof compContent === 'string') comparisonData = JSON.parse(compContent);
           else comparisonData = compContent;
           
-          comparisonData.overallScore = normalizeScore(comparisonData.overallScore);
-          comparisonData.hookScore = normalizeScore(comparisonData.hookScore);
-          comparisonData.pacingScore = normalizeScore(comparisonData.pacingScore);
-          comparisonData.engagementScore = normalizeScore(comparisonData.engagementScore);
-          comparisonData.similarityScore = normalizeScore(comparisonData.similarityScore);
-          comparisonData.subtitleScore = normalizeScore(comparisonData.subtitleScore);
-          comparisonData.cutScore = normalizeScore(comparisonData.cutScore);
+          // Reuse normalizeScore from above (same scope)
+          const ns = normalizeScore;
+          comparisonData.overallScore = ns(comparisonData.overallScore);
+          comparisonData.hookScore = ns(comparisonData.hookScore);
+          comparisonData.pacingScore = ns(comparisonData.pacingScore);
+          comparisonData.engagementScore = ns(comparisonData.engagementScore);
+          comparisonData.similarityScore = ns(comparisonData.similarityScore);
+          comparisonData.subtitleScore = ns(comparisonData.subtitleScore);
+          comparisonData.cutScore = ns(comparisonData.cutScore);
           
           await db.updateVideoAnalysis(comparisonId, {
             status: 'completed',

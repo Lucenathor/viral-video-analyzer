@@ -28,7 +28,7 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
+// Direct upload via FormData to /api/upload-video (no base64 chunks)
 
 export default function Analyzer() {
   const { user, loading: authLoading } = useAuth();
@@ -43,8 +43,6 @@ export default function Analyzer() {
   const [isComparing, setIsComparing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getUploadUrl = trpc.video.getUploadUrl.useMutation();
-  const uploadChunk = trpc.video.uploadChunk.useMutation();
   const compareUrlVsUpload = trpc.video.compareUrlVsUpload.useMutation({
     onSuccess: (data) => {
       setComparisonResult(data);
@@ -99,48 +97,58 @@ export default function Analyzer() {
     setUploadProgress(0);
 
     try {
-      // Step 1: Get upload URL
-      setUploadPhase("Preparando subida...");
-      const { fileKey } = await getUploadUrl.mutateAsync({
-        fileName: userFile.name,
-        mimeType: userFile.type || "video/mp4",
+      // Step 1: Upload file directly via FormData (much more robust than base64 chunks)
+      setUploadPhase("Subiendo tu video...");
+      
+      const formData = new FormData();
+      formData.append('video', userFile);
+
+      const xhr = new XMLHttpRequest();
+      
+      // Track upload progress
+      const uploadResult = await new Promise<{fileKey: string; url: string; fileName: string; fileSize: number; mimeType: string}>((resolve, reject) => {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(pct);
+          }
+        });
+        
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch {
+              reject(new Error('Respuesta invalida del servidor'));
+            }
+          } else {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err.error || `Error ${xhr.status}`));
+            } catch {
+              reject(new Error(`Error al subir: ${xhr.status}`));
+            }
+          }
+        });
+        
+        xhr.addEventListener('error', () => reject(new Error('Error de red al subir el video. Verifica tu conexion.')));
+        xhr.addEventListener('timeout', () => reject(new Error('Timeout al subir el video. Intenta con un archivo mas pequeno.')));
+        
+        xhr.open('POST', '/api/upload-video');
+        xhr.timeout = 5 * 60 * 1000; // 5 min timeout
+        xhr.send(formData);
       });
 
-      // Step 2: Upload in chunks
-      setUploadPhase("Subiendo tu video...");
-      const totalChunks = Math.ceil(userFile.size / CHUNK_SIZE);
-      const fileBuffer = await userFile.arrayBuffer();
-
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, userFile.size);
-        const chunkData = fileBuffer.slice(start, end);
-        const base64Chunk = btoa(
-          new Uint8Array(chunkData).reduce((data, byte) => data + String.fromCharCode(byte), "")
-        );
-
-        await uploadChunk.mutateAsync({
-          fileKey,
-          chunk: base64Chunk,
-          chunkIndex: i,
-          totalChunks,
-          mimeType: userFile.type || "video/mp4",
-          isLastChunk: i === totalChunks - 1,
-        });
-
-        setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
-      }
-
-      // Step 3: Compare
+      // Step 2: Compare
       setUploadPhase("Analizando y comparando videos con IA...");
       setUploadProgress(100);
 
       await compareUrlVsUpload.mutateAsync({
         viralUrl: viralUrl.trim(),
-        userFileKey: fileKey,
-        userFileName: userFile.name,
-        userMimeType: userFile.type || "video/mp4",
-        userFileSize: userFile.size,
+        userFileKey: uploadResult.fileKey,
+        userFileName: uploadResult.fileName,
+        userMimeType: uploadResult.mimeType,
+        userFileSize: uploadResult.fileSize,
       });
     } catch (error: any) {
       setIsComparing(false);
