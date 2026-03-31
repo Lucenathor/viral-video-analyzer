@@ -192,3 +192,23 @@
 - [x] 121 tests totales pasan (16 archivos), TS compila sin errores
 - [x] Verificado: upload endpoint funciona con video de prueba (44KB → S3 → video/mp4)
 - [x] Guardar checkpoint
+
+## Fix Descarga de Vídeo Viral desde URLs de Instagram/TikTok
+- [x] Crear servicio videoUrlResolver.ts con soporte Instagram GraphQL + TikTok oEmbed
+- [x] Método 1: Instagram GraphQL API (sin cookies, extrae video_url directamente)
+- [x] Método 2: TikTok oEmbed API (extrae download_addr del vídeo)
+- [x] Fallback: si no es Instagram/TikTok, usa la URL directa
+- [x] Integrar en compareUrlVsUpload, compareByUrl y analyzeUrl
+- [x] Probado con reel público de Instagram: descarga OK (5.29s, 204KB)
+- [x] 10 tests en videoUrlResolver.test.ts (131 tests totales pasan)
+
+## Optimizar Procesamiento de Vídeos Pesados (299MB+)
+- [x] Investigar alternativas: Coconut.co API, Gemini file_url nativo
+- [x] Solución: enviar vídeos directamente a Gemini por URL (file_url) - SIN FFmpeg local
+- [x] Pipeline nuevo: Resolver URL → Subir viral a S3 → Enviar ambas URLs a Gemini → Análisis nativo
+- [x] Eliminado: descarga local, compresión FFmpeg, extracción frames, Whisper local
+- [x] Nuevos prompts: buildDirectVideoAnalysisPrompt() y buildDirectVideoComparisonPrompt()
+- [x] Gemini analiza vídeo completo nativamente (todos los frames, audio, subtítulos)
+- [x] Frontend actualizado: pasos de loading reflejan pipeline optimizado (1-2 min vs 3-5 min)
+- [x] 131 tests pasan (17 archivos), TS compila sin errores
+- [x] Guardar checkpoint

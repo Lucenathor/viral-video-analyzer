@@ -21,4 +21,6 @@ export const ENV = {
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   // RapidAPI TikTok
   RAPIDAPI_TIKTOK_KEY: process.env.RAPIDAPI_TIKTOK_KEY ?? "",
+  // Coconut.co Video Processing
+  COCONUT_API_KEY: process.env.COCONUT_API_KEY ?? "",
 };

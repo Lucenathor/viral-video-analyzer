@@ -387,17 +387,16 @@ export default function Analyzer() {
                   <GitCompareArrows className="absolute inset-0 m-auto w-8 h-8 text-cyan-400" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Analizando ambos videos con IA...</h3>
-                <p className="text-gray-400 mb-6">Esto puede tardar 1-3 minutos. Estamos analizando cada detalle.</p>
+                <p className="text-gray-400 mb-6">Esto puede tardar 1-2 minutos. La IA analiza cada detalle de ambos videos.</p>
                 <div className="space-y-3 max-w-md mx-auto text-left">
                   {[
-                    { text: "Descargando video viral de referencia...", icon: Trophy },
-                    { text: "Comprimiendo ambos videos con FFmpeg...", icon: Scissors },
-                    { text: "Extrayendo frames clave y audio...", icon: Eye },
-                    { text: "Transcribiendo audio con Whisper...", icon: MessageSquare },
-                    { text: "Detectando cortes y transiciones...", icon: Scissors },
-                    { text: "Analizando subtitulos...", icon: Subtitles },
+                    { text: "Resolviendo URL del video viral...", icon: Link2 },
+                    { text: "Descargando y almacenando video viral...", icon: Trophy },
+                    { text: "Preparando video del usuario...", icon: FileVideo },
+                    { text: "Analizando video viral con IA...", icon: Eye },
                     { text: "Analizando HOOK (primeros 3 seg)...", icon: Zap },
                     { text: "Comparando ambos videos con Gemini...", icon: GitCompareArrows },
+                    { text: "Evaluando cortes y subtitulos...", icon: Subtitles },
                     { text: "Generando correcciones priorizadas...", icon: Lightbulb },
                   ].map((step, i) => (
                     <div key={i} className="flex items-center gap-3 text-sm">
