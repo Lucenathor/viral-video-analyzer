@@ -239,3 +239,13 @@
 - [x] Instagram API actualizada: get_media_data_v2.php con fallback a v1
 - [x] Guardar checkpoint
 - [x] 136 tests pasan (18 archivos), TypeScript compila sin errores
+
+## Fix: Frames no llegan al LLM en producción (0 similitud) - RESUELTO
+- [x] Diagnosticar: Forge API no soporta múltiples file_url en un request (causa del error 400)
+- [x] Descubierto: Gemini analiza vídeos completos nativamente via file_url (video/mp4) - MUCHO mejor que frames
+- [x] Reescrito pipeline V2: 3 pasos separados (analizar viral file_url → analizar usuario file_url → comparar texto)
+- [x] Probado con vídeo real AD1-1080.mp4: similitud 92/100, análisis detallado con timestamps
+- [x] Tiempo total: ~2 min (37s viral + 30s usuario + 44s comparación)
+- [x] Eliminada dependencia de FFmpeg para extracción de frames (ya no necesario)
+- [x] 136 tests pasan (18 archivos), TypeScript compila sin errores
+- [x] Guardar checkpoint

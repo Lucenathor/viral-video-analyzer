@@ -21,6 +21,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+// File-based logging for debugging pipeline
+const LOG_FILE = '/tmp/pipeline_debug.log';
+function plog(msg: string) {
+  const ts = new Date().toISOString();
+  const line = `[${ts}] ${msg}\n`;
+  fs.appendFileSync(LOG_FILE, line);
+  console.log(msg);
+}
+
 export const appRouter = router({
   system: systemRouter,
   stripe: stripeRouter,
@@ -1437,7 +1446,7 @@ REGLAS:
           throw new Error(error.message || 'Error durante la comparación por URL');
         }
       }),
-    // Compare viral URL vs uploaded user video - OPTIMIZED: sends videos directly to Gemini via URL
+    // Compare viral URL vs uploaded user video - V2: sends FULL videos to Gemini via file_url
     compareUrlVsUpload: protectedProcedure
       .input(z.object({
         viralUrl: z.string().url("URL del vídeo viral no válida"),
@@ -1447,138 +1456,45 @@ REGLAS:
         userFileSize: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
-        console.log('[CompareUpload] ====== STARTING OPTIMIZED URL vs UPLOAD COMPARISON ======');
-        console.log('[CompareUpload] User:', ctx.user.id);
-        console.log('[CompareUpload] Viral URL:', input.viralUrl);
-        console.log('[CompareUpload] User file key:', input.userFileKey);
+        plog('[CompareV2] ====== STARTING V2 COMPARISON (FULL VIDEO via file_url) ======');
+        plog('[CompareV2] User: ' + ctx.user.id);
+        plog('[CompareV2] Viral URL: ' + input.viralUrl);
+        plog('[CompareV2] User file key: ' + input.userFileKey);
         
         const tempFiles: string[] = []; // Track temp files for cleanup
         
         try {
           // ===== STEP 1: RESOLVE VIRAL VIDEO URL =====
-          console.log('[CompareUpload] Step 1: Resolving viral video URL...');
+          plog('[CompareV2] Step 1: Resolving viral video URL...');
           const resolvedViral = await resolveVideoUrl(input.viralUrl);
-          console.log(`[CompareUpload] Viral resolved: platform=${resolvedViral.platform}, url=${resolvedViral.directUrl.substring(0, 80)}...`);
+          plog(`[CompareV2] Viral resolved: platform=${resolvedViral.platform}, url=${resolvedViral.directUrl.substring(0, 80)}...`);
           if (resolvedViral.metadata) {
-            console.log(`[CompareUpload] Viral metadata: duration=${resolvedViral.metadata.duration}s, author=${resolvedViral.metadata.author}`);
+            console.log(`[CompareV2] Viral metadata: duration=${resolvedViral.metadata.duration}s, author=${resolvedViral.metadata.author}`);
           }
           
-          // ===== STEP 2: DOWNLOAD VIRAL VIDEO & EXTRACT FRAMES =====
-          console.log('[CompareUpload] Step 2: Downloading viral video...');
+          // ===== STEP 2: DOWNLOAD VIRAL VIDEO & UPLOAD TO S3 =====
+          plog('[CompareV2] Step 2: Downloading viral video and uploading to S3...');
           let viralFileSize = 0;
-          let viralTempPath: string;
-          let viralFrames: ExtractedFrame[] = [];
-          let viralTranscription = '';
+          let viralS3Url = '';
           try {
             const viralBuffer = await downloadResolvedVideo(resolvedViral);
             viralFileSize = viralBuffer.length;
-            console.log(`[CompareUpload] Viral downloaded: ${(viralFileSize / 1024 / 1024).toFixed(2)} MB`);
+            plog(`[CompareV2] Viral downloaded: ${(viralFileSize / 1024 / 1024).toFixed(2)} MB`);
             
-            viralTempPath = path.join(os.tmpdir(), `viral_${nanoid()}.mp4`);
-            fs.writeFileSync(viralTempPath, viralBuffer);
-            tempFiles.push(viralTempPath);
-            
-            // Compress if needed for faster frame extraction
-            if (viralFileSize > 20 * 1024 * 1024) {
-              console.log(`[CompareUpload] Compressing viral video for analysis...`);
-              try {
-                const compResult = await ffmpegCompress(viralTempPath, (p) => console.log(`[FFmpeg] Viral: ${p.percent}%`));
-                tempFiles.push(compResult.outputPath);
-                viralTempPath = compResult.outputPath;
-                console.log(`[CompareUpload] Viral compressed: ${(compResult.inputSize / 1024 / 1024).toFixed(0)}MB -> ${(compResult.outputSize / 1024 / 1024).toFixed(0)}MB`);
-              } catch (compErr: any) {
-                console.warn('[CompareUpload] Viral compression failed, using original:', compErr.message);
-              }
-            }
-            
-            // Extract frames
-            console.log('[CompareUpload] Extracting viral video frames...');
-            viralFrames = await extractFrames(viralTempPath, 2, 10);
-            console.log(`[CompareUpload] Viral: ${viralFrames.length} frames extracted`);
-            
-            // Extract and transcribe audio
-            try {
-              const audioPath = path.join(os.tmpdir(), `viral_audio_${nanoid()}.mp3`);
-              tempFiles.push(audioPath);
-              await new Promise<void>((resolve) => {
-                const { spawn } = require('child_process');
-                const ff = spawn('ffmpeg', ['-i', viralTempPath, '-vn', '-acodec', 'libmp3lame', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-y', audioPath]);
-                ff.on('close', () => resolve());
-                ff.on('error', () => resolve());
-              });
-              if (fs.existsSync(audioPath) && fs.statSync(audioPath).size > 1000) {
-                const transcResult = await transcribeAudioFile(audioPath, 'es');
-                if (transcResult.success) {
-                  viralTranscription = transcResult.text;
-                  console.log(`[CompareUpload] Viral transcription: ${viralTranscription.substring(0, 100)}...`);
-                }
-              }
-            } catch (err: any) {
-              console.warn('[CompareUpload] Viral audio transcription failed:', err.message);
-            }
+            // Upload viral video to S3 so Gemini can access it via URL
+            const viralKey = `analysis/viral-${nanoid()}.mp4`;
+            const { url } = await storagePut(viralKey, viralBuffer, 'video/mp4');
+            viralS3Url = url;
+            plog(`[CompareV2] Viral uploaded to S3: ${viralS3Url.substring(0, 80)}...`);
           } catch (dlErr: any) {
-            console.error('[CompareUpload] Failed to download viral:', dlErr.message);
+            plog('[CompareV2] FAILED to download viral: ' + dlErr.message);
             throw new Error(`No se pudo descargar el v\u00eddeo viral: ${dlErr.message}. Verifica que la URL sea correcta y el v\u00eddeo sea p\u00fablico.`);
           }
           
-          // ===== STEP 3: DOWNLOAD USER VIDEO & EXTRACT FRAMES =====
-          console.log('[CompareUpload] Step 3: Processing user video...');
-          let userFrames: ExtractedFrame[] = [];
-          let userTranscription = '';
-          let userTempPath: string;
-          try {
-            const { url: userOriginalUrl } = await storageGet(input.userFileKey);
-            const userResp = await fetch(userOriginalUrl);
-            if (!userResp.ok) throw new Error(`Failed to download user video: HTTP ${userResp.status}`);
-            const userBuffer = Buffer.from(await userResp.arrayBuffer());
-            console.log(`[CompareUpload] User video downloaded: ${(userBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-            
-            userTempPath = path.join(os.tmpdir(), `user_${nanoid()}${path.extname(input.userFileName) || '.mov'}`);
-            fs.writeFileSync(userTempPath, userBuffer);
-            tempFiles.push(userTempPath);
-            
-            // Compress if needed
-            if (userBuffer.length > 20 * 1024 * 1024 || !['video/mp4'].includes(input.userMimeType)) {
-              console.log(`[CompareUpload] Compressing user video for analysis...`);
-              try {
-                const compResult = await ffmpegCompress(userTempPath, (p) => console.log(`[FFmpeg] User: ${p.percent}%`));
-                tempFiles.push(compResult.outputPath);
-                userTempPath = compResult.outputPath;
-                console.log(`[CompareUpload] User compressed: ${(compResult.inputSize / 1024 / 1024).toFixed(0)}MB -> ${(compResult.outputSize / 1024 / 1024).toFixed(0)}MB`);
-              } catch (compErr: any) {
-                console.warn('[CompareUpload] User compression failed, using original:', compErr.message);
-              }
-            }
-            
-            // Extract frames
-            console.log('[CompareUpload] Extracting user video frames...');
-            userFrames = await extractFrames(userTempPath, 2, 10);
-            console.log(`[CompareUpload] User: ${userFrames.length} frames extracted`);
-            
-            // Extract and transcribe audio
-            try {
-              const audioPath = path.join(os.tmpdir(), `user_audio_${nanoid()}.mp3`);
-              tempFiles.push(audioPath);
-              await new Promise<void>((resolve) => {
-                const { spawn } = require('child_process');
-                const ff = spawn('ffmpeg', ['-i', userTempPath, '-vn', '-acodec', 'libmp3lame', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-y', audioPath]);
-                ff.on('close', () => resolve());
-                ff.on('error', () => resolve());
-              });
-              if (fs.existsSync(audioPath) && fs.statSync(audioPath).size > 1000) {
-                const transcResult = await transcribeAudioFile(audioPath, 'es');
-                if (transcResult.success) {
-                  userTranscription = transcResult.text;
-                  console.log(`[CompareUpload] User transcription: ${userTranscription.substring(0, 100)}...`);
-                }
-              }
-            } catch (err: any) {
-              console.warn('[CompareUpload] User audio transcription failed:', err.message);
-            }
-          } catch (dlErr: any) {
-            console.error('[CompareUpload] Failed to process user video:', dlErr.message);
-            throw new Error(`No se pudo procesar tu v\u00eddeo: ${dlErr.message}`);
-          }
+          // ===== STEP 3: GET USER VIDEO S3 URL =====
+          plog('[CompareV2] Step 3: Getting user video S3 URL...');
+          const { url: userS3Url } = await storageGet(input.userFileKey);
+          plog(`[CompareV2] User video S3 URL: ${userS3Url.substring(0, 80)}...`);
           
           // Create video records in DB
           const viralVideoId = await db.createVideo({
@@ -1601,29 +1517,22 @@ REGLAS:
             videoType: 'user_video',
           });
           
-          // ===== STEP 4: ANALYZE VIRAL VIDEO WITH GEMINI (frames + transcription) =====
-          console.log('[CompareUpload] Step 4: Analyzing viral video with Gemini (frames + audio)...');
+          // ===== STEP 4: ANALYZE VIRAL VIDEO WITH GEMINI (FULL VIDEO via file_url) =====
+          plog('[CompareV2] Step 4: Analyzing viral video with Gemini (FULL VIDEO via file_url)...');
           const viralAnalysisStart = Date.now();
           
-          // Build content array with text + frame images
-          const viralUserContent: any[] = [];
-          let viralPromptText = `Analiza este v\u00eddeo viral de referencia. Se muestran ${viralFrames.length} frames representativos del v\u00eddeo.`;
+          // Build content with file_url - Gemini sees the ENTIRE video natively
+          let viralPromptText = `Analiza este v\u00eddeo viral de referencia. Se te env\u00eda el V\u00cdDEO COMPLETO para que lo analices frame a frame.`;
           if (resolvedViral.metadata?.caption) viralPromptText += ` Caption: "${resolvedViral.metadata.caption.substring(0, 200)}"`;
           if (resolvedViral.metadata?.author) viralPromptText += ` Autor: @${resolvedViral.metadata.author}`;
           if (resolvedViral.metadata?.viewCount) viralPromptText += ` Views: ${resolvedViral.metadata.viewCount}`;
-          if (viralTranscription) viralPromptText += `\n\nTRANSCRIPCI\u00d3N DEL AUDIO DEL V\u00cdDEO:\n${viralTranscription}`;
-          viralUserContent.push({ type: 'text', text: viralPromptText });
-          for (const frame of viralFrames) {
-            viralUserContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'low' } });
-          }
           
-          console.log(`[CompareUpload] Step 4 debug: viralUserContent has ${viralUserContent.length} items`);
-          console.log(`[CompareUpload] Step 4 debug: content types: ${viralUserContent.map((c: any) => c.type).join(', ')}`);
-          console.log(`[CompareUpload] Step 4 debug: text content: ${viralPromptText.substring(0, 200)}`);
-          if (viralUserContent.length > 1) {
-            const firstImg = viralUserContent[1];
-            console.log(`[CompareUpload] Step 4 debug: first image url starts with: ${firstImg?.image_url?.url?.substring(0, 50)}`);
-          }
+          const viralUserContent: any[] = [
+            { type: 'file_url', file_url: { url: viralS3Url, mime_type: 'video/mp4' as const } },
+            { type: 'text', text: viralPromptText }
+          ];
+          
+          plog(`[CompareV2] Sending viral video to Gemini via file_url: ${viralS3Url.substring(0, 60)}...`);
           
           const viralGeminiResponse = await invokeLLM({
             messages: [
@@ -1666,12 +1575,11 @@ REGLAS:
             }
           });
           
-          console.log(`[CompareUpload] Viral analysis done in ${((Date.now() - viralAnalysisStart) / 1000).toFixed(1)}s`);
-          console.log(`[CompareUpload] Viral Gemini response:`, JSON.stringify(viralGeminiResponse).substring(0, 500));
+          plog(`[CompareV2] Viral analysis done in ${((Date.now() - viralAnalysisStart) / 1000).toFixed(1)}s`);
           
           if (!viralGeminiResponse.choices || !viralGeminiResponse.choices[0]) {
-            console.error('[CompareUpload] Gemini returned no choices for viral analysis:', JSON.stringify(viralGeminiResponse));
-            throw new Error('El modelo de IA no pudo analizar el v\u00eddeo viral. Puede que el v\u00eddeo sea demasiado grande o el formato no sea compatible. Intenta con un v\u00eddeo m\u00e1s corto o en formato MP4.');
+            plog('[CompareV2] Gemini returned no choices for viral analysis: ' + JSON.stringify(viralGeminiResponse).substring(0, 500));
+            throw new Error('El modelo de IA no pudo analizar el v\u00eddeo viral. Intenta con un v\u00eddeo m\u00e1s corto o en formato MP4.');
           }
           
           const viralContent = viralGeminiResponse.choices[0].message.content;
@@ -1710,8 +1618,76 @@ REGLAS:
             engagementScore: viralAnalysisData.engagementScore,
           });
           
-          // ===== STEP 5: COMPARE BOTH VIDEOS WITH GEMINI =====
-          console.log('[CompareUpload] Step 5: Running comparison with Gemini (both videos by URL)...');
+          // ===== STEP 5: ANALYZE USER VIDEO WITH GEMINI (FULL VIDEO via file_url) =====
+          plog('[CompareV2] Step 5: Analyzing user video with Gemini (FULL VIDEO via file_url)...');
+          const userAnalysisStart = Date.now();
+          
+          const userAnalysisPromptText = `Analiza este vídeo del usuario. Se te envía el VÍDEO COMPLETO para que lo analices frame a frame. Nombre del archivo: "${input.userFileName}".`;
+          
+          const userVideoContent: any[] = [
+            { type: 'file_url', file_url: { url: userS3Url, mime_type: 'video/mp4' as const } },
+            { type: 'text', text: userAnalysisPromptText }
+          ];
+          
+          plog(`[CompareV2] Sending user video to Gemini via file_url: ${userS3Url.substring(0, 60)}...`);
+          
+          const userGeminiResponse = await invokeLLM({
+            messages: [
+              { role: 'system', content: buildDirectVideoAnalysisPrompt() },
+              { role: 'user', content: userVideoContent }
+            ],
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'user_video_analysis',
+                strict: true,
+                schema: {
+                  type: 'object',
+                  properties: {
+                    hookAnalysis: { type: 'string' },
+                    structureBreakdown: { type: 'string' },
+                    viralityFactors: { type: 'string' },
+                    improvementSuggestions: { type: 'string' },
+                    summary: { type: 'string' },
+                    overallScore: { type: 'number' },
+                    hookScore: { type: 'number' },
+                    pacingScore: { type: 'number' },
+                    engagementScore: { type: 'number' },
+                    contentScore: { type: 'number' },
+                    visualScore: { type: 'number' },
+                    audioScore: { type: 'number' },
+                    ctaScore: { type: 'number' },
+                    subtitleAnalysis: { type: 'string' },
+                    cutAnalysis: { type: 'string' },
+                    topMoments: { type: 'string' },
+                    weakMoments: { type: 'string' },
+                    viralPotential: { type: 'string' },
+                    targetAudience: { type: 'string' },
+                    platformOptimization: { type: 'string' }
+                  },
+                  required: ['hookAnalysis', 'structureBreakdown', 'viralityFactors', 'improvementSuggestions', 'summary', 'overallScore', 'hookScore', 'pacingScore', 'engagementScore', 'contentScore', 'visualScore', 'audioScore', 'ctaScore', 'subtitleAnalysis', 'cutAnalysis', 'topMoments', 'weakMoments', 'viralPotential', 'targetAudience', 'platformOptimization'],
+                  additionalProperties: false
+                }
+              }
+            }
+          });
+          
+          plog(`[CompareV2] User video analysis done in ${((Date.now() - userAnalysisStart) / 1000).toFixed(1)}s`);
+          
+          if (!userGeminiResponse.choices || !userGeminiResponse.choices[0]) {
+            plog('[CompareV2] Gemini returned no choices for user analysis: ' + JSON.stringify(userGeminiResponse).substring(0, 500));
+            throw new Error('El modelo de IA no pudo analizar tu vídeo. Intenta con un vídeo más corto o en formato MP4.');
+          }
+          
+          const userContent = userGeminiResponse.choices[0].message.content;
+          let userAnalysisData: any;
+          if (typeof userContent === 'string') userAnalysisData = JSON.parse(userContent);
+          else userAnalysisData = userContent;
+          
+          plog(`[CompareV2] User video analyzed: score=${userAnalysisData.overallScore}, hook=${userAnalysisData.hookScore}`);
+          
+          // ===== STEP 6: FINAL COMPARISON (text-only with both detailed analyses) =====
+          plog('[CompareV2] Step 6: Running final comparison with both analyses...');
           const compStart = Date.now();
           
           const comparisonId = await db.createVideoAnalysis({
@@ -1722,38 +1698,45 @@ REGLAS:
             comparisonVideoId: viralVideoId,
           });
           
-          const viralContext = `
-ANÁLISIS PREVIO DEL VÍDEO VIRAL:
-Puntuación: ${viralAnalysisData.overallScore}/100 | Hook: ${viralAnalysisData.hookScore}/100 | Ritmo: ${viralAnalysisData.pacingScore}/100 | Engagement: ${viralAnalysisData.engagementScore}/100
+          // Build rich text context from BOTH video analyses
+          const fullComparisonPrompt = `
+=== ANÁLISIS COMPLETO DEL VÍDEO VIRAL DE REFERENCIA ===
+Puntuación general: ${viralAnalysisData.overallScore}/100 | Hook: ${viralAnalysisData.hookScore}/100 | Ritmo: ${viralAnalysisData.pacingScore}/100 | Engagement: ${viralAnalysisData.engagementScore}/100
 Hook: ${viralAnalysisData.hookAnalysis}
 Estructura: ${viralAnalysisData.structureBreakdown}
-Viralidad: ${viralAnalysisData.viralityFactors}
+Factores de viralidad: ${viralAnalysisData.viralityFactors}
 Subtítulos: ${viralAnalysisData.subtitleAnalysis}
 Cortes: ${viralAnalysisData.cutAnalysis}
+Mejores momentos: ${viralAnalysisData.topMoments}
+Momentos débiles: ${viralAnalysisData.weakMoments}
+Potencial viral: ${viralAnalysisData.viralPotential}
+Audiencia: ${viralAnalysisData.targetAudience}
+Optimización: ${viralAnalysisData.platformOptimization}
 Resumen: ${viralAnalysisData.summary}
-`;
+
+=== ANÁLISIS COMPLETO DEL VÍDEO DEL USUARIO ("${input.userFileName}") ===
+Puntuación general: ${userAnalysisData.overallScore}/100 | Hook: ${userAnalysisData.hookScore}/100 | Ritmo: ${userAnalysisData.pacingScore}/100 | Engagement: ${userAnalysisData.engagementScore}/100
+Hook: ${userAnalysisData.hookAnalysis}
+Estructura: ${userAnalysisData.structureBreakdown}
+Factores de viralidad: ${userAnalysisData.viralityFactors}
+Subtítulos: ${userAnalysisData.subtitleAnalysis}
+Cortes: ${userAnalysisData.cutAnalysis}
+Mejores momentos: ${userAnalysisData.topMoments}
+Momentos débiles: ${userAnalysisData.weakMoments}
+Potencial viral: ${userAnalysisData.viralPotential}
+Audiencia: ${userAnalysisData.targetAudience}
+Optimización: ${userAnalysisData.platformOptimization}
+Sugerencias de mejora: ${userAnalysisData.improvementSuggestions}
+Resumen: ${userAnalysisData.summary}
+
+Con base en estos dos análisis detallados (ambos vídeos fueron analizados frame a frame por IA), genera una comparación exhaustiva. Identifica exactamente qué hace diferente el viral vs el vídeo del usuario, y da correcciones ESPECÍFICAS con timestamps.`;
           
-          // Build comparison content with frames from both videos
-          const compUserContent: any[] = [];
-          let compPromptText = `${viralContext}\n\nAhora compara el V\u00cdDEO VIRAL con el V\u00cdDEO DEL USUARIO. El v\u00eddeo del usuario se llama "${input.userFileName}".`;
-          if (userTranscription) compPromptText += `\n\nTRANSCRIPCI\u00d3N DEL AUDIO DEL V\u00cdDEO DEL USUARIO:\n${userTranscription}`;
-          compPromptText += `\n\nA continuaci\u00f3n se muestran primero ${viralFrames.length} frames del V\u00cdDEO VIRAL y luego ${userFrames.length} frames del V\u00cdDEO DEL USUARIO:`;
-          compUserContent.push({ type: 'text', text: compPromptText });
-          // Add viral frames
-          compUserContent.push({ type: 'text', text: '--- FRAMES DEL V\u00cdDEO VIRAL ---' });
-          for (const frame of viralFrames) {
-            compUserContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'low' } });
-          }
-          // Add user frames
-          compUserContent.push({ type: 'text', text: '--- FRAMES DEL V\u00cdDEO DEL USUARIO ---' });
-          for (const frame of userFrames) {
-            compUserContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame.base64}`, detail: 'low' } });
-          }
+          plog('[CompareV2] Sending comparison prompt (text-only with both analyses)');
           
           const compResponse = await invokeLLM({
             messages: [
               { role: 'system', content: buildDirectVideoComparisonPrompt(viralAnalysisData) },
-              { role: 'user', content: compUserContent }
+              { role: 'user', content: fullComparisonPrompt }
             ],
             response_format: {
               type: 'json_schema',
@@ -1879,11 +1862,10 @@ Resumen: ${viralAnalysisData.summary}
             }
           });
           
-          console.log(`[CompareUpload] Comparison done in ${((Date.now() - compStart) / 1000).toFixed(1)}s`);
-          console.log(`[CompareUpload] Comparison Gemini response:`, JSON.stringify(compResponse).substring(0, 500));
+          plog(`[CompareV2] Comparison done in ${((Date.now() - compStart) / 1000).toFixed(1)}s`);
           
           if (!compResponse.choices || !compResponse.choices[0]) {
-            console.error('[CompareUpload] Gemini returned no choices for comparison:', JSON.stringify(compResponse));
+            plog('[CompareV2] Gemini returned no choices for comparison: ' + JSON.stringify(compResponse).substring(0, 500));
             throw new Error('El modelo de IA no pudo completar la comparaci\u00f3n. Intenta de nuevo.');
           }
           
@@ -1918,7 +1900,7 @@ Resumen: ${viralAnalysisData.summary}
           });
           
           const totalTime = ((Date.now() - viralAnalysisStart) / 1000).toFixed(1);
-          console.log(`[CompareUpload] ====== OPTIMIZED COMPARISON COMPLETED in ${totalTime}s ======`);
+          plog(`[CompareV2] ====== V2 COMPARISON COMPLETED in ${totalTime}s ======`);
           
           return {
             id: comparisonId,
@@ -1934,7 +1916,7 @@ Resumen: ${viralAnalysisData.summary}
             ...comparisonData,
           };
         } catch (error: any) {
-          console.error('[CompareUpload] Error:', error);
+          plog('[CompareV2] ERROR: ' + (error?.message || JSON.stringify(error)));
           throw new Error(error.message || 'Error durante la comparaci\u00f3n');
         } finally {
           // Cleanup temp files
