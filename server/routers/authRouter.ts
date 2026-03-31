@@ -15,10 +15,9 @@ function getSessionSecret() {
   return new TextEncoder().encode(ENV.cookieSecret);
 }
 
-async function createSessionToken(userId: number, name: string): Promise<string> {
+async function createSessionToken(userId: number, name: string, durationMs: number = ONE_YEAR_MS): Promise<string> {
   const secretKey = getSessionSecret();
-  const expiresInMs = ONE_YEAR_MS;
-  const expirationSeconds = Math.floor((Date.now() + expiresInMs) / 1000);
+  const expirationSeconds = Math.floor((Date.now() + durationMs) / 1000);
 
   return new SignJWT({
     userId,
@@ -42,6 +41,7 @@ export const authRouter = router({
     .input(z.object({
       email: z.string().email("Email no válido"),
       password: z.string().min(1, "La contraseña es obligatoria"),
+      rememberMe: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
       const user = await db.getUserByEmail(input.email);
@@ -67,10 +67,11 @@ export const authRouter = router({
         lastSignedIn: new Date(),
       });
 
-      // Create session token
-      const sessionToken = await createSessionToken(user.id, user.name || "");
+      // Create session token - duration based on rememberMe
+      const sessionDuration = input.rememberMe ? ONE_YEAR_MS : (1000 * 60 * 60 * 24); // 1 year or 24h
+      const sessionToken = await createSessionToken(user.id, user.name || "", sessionDuration);
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: sessionDuration });
 
       return {
         success: true,

@@ -141,3 +141,11 @@
 - [x] Frontend mejorado: nuevos campos (servicio principal, diferenciador, años exp), panel Análisis Experto, tono Autoridad
 - [x] 102 tests pasan (15 archivos), TypeScript compila sin errores, verificado en navegador
 - [x] Guardar checkpoint
+
+## Solucionar Sesiones que Expiran Constantemente
+- [x] Analizar duración actual: JWT y cookie ya eran 1 año, problema era sameSite/secure/domain
+- [x] JWT dura 1 año con rememberMe, 24h sin él
+- [x] Cookie persistente con maxAge = duración JWT, domain correcto para viralpro.io
+- [x] Checkbox 'Recordar sesión (30 días)' añadido al login, activado por defecto
+- [x] 102 tests pasan, TypeScript compila sin errores
+- [x] Guardar checkpoint

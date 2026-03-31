@@ -25,6 +25,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const utils = trpc.useUtils();
 
@@ -59,7 +60,7 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === "login") {
-      loginMutation.mutate({ email, password });
+      loginMutation.mutate({ email, password, rememberMe });
     } else {
       registerMutation.mutate({ name, email, password });
     }
@@ -162,6 +163,21 @@ export default function Login() {
                   </button>
                 </div>
               </div>
+
+              {mode === "login" && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary/20 cursor-pointer accent-purple-500"
+                  />
+                  <label htmlFor="rememberMe" className="text-sm text-muted-foreground cursor-pointer select-none">
+                    Recordar sesión (30 días)
+                  </label>
+                </div>
+              )}
 
               <Button
                 type="submit"
