@@ -169,3 +169,13 @@
 - [x] Endpoint compareByUrl creado - descarga ambos videos por URL, FFmpeg + Whisper + Gemini
 - [x] Flujo limpio: 2 URLs + boton comparar + loading animado + resultados completos
 - [x] 101 tests pasan (1 fallo externo TikTok), TS compila sin errores
+
+## Comparador Mejorado: URL viral + Subida archivo usuario
+- [x] Backend: endpoint compareUrlVsUpload (URL viral + fileKey del chunk upload)
+- [x] Backend: prompt mejorado con detección de cortes/transiciones y métricas
+- [x] Backend: detección de subtítulos (presencia, formato, timing)
+- [x] Backend: HOOK con 6 sub-análisis (primer frame, texto, emoción, pattern interrupt, promesa, timing)
+- [x] Frontend: URL para viral + drag&drop/click para subida del usuario
+- [x] Frontend: acepta MP4, MOV, AVI, WebM, MKV, MPEG, 3GP, FLV, OGG, WMV (max 500MB)
+- [x] Frontend: scores de subtítulos y cortes, categoría HOOK con badge CRÍTICO, subtitleComparison
+- [x] 101 tests pasan, TS compila, UI verificada en navegador

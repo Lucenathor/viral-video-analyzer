@@ -1,43 +1,154 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
 import { 
   GitCompareArrows, Link2, Loader2, AlertCircle, CheckCircle2, 
   XCircle, ArrowRight, Trophy, Target, Zap, Eye, MessageSquare,
-  TrendingUp, Lightbulb, Copy, Check
+  TrendingUp, Lightbulb, Copy, Check, Upload, FileVideo, X,
+  Subtitles, Scissors
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+
+const ACCEPTED_FORMATS = [
+  "video/mp4", "video/quicktime", "video/x-msvideo", "video/webm",
+  "video/x-matroska", "video/mpeg", "video/3gpp", "video/x-flv",
+  "video/ogg", "video/x-ms-wmv"
+];
+
+const FORMAT_LABELS: Record<string, string> = {
+  "video/mp4": "MP4", "video/quicktime": "MOV", "video/x-msvideo": "AVI",
+  "video/webm": "WebM", "video/x-matroska": "MKV", "video/mpeg": "MPEG",
+  "video/3gpp": "3GP", "video/x-flv": "FLV", "video/ogg": "OGG",
+  "video/x-ms-wmv": "WMV"
+};
+
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
 
 export default function Analyzer() {
   const { user, loading: authLoading } = useAuth();
 
-  
   const [viralUrl, setViralUrl] = useState("");
-  const [userUrl, setUserUrl] = useState("");
+  const [userFile, setUserFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState("");
   const [comparisonResult, setComparisonResult] = useState<any>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const compareByUrl = trpc.video.compareByUrl.useMutation({
+  const getUploadUrl = trpc.video.getUploadUrl.useMutation();
+  const uploadChunk = trpc.video.uploadChunk.useMutation();
+  const compareUrlVsUpload = trpc.video.compareUrlVsUpload.useMutation({
     onSuccess: (data) => {
       setComparisonResult(data);
+      setIsComparing(false);
+      setUploadPhase("");
       toast.success("Comparacion completada! Revisa las correcciones abajo");
     },
     onError: (error) => {
+      setIsComparing(false);
+      setUploadPhase("");
       toast.error(error.message || "Error en la comparacion");
     },
   });
 
-  const handleCompare = () => {
-    if (!viralUrl.trim() || !userUrl.trim()) {
-      toast.error("Introduce ambas URLs para comparar");
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) validateAndSetFile(file);
+  }, []);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndSetFile(file);
+  }, []);
+
+  const validateAndSetFile = (file: File) => {
+    if (!ACCEPTED_FORMATS.includes(file.type) && !file.name.match(/\.(mp4|mov|avi|webm|mkv|mpeg|mpg|3gp|flv|ogg|wmv)$/i)) {
+      toast.error("Formato no soportado. Usa MP4, MOV, AVI, WebM, MKV, etc.");
       return;
     }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("El archivo es demasiado grande. Maximo 500MB.");
+      return;
+    }
+    setUserFile(file);
+    toast.success(`Video seleccionado: ${file.name}`);
+  };
+
+  const handleCompare = async () => {
+    if (!viralUrl.trim()) {
+      toast.error("Introduce la URL del video viral");
+      return;
+    }
+    if (!userFile) {
+      toast.error("Sube tu video para comparar");
+      return;
+    }
+
+    setIsComparing(true);
     setComparisonResult(null);
-    compareByUrl.mutate({ viralUrl: viralUrl.trim(), userUrl: userUrl.trim() });
+    setUploadProgress(0);
+
+    try {
+      // Step 1: Get upload URL
+      setUploadPhase("Preparando subida...");
+      const { fileKey } = await getUploadUrl.mutateAsync({
+        fileName: userFile.name,
+        mimeType: userFile.type || "video/mp4",
+      });
+
+      // Step 2: Upload in chunks
+      setUploadPhase("Subiendo tu video...");
+      const totalChunks = Math.ceil(userFile.size / CHUNK_SIZE);
+      const fileBuffer = await userFile.arrayBuffer();
+
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, userFile.size);
+        const chunkData = fileBuffer.slice(start, end);
+        const base64Chunk = btoa(
+          new Uint8Array(chunkData).reduce((data, byte) => data + String.fromCharCode(byte), "")
+        );
+
+        await uploadChunk.mutateAsync({
+          fileKey,
+          chunk: base64Chunk,
+          chunkIndex: i,
+          totalChunks,
+          mimeType: userFile.type || "video/mp4",
+          isLastChunk: i === totalChunks - 1,
+        });
+
+        setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
+      }
+
+      // Step 3: Compare
+      setUploadPhase("Analizando y comparando videos con IA...");
+      setUploadProgress(100);
+
+      await compareUrlVsUpload.mutateAsync({
+        viralUrl: viralUrl.trim(),
+        userFileKey: fileKey,
+        userFileName: userFile.name,
+        userMimeType: userFile.type || "video/mp4",
+        userFileSize: userFile.size,
+      });
+    } catch (error: any) {
+      setIsComparing(false);
+      setUploadPhase("");
+      if (!compareUrlVsUpload.isError) {
+        toast.error(error.message || "Error al subir el video");
+      }
+    }
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -66,6 +177,11 @@ export default function Analyzer() {
     if (score >= 60) return "\u{1F44D}";
     if (score >= 40) return "\u26A0\uFE0F";
     return "\u274C";
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   if (authLoading) {
@@ -109,8 +225,8 @@ export default function Analyzer() {
               Compara tu video con un <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">viral</span>
             </h1>
             <p className="text-gray-400 text-lg">
-              Pega la URL del video viral de referencia y la URL de tu video. 
-              La IA analizara ambos y te dara correcciones exactas para mejorar.
+              Pega la URL del viral de referencia y sube tu video. 
+              La IA analizara cortes, subtitulos, hook y te dara correcciones exactas.
             </p>
           </div>
         </div>
@@ -118,7 +234,7 @@ export default function Analyzer() {
 
       {/* Main Content */}
       <div className="container py-8 max-w-4xl">
-        {/* URL Inputs */}
+        {/* Input Section */}
         <Card className="bg-[#12121a] border-gray-800 mb-8">
           <CardContent className="p-6 md:p-8">
             <div className="space-y-6">
@@ -135,7 +251,7 @@ export default function Analyzer() {
                     value={viralUrl}
                     onChange={(e) => setViralUrl(e.target.value)}
                     className="bg-[#1a1a2e] border-gray-700 text-white pl-10 h-12 placeholder:text-gray-600"
-                    disabled={compareByUrl.isPending}
+                    disabled={isComparing}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Pega el enlace del reel viral que quieres usar como referencia</p>
@@ -150,35 +266,96 @@ export default function Analyzer() {
                 <div className="flex-1 h-px bg-gray-800" />
               </div>
 
-              {/* User URL */}
+              {/* User Video Upload */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
                   <Target className="w-4 h-4 text-cyan-400" />
-                  URL de Tu Video (a corregir)
+                  Tu Video (sube el archivo)
                 </label>
-                <div className="relative">
-                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <Input
-                    placeholder="https://... URL de tu video grabado"
-                    value={userUrl}
-                    onChange={(e) => setUserUrl(e.target.value)}
-                    className="bg-[#1a1a2e] border-gray-700 text-white pl-10 h-12 placeholder:text-gray-600"
-                    disabled={compareByUrl.isPending}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Pega el enlace de tu video inspirado en el viral</p>
+
+                {!userFile ? (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleFileDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`
+                      relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
+                      ${isDragging 
+                        ? "border-cyan-400 bg-cyan-500/10" 
+                        : "border-gray-700 bg-[#1a1a2e] hover:border-gray-600 hover:bg-[#1a1a2e]/80"
+                      }
+                      ${isComparing ? "pointer-events-none opacity-50" : ""}
+                    `}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".mp4,.mov,.avi,.webm,.mkv,.mpeg,.mpg,.3gp,.flv,.ogg,.wmv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragging ? "text-cyan-400" : "text-gray-500"}`} />
+                    <p className="text-gray-300 font-medium mb-1">
+                      {isDragging ? "Suelta tu video aqui" : "Arrastra tu video aqui o haz clic para seleccionar"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      MP4, MOV, AVI, WebM, MKV, MPEG, 3GP, FLV, OGG, WMV (max 500MB)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-[#1a1a2e] border border-gray-700 rounded-xl p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                        <FileVideo className="w-6 h-6 text-cyan-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{userFile.name}</p>
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span>{formatFileSize(userFile.size)}</span>
+                          <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-400">
+                            {FORMAT_LABELS[userFile.type] || userFile.name.split('.').pop()?.toUpperCase() || "VIDEO"}
+                          </span>
+                        </div>
+                      </div>
+                      {!isComparing && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setUserFile(null); }}
+                          className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                        >
+                          <X className="w-4 h-4 text-gray-400 hover:text-red-400" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Upload Progress */}
+              {isComparing && uploadPhase && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">{uploadPhase}</span>
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <span className="text-cyan-400 font-medium">{uploadProgress}%</span>
+                    )}
+                  </div>
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <Progress value={uploadProgress} className="h-2" />
+                  )}
+                </div>
+              )}
 
               {/* Compare Button */}
               <Button
                 onClick={handleCompare}
-                disabled={compareByUrl.isPending || !viralUrl.trim() || !userUrl.trim()}
+                disabled={isComparing || !viralUrl.trim() || !userFile}
                 className="w-full h-14 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-bold text-lg rounded-xl"
               >
-                {compareByUrl.isPending ? (
+                {isComparing ? (
                   <span className="flex items-center gap-3">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Analizando y comparando... (puede tardar 1-3 min)
+                    {uploadPhase || "Procesando..."}
                   </span>
                 ) : (
                   <span className="flex items-center gap-3">
@@ -192,7 +369,7 @@ export default function Analyzer() {
         </Card>
 
         {/* Loading State */}
-        {compareByUrl.isPending && (
+        {isComparing && uploadProgress === 100 && (
           <Card className="bg-[#12121a] border-gray-800 mb-8">
             <CardContent className="p-8">
               <div className="text-center">
@@ -201,22 +378,23 @@ export default function Analyzer() {
                   <div className="absolute inset-0 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin" />
                   <GitCompareArrows className="absolute inset-0 m-auto w-8 h-8 text-cyan-400" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Analizando ambos videos...</h3>
-                <p className="text-gray-400 mb-6">La IA esta descargando, analizando y comparando frame a frame</p>
+                <h3 className="text-xl font-bold text-white mb-2">Analizando ambos videos con IA...</h3>
+                <p className="text-gray-400 mb-6">Esto puede tardar 1-3 minutos. Estamos analizando cada detalle.</p>
                 <div className="space-y-3 max-w-md mx-auto text-left">
                   {[
-                    "Descargando video viral...",
-                    "Descargando tu video...",
-                    "Comprimiendo con FFmpeg...",
-                    "Extrayendo frames y audio...",
-                    "Transcribiendo audio...",
-                    "Analizando viral con IA...",
-                    "Comparando ambos videos...",
-                    "Generando correcciones..."
+                    { text: "Descargando video viral de referencia...", icon: Trophy },
+                    { text: "Comprimiendo ambos videos con FFmpeg...", icon: Scissors },
+                    { text: "Extrayendo frames clave y audio...", icon: Eye },
+                    { text: "Transcribiendo audio con Whisper...", icon: MessageSquare },
+                    { text: "Detectando cortes y transiciones...", icon: Scissors },
+                    { text: "Analizando subtitulos...", icon: Subtitles },
+                    { text: "Analizando HOOK (primeros 3 seg)...", icon: Zap },
+                    { text: "Comparando ambos videos con Gemini...", icon: GitCompareArrows },
+                    { text: "Generando correcciones priorizadas...", icon: Lightbulb },
                   ].map((step, i) => (
                     <div key={i} className="flex items-center gap-3 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-cyan-400/30 animate-pulse" />
-                      <span className="text-gray-500">{step}</span>
+                      <step.icon className="w-4 h-4 text-cyan-400/40 animate-pulse" />
+                      <span className="text-gray-500">{step.text}</span>
                     </div>
                   ))}
                 </div>
@@ -244,23 +422,25 @@ export default function Analyzer() {
               </div>
             </Card>
 
-            {/* Score Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Score Cards - now with 6 scores including subtitles and cuts */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
                 { label: "General", score: comparisonResult.overallScore, icon: TrendingUp, viralScore: comparisonResult.viralAnalysis?.overallScore },
                 { label: "Hook", score: comparisonResult.hookScore, icon: Zap, viralScore: comparisonResult.viralAnalysis?.hookScore },
                 { label: "Ritmo", score: comparisonResult.pacingScore, icon: Target, viralScore: comparisonResult.viralAnalysis?.pacingScore },
                 { label: "Engagement", score: comparisonResult.engagementScore, icon: Eye, viralScore: comparisonResult.viralAnalysis?.engagementScore },
+                { label: "Subtitulos", score: comparisonResult.subtitleScore, icon: Subtitles },
+                { label: "Cortes", score: comparisonResult.cutScore, icon: Scissors },
               ].map((item) => (
                 <Card key={item.label} className="bg-[#12121a] border-gray-800">
-                  <CardContent className="p-4 text-center">
-                    <item.icon className={`w-5 h-5 mx-auto mb-2 ${getScoreColor(item.score)}`} />
-                    <div className="text-xs text-gray-500 mb-1">{item.label}</div>
-                    <div className={`text-2xl font-bold ${getScoreColor(item.score)}`}>
+                  <CardContent className="p-3 text-center">
+                    <item.icon className={`w-4 h-4 mx-auto mb-1 ${getScoreColor(item.score)}`} />
+                    <div className="text-[10px] text-gray-500 mb-0.5">{item.label}</div>
+                    <div className={`text-xl font-bold ${getScoreColor(item.score)}`}>
                       {item.score} {getScoreEmoji(item.score)}
                     </div>
                     {item.viralScore && (
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-[10px] text-gray-500 mt-0.5">
                         Viral: <span className="text-yellow-400">{item.viralScore}</span>
                       </div>
                     )}
@@ -269,24 +449,30 @@ export default function Analyzer() {
               ))}
             </div>
 
-            {/* Category Comparisons */}
+            {/* Category Comparisons - now includes subtitles */}
             {[
-              { key: "hookComparison", title: "Hook (Primeros 3 segundos)", icon: Zap, color: "text-yellow-400" },
-              { key: "pacingComparison", title: "Ritmo y Edicion", icon: Target, color: "text-cyan-400" },
+              { key: "hookComparison", title: "HOOK (Primeros 3 segundos)", icon: Zap, color: "text-yellow-400", emphasis: true },
+              { key: "subtitleComparison", title: "Subtitulos", icon: Subtitles, color: "text-pink-400" },
+              { key: "pacingComparison", title: "Ritmo, Cortes y Edicion", icon: Scissors, color: "text-cyan-400" },
               { key: "contentComparison", title: "Contenido y Mensaje", icon: MessageSquare, color: "text-purple-400" },
               { key: "visualComparison", title: "Visual y Produccion", icon: Eye, color: "text-emerald-400" },
               { key: "ctaComparison", title: "Call to Action", icon: TrendingUp, color: "text-orange-400" },
             ].map((category) => {
               const data = comparisonResult[category.key];
               if (!data) return null;
-              const score = data.hookScore || data.pacingScore || data.contentScore || data.visualScore || data.ctaScore;
+              const score = data.hookScore || data.subtitleScore || data.pacingScore || data.contentScore || data.visualScore || data.ctaScore;
               return (
-                <Card key={category.key} className="bg-[#12121a] border-gray-800">
+                <Card key={category.key} className={`bg-[#12121a] ${category.emphasis ? "border-yellow-500/30 ring-1 ring-yellow-500/10" : "border-gray-800"}`}>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-white">
                         <category.icon className={`w-5 h-5 ${category.color}`} />
                         {category.title}
+                        {category.emphasis && (
+                          <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-normal">
+                            CRITICO
+                          </span>
+                        )}
                       </span>
                       {score !== undefined && (
                         <span className={`text-lg font-bold ${getScoreColor(score)}`}>
@@ -303,7 +489,7 @@ export default function Analyzer() {
                         <span className="text-sm font-medium text-yellow-400">El viral hace:</span>
                       </div>
                       <p className="text-gray-300 text-sm leading-relaxed">
-                        {data.viralHookSummary || data.viralPacingSummary || data.viralContentSummary || data.viralVisualSummary || data.viralCtaSummary}
+                        {data.viralHookSummary || data.viralSubtitleSummary || data.viralPacingSummary || data.viralContentSummary || data.viralVisualSummary || data.viralCtaSummary}
                       </p>
                     </div>
 
@@ -314,7 +500,7 @@ export default function Analyzer() {
                         <span className="text-sm font-medium text-cyan-400">Tu video:</span>
                       </div>
                       <p className="text-gray-300 text-sm leading-relaxed">
-                        {data.userHookAnalysis || data.userPacingAnalysis || data.userContentAnalysis || data.userVisualAnalysis || data.userCtaAnalysis}
+                        {data.userHookAnalysis || data.userSubtitleAnalysis || data.userPacingAnalysis || data.userContentAnalysis || data.userVisualAnalysis || data.userCtaAnalysis}
                       </p>
                     </div>
 
@@ -350,7 +536,7 @@ export default function Analyzer() {
               );
             })}
 
-            {/* Top 5 Corrections */}
+            {/* Top Corrections */}
             {comparisonResult.topCorrections && comparisonResult.topCorrections.length > 0 && (
               <Card className="bg-[#12121a] border-gray-800">
                 <CardHeader>
@@ -367,9 +553,12 @@ export default function Analyzer() {
                           <span className="text-sm font-bold text-red-400">#{correction.priority || i + 1}</span>
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 className="font-semibold text-white">{correction.title}</h4>
                             <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">{correction.category}</span>
+                            {correction.timestamp && (
+                              <span className="text-xs bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full">{correction.timestamp}</span>
+                            )}
                           </div>
                           <p className="text-sm text-red-300 mb-2">
                             <span className="font-medium">Problema:</span> {correction.currentIssue}
@@ -419,7 +608,8 @@ export default function Analyzer() {
                 onClick={() => {
                   setComparisonResult(null);
                   setViralUrl("");
-                  setUserUrl("");
+                  setUserFile(null);
+                  setUploadProgress(0);
                 }}
                 variant="outline"
                 className="border-gray-700 text-gray-300 hover:text-white hover:border-cyan-500"
@@ -432,7 +622,7 @@ export default function Analyzer() {
         )}
 
         {/* Empty State - How it works */}
-        {!comparisonResult && !compareByUrl.isPending && (
+        {!comparisonResult && !isComparing && (
           <Card className="bg-[#12121a] border-gray-800">
             <CardContent className="p-8">
               <h3 className="text-lg font-semibold text-white mb-6 text-center">Como funciona?</h3>
@@ -448,16 +638,16 @@ export default function Analyzer() {
                   },
                   {
                     step: "2",
-                    title: "Pega tu video",
-                    desc: "Introduce la URL de tu video grabado inspirado en el viral",
-                    icon: Target,
+                    title: "Sube tu video",
+                    desc: "Arrastra o selecciona tu video grabado (MP4, MOV, AVI, WebM, MKV...)",
+                    icon: Upload,
                     color: "text-cyan-400",
                     bg: "bg-cyan-500/10",
                   },
                   {
                     step: "3",
                     title: "Recibe correcciones",
-                    desc: "La IA analiza ambos y te da correcciones exactas con timestamps",
+                    desc: "La IA analiza hook, cortes, subtitulos y te da correcciones exactas",
                     icon: Lightbulb,
                     color: "text-emerald-400",
                     bg: "bg-emerald-500/10",
@@ -472,6 +662,18 @@ export default function Analyzer() {
                     <p className="text-sm text-gray-400">{item.desc}</p>
                   </div>
                 ))}
+              </div>
+
+              {/* Supported Formats */}
+              <div className="mt-8 pt-6 border-t border-gray-800">
+                <p className="text-xs text-gray-500 text-center mb-3">Formatos soportados para subida</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {["MP4", "MOV", "AVI", "WebM", "MKV", "MPEG", "3GP", "FLV", "OGG", "WMV"].map((fmt) => (
+                    <span key={fmt} className="text-[10px] bg-gray-800/50 text-gray-400 px-2 py-1 rounded">
+                      {fmt}
+                    </span>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

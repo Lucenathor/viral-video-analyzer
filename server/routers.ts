@@ -1432,6 +1432,479 @@ REGLAS:
           throw new Error(error.message || 'Error durante la comparación por URL');
         }
       }),
+    // Compare viral URL vs uploaded user video (file key from S3 chunks)
+    compareUrlVsUpload: protectedProcedure
+      .input(z.object({
+        viralUrl: z.string().url("URL del vídeo viral no válida"),
+        userFileKey: z.string().min(1, "File key del vídeo del usuario requerido"),
+        userFileName: z.string(),
+        userMimeType: z.string(),
+        userFileSize: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        console.log('[CompareUpload] ====== STARTING URL vs UPLOAD COMPARISON ======');
+        console.log('[CompareUpload] User:', ctx.user.id);
+        console.log('[CompareUpload] Viral URL:', input.viralUrl);
+        console.log('[CompareUpload] User file key:', input.userFileKey);
+        
+        let viralTempPath: string | null = null;
+        let userTempPath: string | null = null;
+        let viralCompressedPath: string | null = null;
+        let userCompressedPath: string | null = null;
+        let viralFullAnalysis: FullVideoAnalysis | null = null;
+        let userFullAnalysis: FullVideoAnalysis | null = null;
+        
+        try {
+          // ===== STEP 1a: DOWNLOAD VIRAL VIDEO =====
+          console.log('[CompareUpload] Step 1a: Downloading viral video...');
+          const viralResponse = await fetch(input.viralUrl);
+          if (!viralResponse.ok) throw new Error('No se pudo descargar el vídeo viral. Verifica la URL.');
+          const viralBuffer = Buffer.from(await viralResponse.arrayBuffer());
+          viralTempPath = path.join(os.tmpdir(), `viral_${Date.now()}_${nanoid()}.mp4`);
+          fs.writeFileSync(viralTempPath, viralBuffer);
+          console.log(`[CompareUpload] Viral downloaded: ${(viralBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+          
+          // ===== STEP 1b: DOWNLOAD USER VIDEO FROM S3 CHUNKS =====
+          console.log('[CompareUpload] Step 1b: Downloading user video from S3 chunks...');
+          const userChunks: Buffer[] = [];
+          let chunkIndex = 0;
+          while (true) {
+            try {
+              const chunkKey = `${input.userFileKey}.chunk${chunkIndex}`;
+              const { url: chunkUrl } = await storageGet(chunkKey);
+              const chunkResponse = await fetch(chunkUrl);
+              if (!chunkResponse.ok) break;
+              const chunkData = await chunkResponse.arrayBuffer();
+              userChunks.push(Buffer.from(chunkData));
+              chunkIndex++;
+            } catch {
+              break;
+            }
+          }
+          if (userChunks.length === 0) throw new Error('No se pudieron descargar los chunks del vídeo del usuario');
+          const userBuffer = Buffer.concat(userChunks);
+          userTempPath = path.join(os.tmpdir(), `user_${Date.now()}_${nanoid()}_${input.userFileName}`);
+          fs.writeFileSync(userTempPath, userBuffer);
+          console.log(`[CompareUpload] User video: ${userChunks.length} chunks, ${(userBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+          
+          // Create video records
+          const viralVideoId = await db.createVideo({
+            userId: ctx.user.id,
+            title: 'Viral de referencia (URL)',
+            videoUrl: input.viralUrl,
+            videoKey: `url-viral-${nanoid()}`,
+            mimeType: 'video/mp4',
+            fileSize: viralBuffer.length,
+            videoType: 'viral_reference',
+          });
+          
+          const userVideoId = await db.createVideo({
+            userId: ctx.user.id,
+            title: input.userFileName,
+            videoUrl: '',
+            videoKey: input.userFileKey,
+            mimeType: input.userMimeType,
+            fileSize: input.userFileSize,
+            videoType: 'user_video',
+          });
+          
+          // ===== STEP 2: COMPRESS BOTH =====
+          console.log('[CompareUpload] Step 2: Compressing viral...');
+          try {
+            const viralComp = await ffmpegCompress(viralTempPath, (p) => console.log(`[FFmpeg] Viral: ${p.percent}%`));
+            viralCompressedPath = viralComp.outputPath;
+          } catch { viralCompressedPath = viralTempPath; }
+          
+          console.log('[CompareUpload] Step 2b: Compressing user video...');
+          try {
+            const userComp = await ffmpegCompress(userTempPath, (p) => console.log(`[FFmpeg] User: ${p.percent}%`));
+            userCompressedPath = userComp.outputPath;
+          } catch { userCompressedPath = userTempPath; }
+          
+          // ===== STEP 3: ANALYZE VIRAL VIDEO =====
+          console.log('[CompareUpload] Step 3: Analyzing viral video...');
+          viralFullAnalysis = await performFullAnalysis(viralCompressedPath || viralTempPath);
+          
+          let viralTranscription = {
+            success: false, text: '', language: '', duration: 0,
+            segments: [] as Array<{ id: number; start: number; end: number; text: string }>,
+            formattedTranscript: '', keyMoments: [] as Array<{ timestamp: number; text: string; type: string }>
+          };
+          
+          if (viralFullAnalysis.audioPath && viralFullAnalysis.metadata.hasAudio) {
+            console.log('[CompareUpload] Transcribing viral audio...');
+            const vtr = await transcribeAudioFile(viralFullAnalysis.audioPath);
+            if (vtr.success) {
+              viralTranscription = {
+                success: true, text: vtr.text, language: vtr.language,
+                duration: vtr.duration, segments: vtr.segments,
+                formattedTranscript: formatTranscriptionWithTimestamps(vtr.segments),
+                keyMoments: extractKeyMoments(vtr.segments)
+              };
+            }
+          }
+          
+          // Analyze viral with Gemini
+          const viralVideoDataText = buildComprehensiveDataText(viralFullAnalysis, viralTranscription);
+          const viralPrompt = buildAnalysisPrompt(viralFullAnalysis, viralTranscription);
+          
+          const viralGeminiMessages: Array<{ role: 'system' | 'user'; content: any }> = [
+            { role: 'system', content: viralPrompt },
+            { role: 'user', content: [
+              { type: 'text' as const, text: viralVideoDataText },
+              ...viralFullAnalysis.frames.slice(0, 12).map(f => ({
+                type: 'image_url' as const,
+                image_url: { url: `data:image/jpeg;base64,${f.base64}`, detail: 'low' as const }
+              }))
+            ]}
+          ];
+          
+          const viralGeminiResponse = await invokeLLM({
+            messages: viralGeminiMessages,
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'viral_analysis',
+                strict: true,
+                schema: {
+                  type: 'object',
+                  properties: {
+                    hookAnalysis: { type: 'string' },
+                    structureBreakdown: { type: 'string' },
+                    viralityFactors: { type: 'string' },
+                    improvementSuggestions: { type: 'string' },
+                    summary: { type: 'string' },
+                    overallScore: { type: 'number' },
+                    hookScore: { type: 'number' },
+                    pacingScore: { type: 'number' },
+                    engagementScore: { type: 'number' },
+                    contentScore: { type: 'number' },
+                    visualScore: { type: 'number' },
+                    audioScore: { type: 'number' },
+                    ctaScore: { type: 'number' },
+                    subtitleAnalysis: { type: 'string' },
+                    cutAnalysis: { type: 'string' },
+                    topMoments: { type: 'string' },
+                    weakMoments: { type: 'string' },
+                    viralPotential: { type: 'string' },
+                    targetAudience: { type: 'string' },
+                    platformOptimization: { type: 'string' }
+                  },
+                  required: ['hookAnalysis', 'structureBreakdown', 'viralityFactors', 'improvementSuggestions', 'summary', 'overallScore', 'hookScore', 'pacingScore', 'engagementScore', 'contentScore', 'visualScore', 'audioScore', 'ctaScore', 'subtitleAnalysis', 'cutAnalysis', 'topMoments', 'weakMoments', 'viralPotential', 'targetAudience', 'platformOptimization'],
+                  additionalProperties: false
+                }
+              }
+            }
+          });
+          
+          const viralContent = viralGeminiResponse.choices[0].message.content;
+          let viralAnalysisData: any;
+          if (typeof viralContent === 'string') viralAnalysisData = JSON.parse(viralContent);
+          else viralAnalysisData = viralContent;
+          
+          const normalizeScore = (s: number | undefined): number => {
+            if (s === undefined || s === null) return 50;
+            if (s > 100) return Math.min(100, Math.round(s / 10));
+            if (s < 0) return 0;
+            return Math.round(s);
+          };
+          
+          viralAnalysisData.overallScore = normalizeScore(viralAnalysisData.overallScore);
+          viralAnalysisData.hookScore = normalizeScore(viralAnalysisData.hookScore);
+          viralAnalysisData.pacingScore = normalizeScore(viralAnalysisData.pacingScore);
+          viralAnalysisData.engagementScore = normalizeScore(viralAnalysisData.engagementScore);
+          
+          // Save viral analysis
+          const viralAnalysisId = await db.createVideoAnalysis({
+            videoId: viralVideoId,
+            userId: ctx.user.id,
+            analysisType: 'viral_analysis',
+            status: 'completed',
+          });
+          await db.updateVideoAnalysis(viralAnalysisId, {
+            status: 'completed',
+            hookAnalysis: viralAnalysisData.hookAnalysis,
+            structureBreakdown: viralAnalysisData.structureBreakdown,
+            viralityFactors: viralAnalysisData.viralityFactors,
+            summary: viralAnalysisData.summary,
+            overallScore: viralAnalysisData.overallScore,
+            hookScore: viralAnalysisData.hookScore,
+            pacingScore: viralAnalysisData.pacingScore,
+            engagementScore: viralAnalysisData.engagementScore,
+          });
+          
+          // ===== STEP 4: ANALYZE USER VIDEO =====
+          console.log('[CompareUpload] Step 4: Analyzing user video...');
+          userFullAnalysis = await performFullAnalysis(userCompressedPath || userTempPath);
+          
+          const comparisonId = await db.createVideoAnalysis({
+            videoId: userVideoId,
+            userId: ctx.user.id,
+            analysisType: 'comparison',
+            status: 'processing',
+            comparisonVideoId: viralVideoId,
+          });
+          
+          let userTranscription = {
+            success: false, text: '', language: '', duration: 0,
+            segments: [] as Array<{ id: number; start: number; end: number; text: string }>,
+            formattedTranscript: '', keyMoments: [] as Array<{ timestamp: number; text: string; type: string }>
+          };
+          
+          if (userFullAnalysis.audioPath && userFullAnalysis.metadata.hasAudio) {
+            console.log('[CompareUpload] Transcribing user audio...');
+            const utr = await transcribeAudioFile(userFullAnalysis.audioPath);
+            if (utr.success) {
+              userTranscription = {
+                success: true, text: utr.text, language: utr.language,
+                duration: utr.duration, segments: utr.segments,
+                formattedTranscript: formatTranscriptionWithTimestamps(utr.segments),
+                keyMoments: extractKeyMoments(utr.segments)
+              };
+            }
+          }
+          
+          // ===== STEP 5: COMPARISON WITH GEMINI =====
+          console.log('[CompareUpload] Step 5: Running comparison with Gemini...');
+          
+          const userVideoDataText = buildComprehensiveDataText(userFullAnalysis, userTranscription);
+          
+          const viralContext = `
+═══════════════════════════════════════════════════════════════
+              ANÁLISIS DEL VÍDEO VIRAL DE REFERENCIA
+═══════════════════════════════════════════════════════════════
+
+Puntuación Viral: ${viralAnalysisData.overallScore}/100
+Hook Score: ${viralAnalysisData.hookScore}/100
+Ritmo Score: ${viralAnalysisData.pacingScore}/100
+Engagement Score: ${viralAnalysisData.engagementScore}/100
+
+ANÁLISIS DEL HOOK VIRAL:
+${viralAnalysisData.hookAnalysis || 'No disponible'}
+
+ESTRUCTURA DEL VIRAL:
+${viralAnalysisData.structureBreakdown || 'No disponible'}
+
+FACTORES DE VIRALIDAD:
+${viralAnalysisData.viralityFactors || 'No disponible'}
+
+ANÁLISIS DE SUBTÍTULOS DEL VIRAL:
+${viralAnalysisData.subtitleAnalysis || 'No disponible'}
+
+ANÁLISIS DE CORTES DEL VIRAL:
+${viralAnalysisData.cutAnalysis || 'No disponible'}
+
+RESUMEN VIRAL:
+${viralAnalysisData.summary || 'No disponible'}
+`;
+          
+          const comparisonPrompt = buildComparisonPrompt(userFullAnalysis, userTranscription, viralAnalysisData);
+          
+          const compMessages: Array<{ role: 'system' | 'user'; content: any }> = [
+            { role: 'system', content: comparisonPrompt },
+            { role: 'user', content: [
+              { type: 'text' as const, text: viralContext + '\n\n' + userVideoDataText },
+              ...viralFullAnalysis.frames.slice(0, 6).map(f => ({
+                type: 'image_url' as const,
+                image_url: { url: `data:image/jpeg;base64,${f.base64}`, detail: 'low' as const }
+              })),
+              ...userFullAnalysis.frames.slice(0, 6).map(f => ({
+                type: 'image_url' as const,
+                image_url: { url: `data:image/jpeg;base64,${f.base64}`, detail: 'low' as const }
+              }))
+            ]}
+          ];
+          
+          const compResponse = await invokeLLM({
+            messages: compMessages,
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'video_comparison',
+                strict: true,
+                schema: {
+                  type: 'object',
+                  properties: {
+                    overallVerdict: { type: 'string' },
+                    similarityScore: { type: 'number' },
+                    hookComparison: {
+                      type: 'object',
+                      properties: {
+                        hookScore: { type: 'number' },
+                        viralHookSummary: { type: 'string' },
+                        userHookAnalysis: { type: 'string' },
+                        whatsMissing: { type: 'string' },
+                        fixInstructions: { type: 'string' }
+                      },
+                      required: ['hookScore', 'viralHookSummary', 'userHookAnalysis', 'whatsMissing', 'fixInstructions'],
+                      additionalProperties: false
+                    },
+                    pacingComparison: {
+                      type: 'object',
+                      properties: {
+                        pacingScore: { type: 'number' },
+                        viralPacingSummary: { type: 'string' },
+                        userPacingAnalysis: { type: 'string' },
+                        whatsMissing: { type: 'string' },
+                        fixInstructions: { type: 'string' }
+                      },
+                      required: ['pacingScore', 'viralPacingSummary', 'userPacingAnalysis', 'whatsMissing', 'fixInstructions'],
+                      additionalProperties: false
+                    },
+                    subtitleComparison: {
+                      type: 'object',
+                      properties: {
+                        subtitleScore: { type: 'number' },
+                        viralSubtitleSummary: { type: 'string' },
+                        userSubtitleAnalysis: { type: 'string' },
+                        whatsMissing: { type: 'string' },
+                        fixInstructions: { type: 'string' }
+                      },
+                      required: ['subtitleScore', 'viralSubtitleSummary', 'userSubtitleAnalysis', 'whatsMissing', 'fixInstructions'],
+                      additionalProperties: false
+                    },
+                    contentComparison: {
+                      type: 'object',
+                      properties: {
+                        contentScore: { type: 'number' },
+                        viralContentSummary: { type: 'string' },
+                        userContentAnalysis: { type: 'string' },
+                        whatsMissing: { type: 'string' },
+                        fixInstructions: { type: 'string' }
+                      },
+                      required: ['contentScore', 'viralContentSummary', 'userContentAnalysis', 'whatsMissing', 'fixInstructions'],
+                      additionalProperties: false
+                    },
+                    visualComparison: {
+                      type: 'object',
+                      properties: {
+                        visualScore: { type: 'number' },
+                        viralVisualSummary: { type: 'string' },
+                        userVisualAnalysis: { type: 'string' },
+                        whatsMissing: { type: 'string' },
+                        fixInstructions: { type: 'string' }
+                      },
+                      required: ['visualScore', 'viralVisualSummary', 'userVisualAnalysis', 'whatsMissing', 'fixInstructions'],
+                      additionalProperties: false
+                    },
+                    ctaComparison: {
+                      type: 'object',
+                      properties: {
+                        ctaScore: { type: 'number' },
+                        viralCtaSummary: { type: 'string' },
+                        userCtaAnalysis: { type: 'string' },
+                        whatsMissing: { type: 'string' },
+                        fixInstructions: { type: 'string' }
+                      },
+                      required: ['ctaScore', 'viralCtaSummary', 'userCtaAnalysis', 'whatsMissing', 'fixInstructions'],
+                      additionalProperties: false
+                    },
+                    topCorrections: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          priority: { type: 'number' },
+                          title: { type: 'string' },
+                          category: { type: 'string' },
+                          timestamp: { type: 'string' },
+                          currentIssue: { type: 'string' },
+                          exactFix: { type: 'string' },
+                          expectedImpact: { type: 'string' }
+                        },
+                        required: ['priority', 'title', 'category', 'timestamp', 'currentIssue', 'exactFix', 'expectedImpact'],
+                        additionalProperties: false
+                      }
+                    },
+                    whatWorksWell: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          aspect: { type: 'string' }, detail: { type: 'string' }
+                        },
+                        required: ['aspect', 'detail'],
+                        additionalProperties: false
+                      }
+                    },
+                    overallScore: { type: 'number' },
+                    hookScore: { type: 'number' },
+                    pacingScore: { type: 'number' },
+                    engagementScore: { type: 'number' },
+                    subtitleScore: { type: 'number' },
+                    cutScore: { type: 'number' }
+                  },
+                  required: ['overallVerdict', 'similarityScore', 'hookComparison', 'pacingComparison', 'subtitleComparison', 'contentComparison', 'visualComparison', 'ctaComparison', 'topCorrections', 'whatWorksWell', 'overallScore', 'hookScore', 'pacingScore', 'engagementScore', 'subtitleScore', 'cutScore'],
+                  additionalProperties: false
+                }
+              }
+            }
+          });
+          
+          console.log('[CompareUpload] Comparison response received');
+          const compContent = compResponse.choices[0].message.content;
+          let comparisonData: any;
+          if (typeof compContent === 'string') comparisonData = JSON.parse(compContent);
+          else comparisonData = compContent;
+          
+          comparisonData.overallScore = normalizeScore(comparisonData.overallScore);
+          comparisonData.hookScore = normalizeScore(comparisonData.hookScore);
+          comparisonData.pacingScore = normalizeScore(comparisonData.pacingScore);
+          comparisonData.engagementScore = normalizeScore(comparisonData.engagementScore);
+          comparisonData.similarityScore = normalizeScore(comparisonData.similarityScore);
+          comparisonData.subtitleScore = normalizeScore(comparisonData.subtitleScore);
+          comparisonData.cutScore = normalizeScore(comparisonData.cutScore);
+          
+          await db.updateVideoAnalysis(comparisonId, {
+            status: 'completed',
+            hookAnalysis: comparisonData.hookComparison ? JSON.stringify(comparisonData.hookComparison) : null,
+            structureBreakdown: JSON.stringify(comparisonData.pacingComparison || {}),
+            viralityFactors: JSON.stringify(comparisonData.topCorrections || []),
+            summary: comparisonData.overallVerdict,
+            improvementPoints: JSON.stringify(comparisonData.topCorrections || []),
+            cutRecommendations: JSON.stringify(comparisonData.pacingComparison || {}),
+            editingSuggestions: comparisonData.pacingComparison?.fixInstructions || null,
+            overallScore: comparisonData.overallScore,
+            hookScore: comparisonData.hookScore,
+            pacingScore: comparisonData.pacingScore,
+            engagementScore: comparisonData.engagementScore,
+          });
+          
+          console.log('[CompareUpload] ====== UPLOAD COMPARISON COMPLETED ======');
+          
+          // Cleanup
+          if (viralFullAnalysis) cleanupAnalysis(viralFullAnalysis);
+          if (userFullAnalysis) cleanupAnalysis(userFullAnalysis);
+          if (viralCompressedPath && viralCompressedPath !== viralTempPath) cleanupCompressedFile(viralCompressedPath);
+          if (userCompressedPath && userCompressedPath !== userTempPath) cleanupCompressedFile(userCompressedPath);
+          if (viralTempPath && fs.existsSync(viralTempPath)) fs.unlinkSync(viralTempPath);
+          if (userTempPath && fs.existsSync(userTempPath)) fs.unlinkSync(userTempPath);
+          
+          return {
+            id: comparisonId,
+            videoId: userVideoId,
+            viralVideoId,
+            viralAnalysis: {
+              overallScore: viralAnalysisData.overallScore,
+              hookScore: viralAnalysisData.hookScore,
+              pacingScore: viralAnalysisData.pacingScore,
+              engagementScore: viralAnalysisData.engagementScore,
+              summary: viralAnalysisData.summary,
+            },
+            ...comparisonData,
+          };
+        } catch (error: any) {
+          console.error('[CompareUpload] Error:', error);
+          if (viralFullAnalysis) cleanupAnalysis(viralFullAnalysis);
+          if (userFullAnalysis) cleanupAnalysis(userFullAnalysis);
+          if (viralCompressedPath && viralCompressedPath !== viralTempPath) try { cleanupCompressedFile(viralCompressedPath); } catch {}
+          if (userCompressedPath && userCompressedPath !== userTempPath) try { cleanupCompressedFile(userCompressedPath); } catch {}
+          if (viralTempPath && fs.existsSync(viralTempPath)) try { fs.unlinkSync(viralTempPath); } catch {}
+          if (userTempPath && fs.existsSync(userTempPath)) try { fs.unlinkSync(userTempPath); } catch {}
+          
+          throw new Error(error.message || 'Error durante la comparación');
+        }
+      }),
   }),
 
   // Bio Generator router - Generador profesional de biografías de Instagram
@@ -2184,56 +2657,150 @@ function buildComparisonPrompt(
   transcription: { success: boolean; text: string },
   viralAnalysis: any
 ): string {
+  // Calculate cut metrics
+  const userCutsPerMin = userAnalysis.metadata.duration > 0 
+    ? (userAnalysis.sceneChanges.length / userAnalysis.metadata.duration * 60).toFixed(1) 
+    : '0';
+  const avgShotDuration = userAnalysis.shotDurations.length > 0
+    ? (userAnalysis.shotDurations.reduce((a: number, b: { duration: number }) => a + b.duration, 0) / userAnalysis.shotDurations.length).toFixed(1)
+    : 'N/A';
+  const longestShot = userAnalysis.shotDurations.length > 0
+    ? Math.max(...userAnalysis.shotDurations.map(s => s.duration)).toFixed(1)
+    : 'N/A';
+  const shortestShot = userAnalysis.shotDurations.length > 0
+    ? Math.min(...userAnalysis.shotDurations.map(s => s.duration)).toFixed(1)
+    : 'N/A';
+  
+  // Detect if user has subtitles (check frames for text overlays and transcription)
+  const hasAudio = userAnalysis.metadata.hasAudio;
+  
   return `
 
 ═══════════════════════════════════════════════════════════════
-                    INSTRUCCIONES DE COMPARACIÓN
+           INSTRUCCIONES DE COMPARACIÓN PROFESIONAL
 ═══════════════════════════════════════════════════════════════
+
+Eres el MEJOR ANALISTA DE VÍDEO VIRAL del mundo. Has analizado +10.000 reels virales.
+Tu especialidad es detectar EXACTAMENTE qué hace que un vídeo sea viral y qué le falta a otro.
 
 Tienes DOS vídeos para comparar:
 
 1. VÍDEO VIRAL DE REFERENCIA: Ya analizado previamente (puntuaciones y análisis arriba)
 2. VÍDEO DEL USUARIO: ${userAnalysis.frames.length} frames, duración ${userAnalysis.metadata.duration.toFixed(1)}s
-${transcription.success ? 'El vídeo del usuario tiene transcripción de audio.' : 'El vídeo del usuario no tiene audio o no se pudo transcribir.'}
+${transcription.success ? `El vídeo del usuario tiene audio con transcripción: "${transcription.text.substring(0, 500)}"` : 'El vídeo del usuario NO tiene audio o no se pudo transcribir.'}
 
-Tu trabajo es comparar PUNTO POR PUNTO y dar correcciones EXACTAS:
+═══════════════════════════════════════════════════════════════
+              DATOS TÉCNICOS DEL VÍDEO DEL USUARIO
+═══════════════════════════════════════════════════════════════
+- Resolución: ${userAnalysis.metadata.width}x${userAnalysis.metadata.height}
+- FPS: ${userAnalysis.metadata.fps}
+- Duración: ${userAnalysis.metadata.duration.toFixed(1)}s
+- Tiene audio: ${hasAudio ? 'SÍ' : 'NO'}
+- Cambios de escena detectados: ${userAnalysis.sceneChanges.length}
+- Cortes por minuto: ${userCutsPerMin}
+- Duración media de plano: ${avgShotDuration}s
+- Plano más largo: ${longestShot}s
+- Plano más corto: ${shortestShot}s
+- Silencios detectados: ${userAnalysis.audioAnalysis.silences.length}
+- Picos de audio: ${userAnalysis.audioAnalysis.loudPeaks.length}
 
-1. **HOOK (primeros 3 segundos)**:
-   - ¿Qué hace el viral en los primeros 3s?
-   - ¿Qué hace el usuario en los primeros 3s?
-   - ¿Qué le falta? ¿Cómo arreglarlo?
+═══════════════════════════════════════════════════════════════
+           🎯 ANÁLISIS OBLIGATORIO - SIGUE ESTE ORDEN
+═══════════════════════════════════════════════════════════════
 
-2. **RITMO DE EDICIÓN**:
-   - Viral: ${viralAnalysis.pacingScore || '?'}/100
-   - Usuario: ${userAnalysis.sceneChanges.length} cambios de escena, ${(userAnalysis.shotDurations.length / userAnalysis.metadata.duration * 60).toFixed(1)} cortes/min
-   - ¿Dónde debería cortar? ¿Qué shots son demasiado largos?
+### 1. 🔥 HOOK - ANÁLISIS PROFUNDO (PRIMEROS 3 SEGUNDOS) - MÁXIMA PRIORIDAD
 
-3. **CONTENIDO Y MENSAJE**:
-   - ¿El usuario transmite el mismo tipo de mensaje que el viral?
-   - ¿Qué elementos narrativos faltan?
+Este es el apartado MÁS IMPORTANTE. Analiza frame a frame los primeros 3 segundos:
 
-4. **VISUAL**:
-   - Compara iluminación, encuadre, colores, calidad
-   - ¿Qué cambios visuales mejorarían el vídeo?
+**Del viral:**
+- ¿Qué aparece en el PRIMER FRAME? (texto, cara, objeto, acción)
+- ¿Hay movimiento inmediato o es estático?
+- ¿Hay texto superpuesto en los primeros frames?
+- ¿Qué emoción genera en el primer segundo?
+- ¿Usa pattern interrupt? (algo inesperado que rompe el scroll)
+- ¿Empieza con una pregunta, afirmación impactante o acción?
 
-5. **CTA (Call to Action)**:
-   - ¿El viral tiene CTA? ¿El usuario tiene CTA?
-   - ¿Cómo mejorar el CTA del usuario?
+**Del usuario:**
+- ¿Qué aparece en SU primer frame?
+- ¿Tarda en "arrancar"? ¿Hay segundos muertos al inicio?
+- ¿El primer segundo capta la atención o es genérico?
+- ¿Tiene texto superpuesto como el viral?
+- ¿La energía inicial es comparable al viral?
 
-6. **TOP 5 CORRECCIONES** (ordenadas por impacto):
-   - Cada corrección con timestamp EXACTO
-   - Instrucción accionable y específica
-   - Impacto esperado del cambio
+**Corrección del hook:**
+- Instrucción EXACTA de qué debería aparecer en el segundo 0.0
+- Qué texto poner superpuesto (si el viral lo tiene)
+- Qué movimiento/acción hacer en los primeros 1.5s
+- Cómo replicar el pattern interrupt del viral
 
-7. **LO QUE FUNCIONA BIEN**:
-   - Identifica al menos 2-3 cosas que el usuario ya hace bien
-   - Esto es importante para motivar al creador
+### 2. ✂️ CORTES Y TRANSICIONES - ANÁLISIS DETALLADO
+
+Analiza la edición del usuario vs el viral:
+- ¿Cuántos cortes tiene el viral por minuto vs el usuario?
+- ¿El usuario tiene cortes SUFICIENTES o el vídeo se siente lento?
+- ¿Hay planos demasiado largos (>3s sin corte)? Indica CUÁLES con timestamp
+- ¿Las transiciones son limpias o hay saltos bruscos?
+- ¿El viral usa zoom-ins, jump cuts, o transiciones específicas que el usuario NO usa?
+- ¿Hay momentos donde el usuario debería CORTAR pero no lo hace?
+- Da timestamps EXACTOS de dónde añadir cortes: "En el segundo X.X, corta aquí porque..."
+
+### 3. 📝 SUBTÍTULOS Y TEXTO EN PANTALLA
+
+Mira los frames del usuario y del viral:
+- ¿El viral tiene subtítulos/texto superpuesto? ¿De qué tipo?
+- ¿El usuario tiene subtítulos? Si NO los tiene, es un problema GRAVE
+- ¿El 80% de los reels virales tienen subtítulos - el usuario los necesita?
+- Si tiene subtítulos: ¿Son legibles? ¿Buen tamaño? ¿Buen contraste?
+- ¿Hay palabras clave resaltadas en color como hacen los virales?
+- Recomienda estilo de subtítulos específico (fuente, tamaño, posición, color de highlight)
+
+### 4. 🎵 RITMO Y PACING
+
+- Viral: ${viralAnalysis.pacingScore || '?'}/100
+- Usuario: ${userCutsPerMin} cortes/min, plano medio de ${avgShotDuration}s
+- ¿El ritmo del usuario mantiene la atención o hay momentos de bajón?
+- ¿Los cortes van al ritmo de la música/audio?
+- ¿Hay silencios incómodos o pausas demasiado largas?
+- Indica timestamps de momentos donde el ritmo baja
+
+### 5. 📢 CONTENIDO, MENSAJE Y CTA
+
+- ¿El usuario transmite el mismo tipo de mensaje que el viral?
+- ¿Qué elementos narrativos del viral faltan en el del usuario?
+- ¿Tiene CTA claro? ¿El viral tiene CTA? Compara
+- ¿El cierre es potente o se apaga?
+
+### 6. 🎨 VISUAL Y PRODUCCIÓN
+
+- Compara iluminación, encuadre, colores, calidad
+- ¿El usuario graba en vertical (9:16) como el viral?
+- ¿La iluminación es comparable?
+- ¿El encuadre es similar?
+
+### 7. 🏆 TOP 7 CORRECCIONES PRIORITARIAS
+
+Ordena por IMPACTO en viralidad. Cada corrección DEBE tener:
+- Timestamp exacto ("segundo X.X")
+- Qué está mal ahora
+- Qué hacer exactamente para arreglarlo
+- Impacto esperado
+
+Las primeras 3 correcciones SIEMPRE deben estar relacionadas con:
+1. El HOOK (primeros 3 segundos)
+2. Los CORTES/EDICIÓN
+3. Los SUBTÍTULOS
+
+### 8. ✅ LO QUE YA HACE BIEN
+
+- Identifica al menos 3 cosas positivas
+- Sé específico y motivador
 
 IMPORTANTE:
-- Sé ESPECÍFICO con timestamps ("en el segundo 2.3, deberías...")
-- Compara frame por frame cuando sea relevante
-- Prioriza correcciones por IMPACTO en viralidad
-- Sé directo pero constructivo
+- Sé BRUTALMENTE ESPECÍFICO con timestamps ("en el segundo 2.3, deberías...")
+- Compara frame por frame los primeros 3 segundos
+- Si el usuario NO tiene subtítulos, SIEMPRE debe ser una de las top 3 correcciones
+- Si el usuario tiene planos de más de 4 segundos sin corte, SIEMPRE señálalo
+- Prioriza: HOOK > CORTES > SUBTÍTULOS > RITMO > CONTENIDO > VISUAL
 - Puntuaciones de 0-100
 `;
 }
