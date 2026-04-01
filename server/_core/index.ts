@@ -12,9 +12,9 @@ import { serveStatic, setupVite } from "./vite";
 import { nanoid } from "nanoid";
 import { SignJWT, jwtVerify } from "jose";
 import { parse as parseCookieHeader } from "cookie";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, ONE_DAY_MS, THIRTY_DAYS_MS } from "@shared/const";
 import { ENV } from "./env";
-import { getSessionCookieOptions } from "./cookies";
+import { clearSessionCookie, getSessionCookieOptions } from "./cookies";
 import bcrypt from "bcryptjs";
 import * as db from "../db";
 
@@ -128,7 +128,7 @@ async function startServer() {
     return new TextEncoder().encode(ENV.cookieSecret);
   }
   
-  async function createJwtToken(userId: number, name: string, durationMs: number = ONE_YEAR_MS): Promise<string> {
+  async function createJwtToken(userId: number, name: string, durationMs: number): Promise<string> {
     const expirationSeconds = Math.floor((Date.now() + durationMs) / 1000);
     return new SignJWT({ userId, name })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
@@ -159,7 +159,7 @@ async function startServer() {
       // Update last signed in
       await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
 
-      const sessionDuration = rememberMe ? ONE_YEAR_MS : (1000 * 60 * 60 * 24);
+      const sessionDuration = rememberMe ? THIRTY_DAYS_MS : ONE_DAY_MS;
       const token = await createJwtToken(user.id, user.name || '', sessionDuration);
       const cookieOptions = getSessionCookieOptions(req);
       
@@ -202,9 +202,10 @@ async function startServer() {
         return;
       }
 
-      const token = await createJwtToken(user.id, user.name || '');
+      const sessionDuration = ONE_DAY_MS;
+      const token = await createJwtToken(user.id, user.name || '', sessionDuration);
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: sessionDuration });
       res.json({
         success: true,
         user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -216,8 +217,7 @@ async function startServer() {
   });
 
   app.post('/api/auth/logout', (req, res) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    clearSessionCookie(res, req);
     res.json({ success: true });
   });
 
@@ -237,11 +237,13 @@ async function startServer() {
       const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
       const userId = payload.userId as number;
       if (!userId) {
+        clearSessionCookie(res, req);
         res.json({ user: null });
         return;
       }
       const user = await db.getUserById(userId);
       if (!user) {
+        clearSessionCookie(res, req);
         res.json({ user: null });
         return;
       }
@@ -249,6 +251,7 @@ async function startServer() {
         user: { id: user.id, name: user.name, email: user.email, role: user.role, openId: user.openId },
       });
     } catch {
+      clearSessionCookie(res, req);
       res.json({ user: null });
     }
   });

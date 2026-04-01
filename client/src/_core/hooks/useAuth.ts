@@ -9,6 +9,28 @@ type AuthUser = {
   openId: string;
 };
 
+function parseAuthUser(data: unknown): AuthUser | null {
+  if (!data || typeof data !== "object") return null;
+
+  if ("user" in data) {
+    const nestedUser = (data as { user?: unknown }).user;
+    return parseAuthUser(nestedUser);
+  }
+
+  if (!("id" in data)) return null;
+
+  const candidate = data as Partial<AuthUser>;
+  if (typeof candidate.id !== "number") return null;
+
+  return {
+    id: candidate.id,
+    name: typeof candidate.name === "string" ? candidate.name : null,
+    email: typeof candidate.email === "string" ? candidate.email : null,
+    role: typeof candidate.role === "string" ? candidate.role : "user",
+    openId: typeof candidate.openId === "string" ? candidate.openId : "",
+  };
+}
+
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
   redirectPath?: string;
@@ -36,18 +58,24 @@ export function useAuth(options?: UseAuthOptions) {
         });
         if (!response.ok) {
           setUser(null);
+          localStorage.removeItem("manus-runtime-user-info");
           return;
         }
         const data = await response.json();
         if (!cancelled) {
-          const u = data.user ?? data ?? null;
+          const u = parseAuthUser(data);
           setUser(u);
-          localStorage.setItem("manus-runtime-user-info", JSON.stringify(u));
+          if (u) {
+            localStorage.setItem("manus-runtime-user-info", JSON.stringify(u));
+          } else {
+            localStorage.removeItem("manus-runtime-user-info");
+          }
         }
       } catch (err: any) {
         if (!cancelled) {
           setError(err);
           setUser(null);
+          localStorage.removeItem("manus-runtime-user-info");
         }
       } finally {
         if (!cancelled) {
@@ -77,6 +105,29 @@ export function useAuth(options?: UseAuthOptions) {
 
   const refresh = useCallback(() => {
     setFetchCount(c => c + 1);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleWindowFocus = () => {
+      setFetchCount(c => c + 1);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      setFetchCount(c => c + 1);
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("pageshow", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("pageshow", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const state = useMemo(() => ({

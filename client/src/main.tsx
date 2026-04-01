@@ -7,6 +7,21 @@ import superjson from "superjson";
 import App from "./App";
 import "./index.css";
 
+function injectAnalyticsScript() {
+  if (typeof document === "undefined") return;
+
+  const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT?.trim();
+  const websiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID?.trim();
+
+  if (!analyticsEndpoint || !websiteId) return;
+
+  const script = document.createElement("script");
+  script.defer = true;
+  script.src = `${analyticsEndpoint.replace(/\/$/, "")}/umami`;
+  script.dataset.websiteId = websiteId;
+  document.body.appendChild(script);
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     mutations: {
@@ -62,6 +77,8 @@ const trpcClient = trpc.createClient({
     }),
   ],
 });
+
+injectAnalyticsScript();
 
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>

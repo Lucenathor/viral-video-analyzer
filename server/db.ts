@@ -1,5 +1,6 @@
 import { eq, desc, and, sql, ne, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import type { PoolOptions } from "mysql2";
 import { 
   InsertUser, users, 
   sectors, InsertSector, Sector,
@@ -12,10 +13,53 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+function parseSslOptions(rawSsl: string | null) {
+  if (!rawSsl) return undefined;
+
+  try {
+    const parsed = JSON.parse(rawSsl);
+    return typeof parsed === "object" && parsed !== null ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getEnvSslOptions() {
+  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED;
+  if (rejectUnauthorized === undefined) return undefined;
+
+  return {
+    rejectUnauthorized: rejectUnauthorized === "true",
+  };
+}
+
+function getDatabaseConnectionConfig(databaseUrl: string): string | PoolOptions {
+  try {
+    const url = new URL(databaseUrl);
+    if (url.protocol !== "mysql:") return databaseUrl;
+
+    const ssl = getEnvSslOptions() ?? parseSslOptions(url.searchParams.get("ssl"));
+    if (!ssl) return databaseUrl;
+
+    return {
+      host: url.hostname,
+      port: url.port ? Number(url.port) : 3306,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database: url.pathname.replace(/^\//, ""),
+      ssl,
+    };
+  } catch {
+    return databaseUrl;
+  }
+}
+
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle({
+        connection: getDatabaseConnectionConfig(process.env.DATABASE_URL),
+      });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

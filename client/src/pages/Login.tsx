@@ -24,7 +24,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already logged in
@@ -184,7 +184,7 @@ export default function Login() {
                     className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary/20 cursor-pointer accent-purple-500"
                   />
                   <label htmlFor="rememberMe" className="text-sm text-muted-foreground cursor-pointer select-none">
-                    Recordar sesión (30 días)
+                    Recordar sesión durante 30 días
                   </label>
                 </div>
               )}

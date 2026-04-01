@@ -4,8 +4,8 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
-import { getSessionCookieOptions } from "../_core/cookies";
+import { COOKIE_NAME, ONE_DAY_MS, THIRTY_DAYS_MS } from "@shared/const";
+import { clearSessionCookie, getSessionCookieOptions } from "../_core/cookies";
 import { SignJWT } from "jose";
 import { ENV } from "../_core/env";
 import bcrypt from "bcryptjs";
@@ -15,7 +15,7 @@ function getSessionSecret() {
   return new TextEncoder().encode(ENV.cookieSecret);
 }
 
-async function createSessionToken(userId: number, name: string, durationMs: number = ONE_YEAR_MS): Promise<string> {
+async function createSessionToken(userId: number, name: string, durationMs: number): Promise<string> {
   const secretKey = getSessionSecret();
   const expirationSeconds = Math.floor((Date.now() + durationMs) / 1000);
 
@@ -41,7 +41,7 @@ export const authRouter = router({
     .input(z.object({
       email: z.string().email("Email no válido"),
       password: z.string().min(1, "La contraseña es obligatoria"),
-      rememberMe: z.boolean().default(true),
+      rememberMe: z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
       const user = await db.getUserByEmail(input.email);
@@ -68,7 +68,7 @@ export const authRouter = router({
       });
 
       // Create session token - duration based on rememberMe
-      const sessionDuration = input.rememberMe ? ONE_YEAR_MS : (1000 * 60 * 60 * 24); // 1 year or 24h
+      const sessionDuration = input.rememberMe ? THIRTY_DAYS_MS : ONE_DAY_MS;
       const sessionToken = await createSessionToken(user.id, user.name || "", sessionDuration);
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: sessionDuration });
@@ -123,9 +123,10 @@ export const authRouter = router({
       }
 
       // Create session token and set cookie
-      const sessionToken = await createSessionToken(user.id, user.name || "");
+      const sessionDuration = ONE_DAY_MS;
+      const sessionToken = await createSessionToken(user.id, user.name || "", sessionDuration);
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: sessionDuration });
 
       return {
         success: true,
@@ -142,8 +143,7 @@ export const authRouter = router({
    * Logout - clear session cookie
    */
   logout: publicProcedure.mutation(({ ctx }) => {
-    const cookieOptions = getSessionCookieOptions(ctx.req);
-    ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    clearSessionCookie(ctx.res, ctx.req);
     return { success: true } as const;
   }),
 });

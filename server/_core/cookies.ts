@@ -1,4 +1,5 @@
-import type { CookieOptions, Request } from "express";
+import type { CookieOptions, Request, Response } from "express";
+import { COOKIE_NAME } from "@shared/const";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -18,6 +19,10 @@ function isSecureRequest(req: Request) {
     : forwardedProto.split(",");
 
   return protoList.some(proto => proto.trim().toLowerCase() === "https");
+}
+
+function normalizeHostname(hostname: string) {
+  return hostname.trim().replace(/:\d+$/, "");
 }
 
 /**
@@ -51,7 +56,11 @@ export function getSessionCookieOptions(
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
   // Use X-Forwarded-Host or Host header to get the real hostname (behind proxies like Cloudflare)
   const forwardedHost = req.headers["x-forwarded-host"];
-  const realHost = typeof forwardedHost === "string" ? forwardedHost.split(",")[0].trim() : req.hostname;
+  const requestHost =
+    typeof forwardedHost === "string"
+      ? forwardedHost.split(",")[0].trim()
+      : req.hostname;
+  const realHost = normalizeHostname(requestHost);
   const secure = isSecureRequest(req);
   const domain = getRootDomain(realHost);
   console.log(`[Cookie] hostname=${req.hostname}, x-forwarded-host=${forwardedHost}, realHost=${realHost}, domain=${domain}, secure=${secure}`);
@@ -65,4 +74,18 @@ export function getSessionCookieOptions(
     secure,
     ...(domain ? { domain } : {}),
   };
+}
+
+export function clearSessionCookie(
+  res: Pick<Response, "clearCookie">,
+  req: Request,
+) {
+  const cookieOptions = getSessionCookieOptions(req);
+  const { domain, ...hostOnlyOptions } = cookieOptions;
+
+  res.clearCookie(COOKIE_NAME, { ...hostOnlyOptions, maxAge: -1 });
+
+  if (domain) {
+    res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+  }
 }
