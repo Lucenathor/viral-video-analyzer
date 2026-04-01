@@ -302,3 +302,22 @@
 - [x] Verificado con curl: Set-Cookie header se establece correctamente en login y se borra en logout
 - [x] 138 tests pasan (19 archivos), TypeScript compila sin errores
 - [x] Guardar checkpoint
+
+## Debug: Comparador de vídeos crashea - RESUELTO
+- [x] Leer código backend del comparador (routers, geminiDirect, videoUrlResolver)
+- [x] Leer código frontend del comparador (Analyzer.tsx)
+- [x] Probar endpoint compareUrlVsUpload con curl - descubierto error "Cannot set headers" en login
+- [x] Probar flujo completo en navegador
+- [x] Identificar punto exacto del crash:
+  - Problema 1: videoUrlResolver devolvía HTML de Instagram como fallback cuando API fallaba → Gemini recibía HTML en vez de vídeo
+  - Problema 2: API de Instagram RapidAPI devolvía 429 (rate limit) sin reintentos
+  - Problema 3: No había caché de URLs resueltas, cada intento gastaba una llamada API
+- [x] Corregir todos los errores:
+  - Fix 1: Validación de contenido descargado (magic bytes MP4/WebM/AVI/etc.) - ya no acepta HTML
+  - Fix 2: fetchWithRetry con backoff exponencial (3 intentos, 3s/6s/12s delay)
+  - Fix 3: Caché in-memory de URLs resueltas (5 min TTL)
+  - Fix 4: Mensajes de error específicos: distingue rate limit vs video no encontrado
+  - Fix 5: Detección de rate limit global con cooldown de 30s
+- [x] Verificar end-to-end: comparación completa exitosa via curl (Score: 5 para test pattern)
+- [x] 135/136 tests pasan (1 fallo externo TikTok search API)
+- [x] Guardar checkpoint

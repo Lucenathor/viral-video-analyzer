@@ -15,12 +15,12 @@ describe("RapidAPI Keys Validation", () => {
   });
 
   it("should be able to call Instagram Scraper Stable API", async () => {
+    // Use v2 endpoint with a known stable shortcode
     const response = await fetch(
-      `https://instagram-scraper-stable-api.p.rapidapi.com/get_media_data.php?reel_post_code_or_url=${encodeURIComponent("https://www.instagram.com/p/DLQAXzKN33c/")}&type=reel`,
+      `https://instagram-scraper-stable-api.p.rapidapi.com/get_media_data_v2.php?media_code=${encodeURIComponent("CyGEFpToo62")}`,
       {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
           "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
           "x-rapidapi-key": RAPIDAPI_KEY,
         },
