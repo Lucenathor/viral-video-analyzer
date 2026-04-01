@@ -132,8 +132,8 @@ const correctionSchema = {
 const comparisonSchema = {
   type: Type.OBJECT,
   properties: {
-    similarityScore: { type: Type.NUMBER, description: "Similarity score 0-100" },
-    generalVerdict: { type: Type.STRING, description: "General verdict paragraph in Spanish" },
+    similarityScore: { type: Type.NUMBER, description: "Content/style similarity score 0-100: how closely the user replicated the viral's structure, theme, narrative approach, and style. NOT technical quality. Two unrelated videos = 0-20. Same topic different approach = 20-50. Similar structure/style = 50-80. Near replica = 80-100." },
+    generalVerdict: { type: Type.STRING, description: "General verdict paragraph in Spanish explaining how similar the user's video is to the viral in terms of content, style, and structure. If videos are about completely different topics, say so clearly." },
     scores: {
       type: Type.OBJECT,
       properties: {
@@ -191,14 +191,27 @@ ${viralAnalysis}
 ${userAnalysis}
 
 INSTRUCCIONES DE COMPARACIÓN:
+
+**SCORE DE SIMILITUD (similarityScore):**
+Este score mide CUÁNTO SE PARECE el vídeo del usuario al viral en CONTENIDO, ESTILO Y ESTRUCTURA.
+NO mide la calidad técnica del vídeo del usuario.
+- 0-20: Vídeos COMPLETAMENTE DIFERENTES (distinto tema, sector, estilo, narrativa)
+- 20-40: Mismo sector pero enfoque/estilo MUY diferente
+- 40-60: Estructura similar pero contenido diferente
+- 60-80: Misma estructura Y estilo, contenido relacionado
+- 80-100: Réplica casi exacta del viral (mismo concepto, misma estructura, mismo estilo)
+
+Si los vídeos hablan de temas totalmente diferentes (ej: uno de cáncer/superación y otro de estética facial), la similitud DEBE ser BAJA (0-25) aunque ambos tengan buena calidad técnica.
+
+**COMPARACIÓN POR CATEGORÍAS:**
 1. Compara CADA categoría: Hook, Subtítulos, Ritmo/Cortes, Contenido, Visual, CTA
 2. Para cada categoría explica: qué hace el viral, qué hace el usuario, qué falta, cómo corregirlo con timestamps exactos
-3. Da un score de similitud 0-100 (100 = idéntico)
-4. Lista las 7 correcciones más importantes ordenadas por prioridad
+3. Los scores por categoría (general, hook, ritmo, engagement, etc.) SÍ miden la calidad técnica del vídeo del usuario
+4. Lista las 7 correcciones más importantes para que el usuario REPLIQUE mejor el estilo del viral
 5. Lista 3-5 cosas que el usuario ya hace bien
 
 Sé EXTREMADAMENTE específico. Usa timestamps exactos. Cada corrección debe ser accionable.
-El veredicto general debe ser un párrafo completo explicando la comparación.
+El veredicto general debe explicar: ¿cuánto se parece tu vídeo al viral? ¿Qué elementos has replicado? ¿Qué te falta para acercarte más?
 Responde SIEMPRE en español.`;
 }
 

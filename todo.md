@@ -259,3 +259,25 @@
 - [x] GEMINI_API_KEY configurado como secret del proyecto
 - [x] 136 tests pasan, TypeScript compila sin errores
 - [x] Guardar checkpoint
+
+## Fix: Error JSON persistente en comparación de vídeos (PRODUCCIÓN) - RESUELTO
+- [x] Diagnosticado: Forge LLM proxy devolvía 503 'Service Unavailable' en vez de JSON
+- [x] Solución: reemplazado Forge proxy por Gemini Direct API (@google/genai SDK)
+- [x] Retry + error handling bulletproof implementado
+- [x] Probado end-to-end desde navegador con URL Instagram + vídeo subido
+- [x] Guardar checkpoint
+
+## Quitar Manus OAuth - Solo login con contraseña - RESUELTO
+- [x] OAuth de Manus ya estaba eliminado del servidor (authRouter.ts con bcrypt+JWT)
+- [x] Frontend solo tiene formulario email/contraseña (Login.tsx)
+- [x] Cuenta admin: admin@viralpro.io / ViralPro2024!
+- [x] Login verificado en servidor de desarrollo
+- [x] Fix JSON parse error resuelto con Gemini Direct API
+- [x] Test end-to-end completo con URL Instagram + vídeo subido OK
+
+## Fix: Similitud debe reflejar contenido real, no calidad técnica - RESUELTO
+- [x] Corregido prompt: similitud = cuánto replicas el viral en contenido/estilo/narrativa
+- [x] Vídeos diferentes ahora dan similitud baja: 20/100 (antes 88/100)
+- [x] Scores técnicos separados (calidad individual de cada vídeo)
+- [x] Probado: Instagram viral (cáncer) vs AD1 (estética facial) = 20/100 similitud
+- [x] Guardar checkpoint y publicar
