@@ -281,3 +281,13 @@
 - [x] Scores técnicos separados (calidad individual de cada vídeo)
 - [x] Probado: Instagram viral (cáncer) vs AD1 (estética facial) = 20/100 similitud
 - [x] Guardar checkpoint y publicar
+
+## Fix: Login en producción no guarda cookie (Domain=.run.app) - RESUELTO
+- [x] Diagnosticado: cookie se establecía con Domain=.run.app en vez de .viralpro.io
+- [x] Causa raíz: Express req.hostname devolvía el hostname interno de Cloud Run, no el dominio real del usuario
+- [x] Fix 1: cookies.ts - getSessionCookieOptions ahora usa X-Forwarded-Host header para obtener el hostname real
+- [x] Fix 2: cookies.ts - getRootDomain ahora excluye dominios .run.app (Cloud Run internos)
+- [x] Fix 3: index.ts - añadido app.set('trust proxy', true) para que Express confíe en headers de proxy
+- [x] Logging añadido: muestra hostname, x-forwarded-host, realHost y domain calculado
+- [x] 137 tests pasan (1 fallo externo TikTok search API, no relacionado)
+- [x] Guardar checkpoint

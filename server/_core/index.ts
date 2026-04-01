@@ -38,6 +38,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  // Trust proxy headers (X-Forwarded-Host, X-Forwarded-Proto, etc.) from Cloudflare/Cloud Run
+  app.set('trust proxy', true);
   const server = createServer(app);
   
   // Stripe webhook - MUST be before express.json() middleware for raw body

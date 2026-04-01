@@ -33,10 +33,15 @@ function getRootDomain(hostname: string): string | undefined {
     return undefined;
   }
 
+  // For internal Cloud Run domains, don't set domain
+  if (hostname.includes("run.app")) {
+    return undefined;
+  }
+
   // For custom domains like viralpro.io, set the root domain
   const parts = hostname.split(".");
   if (parts.length >= 2) {
-    return `.${parts.slice(-2).join(".")}`;
+    return `.${parts.slice(-2).join(".")}`;  
   }
   return undefined;
 }
@@ -44,9 +49,12 @@ function getRootDomain(hostname: string): string | undefined {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  const hostname = req.hostname;
+  // Use X-Forwarded-Host or Host header to get the real hostname (behind proxies like Cloudflare)
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const realHost = typeof forwardedHost === "string" ? forwardedHost.split(",")[0].trim() : req.hostname;
   const secure = isSecureRequest(req);
-  const domain = getRootDomain(hostname);
+  const domain = getRootDomain(realHost);
+  console.log(`[Cookie] hostname=${req.hostname}, x-forwarded-host=${forwardedHost}, realHost=${realHost}, domain=${domain}, secure=${secure}`);
 
   return {
     httpOnly: true,
