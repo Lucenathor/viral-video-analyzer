@@ -321,3 +321,17 @@
 - [x] Verificar end-to-end: comparación completa exitosa via curl (Score: 5 para test pattern)
 - [x] 135/136 tests pasan (1 fallo externo TikTok search API)
 - [x] Guardar checkpoint
+
+## Fix: Sesión expirada durante subida de vídeo en comparador - RESUELTO
+- [x] Investigar dónde se dispara: línea 80 de index.ts, endpoint /api/upload-video devuelve 401 "Sesión expirada" cuando JWT falla
+- [x] Causa raíz: la versión publicada NO tiene los endpoints directos de auth (/api/auth/login, /api/auth/me, etc.)
+- [x] En producción, /api/auth/me devuelve HTML en vez de JSON = versión antigua sin los fixes
+- [x] Fix 1: Añadido xhr.withCredentials = true al XHR de upload en Analyzer.tsx
+- [x] Fix 2: Mejor manejo de error 401 en upload: toast + redirect a /login automático
+- [x] Fix 3: Mejor manejo de error 413 (archivo demasiado grande)
+- [x] Fix 4: Logging detallado en endpoint de upload para diagnosticar problemas de auth
+- [x] Fix 5: Mensajes de error más descriptivos ("cierra sesión y vuelve a iniciar")
+- [x] Verificado con curl: upload funciona con cookie, devuelve 401 sin cookie
+- [x] 135/136 tests pasan (1 fallo externo TikTok search API)
+- [x] IMPORTANTE: El usuario debe hacer Publish para que los cambios estén en producción
+- [x] Guardar checkpoint

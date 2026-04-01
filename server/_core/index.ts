@@ -60,14 +60,17 @@ async function startServer() {
     try {
       // Verify auth using same method as context.ts
       const cookieHeader = req.headers.cookie;
+      console.log(`[Upload] Auth check - has cookie header: ${!!cookieHeader}, cookie names: ${cookieHeader ? Object.keys(parseCookieHeader(cookieHeader)).join(',') : 'none'}`);
       if (!cookieHeader) {
-        res.status(401).json({ error: 'No autenticado' });
+        console.log('[Upload] No cookie header in request');
+        res.status(401).json({ error: 'No autenticado - no se recibieron cookies. Intenta cerrar sesión y volver a iniciar sesión.' });
         return;
       }
       const cookies = parseCookieHeader(cookieHeader);
       const token = cookies[COOKIE_NAME];
       if (!token) {
-        res.status(401).json({ error: 'No autenticado' });
+        console.log(`[Upload] Cookie '${COOKIE_NAME}' not found. Available cookies: ${Object.keys(cookies).join(', ')}`);
+        res.status(401).json({ error: 'No autenticado - cookie de sesión no encontrada. Intenta cerrar sesión y volver a iniciar sesión.' });
         return;
       }
       let userId: number;
@@ -76,8 +79,10 @@ async function startServer() {
         const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] });
         userId = payload.userId as number;
         if (!userId) throw new Error('No userId in token');
-      } catch {
-        res.status(401).json({ error: 'Sesión expirada' });
+        console.log(`[Upload] Auth OK - userId: ${userId}`);
+      } catch (jwtErr: any) {
+        console.log(`[Upload] JWT verification failed: ${jwtErr.message}`);
+        res.status(401).json({ error: 'Sesión expirada. Por favor, cierra sesión y vuelve a iniciar sesión.' });
         return;
       }
 

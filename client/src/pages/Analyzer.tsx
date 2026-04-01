@@ -214,6 +214,13 @@ export default function Analyzer() {
               } catch {
                 reject(new Error('Respuesta invalida del servidor'));
               }
+            } else if (xhr.status === 401) {
+              // Session expired or cookie not sent - redirect to login
+              toast.error('Tu sesión ha expirado. Vuelve a iniciar sesión.');
+              setTimeout(() => { window.location.href = '/login'; }, 1500);
+              reject(new Error('Sesión expirada'));
+            } else if (xhr.status === 413) {
+              reject(new Error('El archivo es demasiado grande para el servidor. Intenta con un video más pequeño.'));
             } else {
               try {
                 const err = JSON.parse(xhr.responseText);
@@ -226,6 +233,7 @@ export default function Analyzer() {
           xhr.addEventListener('error', () => reject(new Error('Error de red al subir el video.')));
           xhr.addEventListener('timeout', () => reject(new Error('Timeout al subir el video.')));
           xhr.open('POST', '/api/upload-video');
+          xhr.withCredentials = true;
           xhr.timeout = 5 * 60 * 1000;
           xhr.send(formData);
         });
