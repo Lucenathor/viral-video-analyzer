@@ -249,3 +249,13 @@
 - [x] Eliminada dependencia de FFmpeg para extracción de frames (ya no necesario)
 - [x] 136 tests pasan (18 archivos), TypeScript compila sin errores
 - [x] Guardar checkpoint
+
+## Fix: Service Unavailable / JSON parse error en comparación - RESUELTO
+- [x] Reemplazar Forge LLM proxy por Gemini API directa (@google/genai SDK)
+- [x] Creado geminiDirect.ts con analyzeVideoWithGemini y compareVideosWithGemini
+- [x] Pipeline V3: 3 pasos con Gemini Direct (viral file_url → user file_url → comparar texto)
+- [x] Manejar errores 503/timeout del LLM sin crashear el frontend
+- [x] Probado end-to-end: similitud 95/100, análisis con timestamps exactos, 110.8s total
+- [x] GEMINI_API_KEY configurado como secret del proyecto
+- [x] 136 tests pasan, TypeScript compila sin errores
+- [x] Guardar checkpoint

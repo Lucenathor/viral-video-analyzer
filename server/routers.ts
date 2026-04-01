@@ -17,6 +17,7 @@ import { performFullAnalysis, cleanupAnalysis, FullVideoAnalysis } from "./servi
 import { transcribeAudioFile, formatTranscriptionWithTimestamps, extractKeyMoments } from './services/audioTranscription';
 import { resolveVideoUrl, downloadResolvedVideo } from './services/videoUrlResolver';
 import { extractFrames, cleanupFrames, ExtractedFrame } from './services/videoFrameExtractor';
+import { analyzeVideoWithGemini, compareVideosWithGemini, formatAnalysisForComparison } from './services/geminiDirect';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -1446,7 +1447,7 @@ REGLAS:
           throw new Error(error.message || 'Error durante la comparación por URL');
         }
       }),
-    // Compare viral URL vs uploaded user video - V2: sends FULL videos to Gemini via file_url
+    // Compare viral URL vs uploaded user video - V3: uses Gemini Direct API (no Forge proxy)
     compareUrlVsUpload: protectedProcedure
       .input(z.object({
         viralUrl: z.string().url("URL del vídeo viral no válida"),
@@ -1456,45 +1457,39 @@ REGLAS:
         userFileSize: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
-        plog('[CompareV2] ====== STARTING V2 COMPARISON (FULL VIDEO via file_url) ======');
-        plog('[CompareV2] User: ' + ctx.user.id);
-        plog('[CompareV2] Viral URL: ' + input.viralUrl);
-        plog('[CompareV2] User file key: ' + input.userFileKey);
-        
-        const tempFiles: string[] = []; // Track temp files for cleanup
+        plog('[CompareV3] ====== STARTING V3 COMPARISON (Gemini Direct API) ======');
+        plog('[CompareV3] User: ' + ctx.user.id);
+        plog('[CompareV3] Viral URL: ' + input.viralUrl);
+        plog('[CompareV3] User file key: ' + input.userFileKey);
         
         try {
           // ===== STEP 1: RESOLVE VIRAL VIDEO URL =====
-          plog('[CompareV2] Step 1: Resolving viral video URL...');
+          plog('[CompareV3] Step 1: Resolving viral video URL...');
           const resolvedViral = await resolveVideoUrl(input.viralUrl);
-          plog(`[CompareV2] Viral resolved: platform=${resolvedViral.platform}, url=${resolvedViral.directUrl.substring(0, 80)}...`);
-          if (resolvedViral.metadata) {
-            console.log(`[CompareV2] Viral metadata: duration=${resolvedViral.metadata.duration}s, author=${resolvedViral.metadata.author}`);
-          }
+          plog(`[CompareV3] Viral resolved: platform=${resolvedViral.platform}, url=${resolvedViral.directUrl.substring(0, 80)}...`);
           
           // ===== STEP 2: DOWNLOAD VIRAL VIDEO & UPLOAD TO S3 =====
-          plog('[CompareV2] Step 2: Downloading viral video and uploading to S3...');
+          plog('[CompareV3] Step 2: Downloading viral video and uploading to S3...');
           let viralFileSize = 0;
           let viralS3Url = '';
           try {
             const viralBuffer = await downloadResolvedVideo(resolvedViral);
             viralFileSize = viralBuffer.length;
-            plog(`[CompareV2] Viral downloaded: ${(viralFileSize / 1024 / 1024).toFixed(2)} MB`);
+            plog(`[CompareV3] Viral downloaded: ${(viralFileSize / 1024 / 1024).toFixed(2)} MB`);
             
-            // Upload viral video to S3 so Gemini can access it via URL
             const viralKey = `analysis/viral-${nanoid()}.mp4`;
             const { url } = await storagePut(viralKey, viralBuffer, 'video/mp4');
             viralS3Url = url;
-            plog(`[CompareV2] Viral uploaded to S3: ${viralS3Url.substring(0, 80)}...`);
+            plog(`[CompareV3] Viral uploaded to S3: ${viralS3Url.substring(0, 80)}...`);
           } catch (dlErr: any) {
-            plog('[CompareV2] FAILED to download viral: ' + dlErr.message);
-            throw new Error(`No se pudo descargar el v\u00eddeo viral: ${dlErr.message}. Verifica que la URL sea correcta y el v\u00eddeo sea p\u00fablico.`);
+            plog('[CompareV3] FAILED to download viral: ' + dlErr.message);
+            throw new Error(`No se pudo descargar el vídeo viral: ${dlErr.message}. Verifica que la URL sea correcta y el vídeo sea público.`);
           }
           
           // ===== STEP 3: GET USER VIDEO S3 URL =====
-          plog('[CompareV2] Step 3: Getting user video S3 URL...');
+          plog('[CompareV3] Step 3: Getting user video S3 URL...');
           const { url: userS3Url } = await storageGet(input.userFileKey);
-          plog(`[CompareV2] User video S3 URL: ${userS3Url.substring(0, 80)}...`);
+          plog(`[CompareV3] User video S3 URL: ${userS3Url.substring(0, 80)}...`);
           
           // Create video records in DB
           const viralVideoId = await db.createVideo({
@@ -1517,76 +1512,6 @@ REGLAS:
             videoType: 'user_video',
           });
           
-          // ===== STEP 4: ANALYZE VIRAL VIDEO WITH GEMINI (FULL VIDEO via file_url) =====
-          plog('[CompareV2] Step 4: Analyzing viral video with Gemini (FULL VIDEO via file_url)...');
-          const viralAnalysisStart = Date.now();
-          
-          // Build content with file_url - Gemini sees the ENTIRE video natively
-          let viralPromptText = `Analiza este v\u00eddeo viral de referencia. Se te env\u00eda el V\u00cdDEO COMPLETO para que lo analices frame a frame.`;
-          if (resolvedViral.metadata?.caption) viralPromptText += ` Caption: "${resolvedViral.metadata.caption.substring(0, 200)}"`;
-          if (resolvedViral.metadata?.author) viralPromptText += ` Autor: @${resolvedViral.metadata.author}`;
-          if (resolvedViral.metadata?.viewCount) viralPromptText += ` Views: ${resolvedViral.metadata.viewCount}`;
-          
-          const viralUserContent: any[] = [
-            { type: 'file_url', file_url: { url: viralS3Url, mime_type: 'video/mp4' as const } },
-            { type: 'text', text: viralPromptText }
-          ];
-          
-          plog(`[CompareV2] Sending viral video to Gemini via file_url: ${viralS3Url.substring(0, 60)}...`);
-          
-          const viralGeminiResponse = await invokeLLM({
-            messages: [
-              { role: 'system', content: buildDirectVideoAnalysisPrompt() },
-              { role: 'user', content: viralUserContent }
-            ],
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'viral_analysis',
-                strict: true,
-                schema: {
-                  type: 'object',
-                  properties: {
-                    hookAnalysis: { type: 'string' },
-                    structureBreakdown: { type: 'string' },
-                    viralityFactors: { type: 'string' },
-                    improvementSuggestions: { type: 'string' },
-                    summary: { type: 'string' },
-                    overallScore: { type: 'number' },
-                    hookScore: { type: 'number' },
-                    pacingScore: { type: 'number' },
-                    engagementScore: { type: 'number' },
-                    contentScore: { type: 'number' },
-                    visualScore: { type: 'number' },
-                    audioScore: { type: 'number' },
-                    ctaScore: { type: 'number' },
-                    subtitleAnalysis: { type: 'string' },
-                    cutAnalysis: { type: 'string' },
-                    topMoments: { type: 'string' },
-                    weakMoments: { type: 'string' },
-                    viralPotential: { type: 'string' },
-                    targetAudience: { type: 'string' },
-                    platformOptimization: { type: 'string' }
-                  },
-                  required: ['hookAnalysis', 'structureBreakdown', 'viralityFactors', 'improvementSuggestions', 'summary', 'overallScore', 'hookScore', 'pacingScore', 'engagementScore', 'contentScore', 'visualScore', 'audioScore', 'ctaScore', 'subtitleAnalysis', 'cutAnalysis', 'topMoments', 'weakMoments', 'viralPotential', 'targetAudience', 'platformOptimization'],
-                  additionalProperties: false
-                }
-              }
-            }
-          });
-          
-          plog(`[CompareV2] Viral analysis done in ${((Date.now() - viralAnalysisStart) / 1000).toFixed(1)}s`);
-          
-          if (!viralGeminiResponse.choices || !viralGeminiResponse.choices[0]) {
-            plog('[CompareV2] Gemini returned no choices for viral analysis: ' + JSON.stringify(viralGeminiResponse).substring(0, 500));
-            throw new Error('El modelo de IA no pudo analizar el v\u00eddeo viral. Intenta con un v\u00eddeo m\u00e1s corto o en formato MP4.');
-          }
-          
-          const viralContent = viralGeminiResponse.choices[0].message.content;
-          let viralAnalysisData: any;
-          if (typeof viralContent === 'string') viralAnalysisData = JSON.parse(viralContent);
-          else viralAnalysisData = viralContent;
-          
           const normalizeScore = (s: number | undefined): number => {
             if (s === undefined || s === null) return 50;
             if (s > 100) return Math.min(100, Math.round(s / 10));
@@ -1594,12 +1519,13 @@ REGLAS:
             return Math.round(s);
           };
           
-          viralAnalysisData.overallScore = normalizeScore(viralAnalysisData.overallScore);
-          viralAnalysisData.hookScore = normalizeScore(viralAnalysisData.hookScore);
-          viralAnalysisData.pacingScore = normalizeScore(viralAnalysisData.pacingScore);
-          viralAnalysisData.engagementScore = normalizeScore(viralAnalysisData.engagementScore);
+          // ===== STEP 4: ANALYZE VIRAL VIDEO WITH GEMINI DIRECT =====
+          plog('[CompareV3] Step 4: Analyzing viral video with Gemini Direct API...');
+          const viralAnalysisStart = Date.now();
+          const viralAnalysis = await analyzeVideoWithGemini(viralS3Url, 'video/mp4');
+          plog(`[CompareV3] Viral analysis done in ${((Date.now() - viralAnalysisStart) / 1000).toFixed(1)}s - Score: ${viralAnalysis.score}`);
           
-          // Save viral analysis
+          // Save viral analysis to DB
           const viralAnalysisId = await db.createVideoAnalysis({
             videoId: viralVideoId,
             userId: ctx.user.id,
@@ -1608,86 +1534,24 @@ REGLAS:
           });
           await db.updateVideoAnalysis(viralAnalysisId, {
             status: 'completed',
-            hookAnalysis: viralAnalysisData.hookAnalysis,
-            structureBreakdown: viralAnalysisData.structureBreakdown,
-            viralityFactors: viralAnalysisData.viralityFactors,
-            summary: viralAnalysisData.summary,
-            overallScore: viralAnalysisData.overallScore,
-            hookScore: viralAnalysisData.hookScore,
-            pacingScore: viralAnalysisData.pacingScore,
-            engagementScore: viralAnalysisData.engagementScore,
+            hookAnalysis: viralAnalysis.hookAnalysis,
+            structureBreakdown: viralAnalysis.ritmoAnalysis,
+            viralityFactors: viralAnalysis.contenidoAnalysis,
+            summary: `Score: ${viralAnalysis.score}/100 | Hook: ${viralAnalysis.hookScore}/100`,
+            overallScore: normalizeScore(viralAnalysis.score),
+            hookScore: normalizeScore(viralAnalysis.hookScore),
+            pacingScore: normalizeScore(viralAnalysis.ritmoScore),
+            engagementScore: normalizeScore(viralAnalysis.engagementScore),
           });
           
-          // ===== STEP 5: ANALYZE USER VIDEO WITH GEMINI (FULL VIDEO via file_url) =====
-          plog('[CompareV2] Step 5: Analyzing user video with Gemini (FULL VIDEO via file_url)...');
+          // ===== STEP 5: ANALYZE USER VIDEO WITH GEMINI DIRECT =====
+          plog('[CompareV3] Step 5: Analyzing user video with Gemini Direct API...');
           const userAnalysisStart = Date.now();
+          const userAnalysis = await analyzeVideoWithGemini(userS3Url, 'video/mp4');
+          plog(`[CompareV3] User analysis done in ${((Date.now() - userAnalysisStart) / 1000).toFixed(1)}s - Score: ${userAnalysis.score}`);
           
-          const userAnalysisPromptText = `Analiza este vídeo del usuario. Se te envía el VÍDEO COMPLETO para que lo analices frame a frame. Nombre del archivo: "${input.userFileName}".`;
-          
-          const userVideoContent: any[] = [
-            { type: 'file_url', file_url: { url: userS3Url, mime_type: 'video/mp4' as const } },
-            { type: 'text', text: userAnalysisPromptText }
-          ];
-          
-          plog(`[CompareV2] Sending user video to Gemini via file_url: ${userS3Url.substring(0, 60)}...`);
-          
-          const userGeminiResponse = await invokeLLM({
-            messages: [
-              { role: 'system', content: buildDirectVideoAnalysisPrompt() },
-              { role: 'user', content: userVideoContent }
-            ],
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'user_video_analysis',
-                strict: true,
-                schema: {
-                  type: 'object',
-                  properties: {
-                    hookAnalysis: { type: 'string' },
-                    structureBreakdown: { type: 'string' },
-                    viralityFactors: { type: 'string' },
-                    improvementSuggestions: { type: 'string' },
-                    summary: { type: 'string' },
-                    overallScore: { type: 'number' },
-                    hookScore: { type: 'number' },
-                    pacingScore: { type: 'number' },
-                    engagementScore: { type: 'number' },
-                    contentScore: { type: 'number' },
-                    visualScore: { type: 'number' },
-                    audioScore: { type: 'number' },
-                    ctaScore: { type: 'number' },
-                    subtitleAnalysis: { type: 'string' },
-                    cutAnalysis: { type: 'string' },
-                    topMoments: { type: 'string' },
-                    weakMoments: { type: 'string' },
-                    viralPotential: { type: 'string' },
-                    targetAudience: { type: 'string' },
-                    platformOptimization: { type: 'string' }
-                  },
-                  required: ['hookAnalysis', 'structureBreakdown', 'viralityFactors', 'improvementSuggestions', 'summary', 'overallScore', 'hookScore', 'pacingScore', 'engagementScore', 'contentScore', 'visualScore', 'audioScore', 'ctaScore', 'subtitleAnalysis', 'cutAnalysis', 'topMoments', 'weakMoments', 'viralPotential', 'targetAudience', 'platformOptimization'],
-                  additionalProperties: false
-                }
-              }
-            }
-          });
-          
-          plog(`[CompareV2] User video analysis done in ${((Date.now() - userAnalysisStart) / 1000).toFixed(1)}s`);
-          
-          if (!userGeminiResponse.choices || !userGeminiResponse.choices[0]) {
-            plog('[CompareV2] Gemini returned no choices for user analysis: ' + JSON.stringify(userGeminiResponse).substring(0, 500));
-            throw new Error('El modelo de IA no pudo analizar tu vídeo. Intenta con un vídeo más corto o en formato MP4.');
-          }
-          
-          const userContent = userGeminiResponse.choices[0].message.content;
-          let userAnalysisData: any;
-          if (typeof userContent === 'string') userAnalysisData = JSON.parse(userContent);
-          else userAnalysisData = userContent;
-          
-          plog(`[CompareV2] User video analyzed: score=${userAnalysisData.overallScore}, hook=${userAnalysisData.hookScore}`);
-          
-          // ===== STEP 6: FINAL COMPARISON (text-only with both detailed analyses) =====
-          plog('[CompareV2] Step 6: Running final comparison with both analyses...');
+          // ===== STEP 6: COMPARE BOTH ANALYSES WITH GEMINI DIRECT =====
+          plog('[CompareV3] Step 6: Running comparison with Gemini Direct API...');
           const compStart = Date.now();
           
           const comparisonId = await db.createVideoAnalysis({
@@ -1698,231 +1562,107 @@ REGLAS:
             comparisonVideoId: viralVideoId,
           });
           
-          // Build rich text context from BOTH video analyses
-          const fullComparisonPrompt = `
-=== ANÁLISIS COMPLETO DEL VÍDEO VIRAL DE REFERENCIA ===
-Puntuación general: ${viralAnalysisData.overallScore}/100 | Hook: ${viralAnalysisData.hookScore}/100 | Ritmo: ${viralAnalysisData.pacingScore}/100 | Engagement: ${viralAnalysisData.engagementScore}/100
-Hook: ${viralAnalysisData.hookAnalysis}
-Estructura: ${viralAnalysisData.structureBreakdown}
-Factores de viralidad: ${viralAnalysisData.viralityFactors}
-Subtítulos: ${viralAnalysisData.subtitleAnalysis}
-Cortes: ${viralAnalysisData.cutAnalysis}
-Mejores momentos: ${viralAnalysisData.topMoments}
-Momentos débiles: ${viralAnalysisData.weakMoments}
-Potencial viral: ${viralAnalysisData.viralPotential}
-Audiencia: ${viralAnalysisData.targetAudience}
-Optimización: ${viralAnalysisData.platformOptimization}
-Resumen: ${viralAnalysisData.summary}
-
-=== ANÁLISIS COMPLETO DEL VÍDEO DEL USUARIO ("${input.userFileName}") ===
-Puntuación general: ${userAnalysisData.overallScore}/100 | Hook: ${userAnalysisData.hookScore}/100 | Ritmo: ${userAnalysisData.pacingScore}/100 | Engagement: ${userAnalysisData.engagementScore}/100
-Hook: ${userAnalysisData.hookAnalysis}
-Estructura: ${userAnalysisData.structureBreakdown}
-Factores de viralidad: ${userAnalysisData.viralityFactors}
-Subtítulos: ${userAnalysisData.subtitleAnalysis}
-Cortes: ${userAnalysisData.cutAnalysis}
-Mejores momentos: ${userAnalysisData.topMoments}
-Momentos débiles: ${userAnalysisData.weakMoments}
-Potencial viral: ${userAnalysisData.viralPotential}
-Audiencia: ${userAnalysisData.targetAudience}
-Optimización: ${userAnalysisData.platformOptimization}
-Sugerencias de mejora: ${userAnalysisData.improvementSuggestions}
-Resumen: ${userAnalysisData.summary}
-
-Con base en estos dos análisis detallados (ambos vídeos fueron analizados frame a frame por IA), genera una comparación exhaustiva. Identifica exactamente qué hace diferente el viral vs el vídeo del usuario, y da correcciones ESPECÍFICAS con timestamps.`;
+          const viralText = formatAnalysisForComparison(viralAnalysis);
+          const userText = formatAnalysisForComparison(userAnalysis);
+          const comparison = await compareVideosWithGemini(viralText, userText);
+          plog(`[CompareV3] Comparison done in ${((Date.now() - compStart) / 1000).toFixed(1)}s - Similarity: ${comparison.similarityScore}`);
           
-          plog('[CompareV2] Sending comparison prompt (text-only with both analyses)');
-          
-          const compResponse = await invokeLLM({
-            messages: [
-              { role: 'system', content: buildDirectVideoComparisonPrompt(viralAnalysisData) },
-              { role: 'user', content: fullComparisonPrompt }
-            ],
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'video_comparison',
-                strict: true,
-                schema: {
-                  type: 'object',
-                  properties: {
-                    overallVerdict: { type: 'string' },
-                    similarityScore: { type: 'number' },
-                    hookComparison: {
-                      type: 'object',
-                      properties: {
-                        hookScore: { type: 'number' },
-                        viralHookSummary: { type: 'string' },
-                        userHookAnalysis: { type: 'string' },
-                        whatsMissing: { type: 'string' },
-                        fixInstructions: { type: 'string' }
-                      },
-                      required: ['hookScore', 'viralHookSummary', 'userHookAnalysis', 'whatsMissing', 'fixInstructions'],
-                      additionalProperties: false
-                    },
-                    pacingComparison: {
-                      type: 'object',
-                      properties: {
-                        pacingScore: { type: 'number' },
-                        viralPacingSummary: { type: 'string' },
-                        userPacingAnalysis: { type: 'string' },
-                        whatsMissing: { type: 'string' },
-                        fixInstructions: { type: 'string' }
-                      },
-                      required: ['pacingScore', 'viralPacingSummary', 'userPacingAnalysis', 'whatsMissing', 'fixInstructions'],
-                      additionalProperties: false
-                    },
-                    subtitleComparison: {
-                      type: 'object',
-                      properties: {
-                        subtitleScore: { type: 'number' },
-                        viralSubtitleSummary: { type: 'string' },
-                        userSubtitleAnalysis: { type: 'string' },
-                        whatsMissing: { type: 'string' },
-                        fixInstructions: { type: 'string' }
-                      },
-                      required: ['subtitleScore', 'viralSubtitleSummary', 'userSubtitleAnalysis', 'whatsMissing', 'fixInstructions'],
-                      additionalProperties: false
-                    },
-                    contentComparison: {
-                      type: 'object',
-                      properties: {
-                        contentScore: { type: 'number' },
-                        viralContentSummary: { type: 'string' },
-                        userContentAnalysis: { type: 'string' },
-                        whatsMissing: { type: 'string' },
-                        fixInstructions: { type: 'string' }
-                      },
-                      required: ['contentScore', 'viralContentSummary', 'userContentAnalysis', 'whatsMissing', 'fixInstructions'],
-                      additionalProperties: false
-                    },
-                    visualComparison: {
-                      type: 'object',
-                      properties: {
-                        visualScore: { type: 'number' },
-                        viralVisualSummary: { type: 'string' },
-                        userVisualAnalysis: { type: 'string' },
-                        whatsMissing: { type: 'string' },
-                        fixInstructions: { type: 'string' }
-                      },
-                      required: ['visualScore', 'viralVisualSummary', 'userVisualAnalysis', 'whatsMissing', 'fixInstructions'],
-                      additionalProperties: false
-                    },
-                    ctaComparison: {
-                      type: 'object',
-                      properties: {
-                        ctaScore: { type: 'number' },
-                        viralCtaSummary: { type: 'string' },
-                        userCtaAnalysis: { type: 'string' },
-                        whatsMissing: { type: 'string' },
-                        fixInstructions: { type: 'string' }
-                      },
-                      required: ['ctaScore', 'viralCtaSummary', 'userCtaAnalysis', 'whatsMissing', 'fixInstructions'],
-                      additionalProperties: false
-                    },
-                    topCorrections: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          priority: { type: 'number' },
-                          title: { type: 'string' },
-                          category: { type: 'string' },
-                          timestamp: { type: 'string' },
-                          currentIssue: { type: 'string' },
-                          exactFix: { type: 'string' },
-                          expectedImpact: { type: 'string' }
-                        },
-                        required: ['priority', 'title', 'category', 'timestamp', 'currentIssue', 'exactFix', 'expectedImpact'],
-                        additionalProperties: false
-                      }
-                    },
-                    whatWorksWell: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          aspect: { type: 'string' }, detail: { type: 'string' }
-                        },
-                        required: ['aspect', 'detail'],
-                        additionalProperties: false
-                      }
-                    },
-                    overallScore: { type: 'number' },
-                    hookScore: { type: 'number' },
-                    pacingScore: { type: 'number' },
-                    engagementScore: { type: 'number' },
-                    subtitleScore: { type: 'number' },
-                    cutScore: { type: 'number' }
-                  },
-                  required: ['overallVerdict', 'similarityScore', 'hookComparison', 'pacingComparison', 'subtitleComparison', 'contentComparison', 'visualComparison', 'ctaComparison', 'topCorrections', 'whatWorksWell', 'overallScore', 'hookScore', 'pacingScore', 'engagementScore', 'subtitleScore', 'cutScore'],
-                  additionalProperties: false
-                }
-              }
-            }
-          });
-          
-          plog(`[CompareV2] Comparison done in ${((Date.now() - compStart) / 1000).toFixed(1)}s`);
-          
-          if (!compResponse.choices || !compResponse.choices[0]) {
-            plog('[CompareV2] Gemini returned no choices for comparison: ' + JSON.stringify(compResponse).substring(0, 500));
-            throw new Error('El modelo de IA no pudo completar la comparaci\u00f3n. Intenta de nuevo.');
-          }
-          
-          const compContent = compResponse.choices[0].message.content;
-          let comparisonData: any;
-          if (typeof compContent === 'string') comparisonData = JSON.parse(compContent);
-          else comparisonData = compContent;
-          
-          // Normalize scores
-          const ns = normalizeScore;
-          comparisonData.overallScore = ns(comparisonData.overallScore);
-          comparisonData.hookScore = ns(comparisonData.hookScore);
-          comparisonData.pacingScore = ns(comparisonData.pacingScore);
-          comparisonData.engagementScore = ns(comparisonData.engagementScore);
-          comparisonData.similarityScore = ns(comparisonData.similarityScore);
-          comparisonData.subtitleScore = ns(comparisonData.subtitleScore);
-          comparisonData.cutScore = ns(comparisonData.cutScore);
-          
+          // Save comparison to DB
           await db.updateVideoAnalysis(comparisonId, {
             status: 'completed',
-            hookAnalysis: comparisonData.hookComparison ? JSON.stringify(comparisonData.hookComparison) : null,
-            structureBreakdown: JSON.stringify(comparisonData.pacingComparison || {}),
-            viralityFactors: JSON.stringify(comparisonData.topCorrections || []),
-            summary: comparisonData.overallVerdict,
-            improvementPoints: JSON.stringify(comparisonData.topCorrections || []),
-            cutRecommendations: JSON.stringify(comparisonData.pacingComparison || {}),
-            editingSuggestions: comparisonData.pacingComparison?.fixInstructions || null,
-            overallScore: comparisonData.overallScore,
-            hookScore: comparisonData.hookScore,
-            pacingScore: comparisonData.pacingScore,
-            engagementScore: comparisonData.engagementScore,
+            hookAnalysis: JSON.stringify(comparison.hookComparison),
+            structureBreakdown: JSON.stringify(comparison.ritmoComparison),
+            viralityFactors: JSON.stringify(comparison.topCorrections),
+            summary: comparison.generalVerdict,
+            improvementPoints: JSON.stringify(comparison.topCorrections),
+            overallScore: normalizeScore(userAnalysis.score),
+            hookScore: normalizeScore(userAnalysis.hookScore),
+            pacingScore: normalizeScore(userAnalysis.ritmoScore),
+            engagementScore: normalizeScore(userAnalysis.engagementScore),
           });
           
           const totalTime = ((Date.now() - viralAnalysisStart) / 1000).toFixed(1);
-          plog(`[CompareV2] ====== V2 COMPARISON COMPLETED in ${totalTime}s ======`);
+          plog(`[CompareV3] ====== V3 COMPARISON COMPLETED in ${totalTime}s ======`);
           
+          // Map the Gemini Direct response to the frontend expected format
           return {
             id: comparisonId,
             videoId: userVideoId,
             viralVideoId,
             viralAnalysis: {
-              overallScore: viralAnalysisData.overallScore,
-              hookScore: viralAnalysisData.hookScore,
-              pacingScore: viralAnalysisData.pacingScore,
-              engagementScore: viralAnalysisData.engagementScore,
-              summary: viralAnalysisData.summary,
+              overallScore: normalizeScore(viralAnalysis.score),
+              hookScore: normalizeScore(viralAnalysis.hookScore),
+              pacingScore: normalizeScore(viralAnalysis.ritmoScore),
+              engagementScore: normalizeScore(viralAnalysis.engagementScore),
+              summary: `Score: ${viralAnalysis.score}/100. ${viralAnalysis.contenidoAnalysis.substring(0, 200)}`,
             },
-            ...comparisonData,
+            overallVerdict: comparison.generalVerdict,
+            similarityScore: normalizeScore(comparison.similarityScore),
+            hookComparison: {
+              hookScore: normalizeScore(comparison.scores.hook),
+              viralHookSummary: comparison.hookComparison.viralDoes,
+              userHookAnalysis: comparison.hookComparison.yourVideo,
+              whatsMissing: comparison.hookComparison.whatsMissing,
+              fixInstructions: comparison.hookComparison.howToFix,
+            },
+            pacingComparison: {
+              pacingScore: normalizeScore(comparison.scores.ritmo),
+              viralPacingSummary: comparison.ritmoComparison.viralDoes,
+              userPacingAnalysis: comparison.ritmoComparison.yourVideo,
+              whatsMissing: comparison.ritmoComparison.whatsMissing,
+              fixInstructions: comparison.ritmoComparison.howToFix,
+            },
+            subtitleComparison: {
+              subtitleScore: normalizeScore(comparison.scores.subtitulos),
+              viralSubtitleSummary: comparison.subtitulosComparison.viralDoes,
+              userSubtitleAnalysis: comparison.subtitulosComparison.yourVideo,
+              whatsMissing: comparison.subtitulosComparison.whatsMissing,
+              fixInstructions: comparison.subtitulosComparison.howToFix,
+            },
+            contentComparison: {
+              contentScore: normalizeScore(comparison.scores.engagement),
+              viralContentSummary: comparison.contenidoComparison.viralDoes,
+              userContentAnalysis: comparison.contenidoComparison.yourVideo,
+              whatsMissing: comparison.contenidoComparison.whatsMissing,
+              fixInstructions: comparison.contenidoComparison.howToFix,
+            },
+            visualComparison: {
+              visualScore: normalizeScore(comparison.scores.general),
+              viralVisualSummary: comparison.visualComparison.viralDoes,
+              userVisualAnalysis: comparison.visualComparison.yourVideo,
+              whatsMissing: comparison.visualComparison.whatsMissing,
+              fixInstructions: comparison.visualComparison.howToFix,
+            },
+            ctaComparison: {
+              ctaScore: normalizeScore(comparison.scores.engagement),
+              viralCtaSummary: comparison.ctaComparison.viralDoes,
+              userCtaAnalysis: comparison.ctaComparison.yourVideo,
+              whatsMissing: comparison.ctaComparison.whatsMissing,
+              fixInstructions: comparison.ctaComparison.howToFix,
+            },
+            topCorrections: comparison.topCorrections.map(c => ({
+              priority: c.priority,
+              title: c.correction.substring(0, 60),
+              category: c.category,
+              timestamp: c.timestamp,
+              currentIssue: c.correction,
+              exactFix: c.correction,
+              expectedImpact: `Mejora en ${c.category.toLowerCase()}`,
+            })),
+            whatWorksWell: comparison.whatWorksWell.map(w => ({
+              aspect: w.substring(0, 40),
+              detail: w,
+            })),
+            overallScore: normalizeScore(userAnalysis.score),
+            hookScore: normalizeScore(userAnalysis.hookScore),
+            pacingScore: normalizeScore(userAnalysis.ritmoScore),
+            engagementScore: normalizeScore(userAnalysis.engagementScore),
+            subtitleScore: normalizeScore(userAnalysis.subtitulosScore),
+            cutScore: normalizeScore(userAnalysis.cortesScore),
           };
         } catch (error: any) {
-          plog('[CompareV2] ERROR: ' + (error?.message || JSON.stringify(error)));
-          throw new Error(error.message || 'Error durante la comparaci\u00f3n');
-        } finally {
-          // Cleanup temp files
-          for (const f of tempFiles) {
-            try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
-          }
+          plog('[CompareV3] ERROR: ' + (error?.message || JSON.stringify(error)));
+          throw new Error(error.message || 'Error durante la comparación');
         }
       }),
   }),

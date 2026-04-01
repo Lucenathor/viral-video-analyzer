@@ -24,4 +24,6 @@ export const ENV = {
   RAPIDAPI_TIKTOK_KEY: process.env.RAPIDAPI_TIKTOK_KEY ?? "",
   // Coconut.co Video Processing
   COCONUT_API_KEY: process.env.COCONUT_API_KEY ?? "",
+  // Gemini Direct API
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? "",
 };
