@@ -291,3 +291,14 @@
 - [x] Logging añadido: muestra hostname, x-forwarded-host, realHost y domain calculado
 - [x] 137 tests pasan (1 fallo externo TikTok search API, no relacionado)
 - [x] Guardar checkpoint
+
+## Fix: Login en producción redirige a página inicio sin autenticar - RESUELTO
+- [x] Investigar flujo completo de auth: descubierto que tRPC httpBatchLink con streaming envía headers ANTES de que la mutación pueda establecer cookies
+- [x] Error real: "Cannot set headers after they are sent to the client" en auth.login tRPC mutation
+- [x] Solución: crear endpoints Express directos /api/auth/login, /api/auth/register, /api/auth/logout, /api/auth/me que bypasean tRPC streaming
+- [x] Login.tsx reescrito: usa fetch() directo a /api/auth/* en vez de trpc.auth.login.useMutation()
+- [x] useAuth.ts reescrito: usa fetch('/api/auth/me') en vez de trpc.auth.me.useQuery()
+- [x] Logout usa fetch('/api/auth/logout') + window.location.href para limpiar estado
+- [x] Verificado con curl: Set-Cookie header se establece correctamente en login y se borra en logout
+- [x] 138 tests pasan (19 archivos), TypeScript compila sin errores
+- [x] Guardar checkpoint

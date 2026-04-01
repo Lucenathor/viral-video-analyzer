@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { 
@@ -18,7 +17,7 @@ import {
 } from "lucide-react";
 
 export default function Login() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, refresh } = useAuth();
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -26,30 +25,7 @@ export default function Login() {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-
-  const utils = trpc.useUtils();
-
-  const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: async () => {
-      toast.success("¡Bienvenido!");
-      await utils.auth.me.invalidate();
-      setLocation("/");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const registerMutation = trpc.auth.register.useMutation({
-    onSuccess: async () => {
-      toast.success("¡Cuenta creada! Bienvenido.");
-      await utils.auth.me.invalidate();
-      setLocation("/");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already logged in
   if (!authLoading && isAuthenticated) {
@@ -57,16 +33,44 @@ export default function Login() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "login") {
-      loginMutation.mutate({ email, password, rememberMe });
-    } else {
-      registerMutation.mutate({ name, email, password });
+    setIsLoading(true);
+
+    try {
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body = mode === "login" 
+        ? { email, password, rememberMe }
+        : { name, email, password };
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Error al iniciar sesión");
+        return;
+      }
+
+      toast.success(mode === "login" ? "¡Bienvenido!" : "¡Cuenta creada! Bienvenido.");
+      
+      // Refresh auth state and redirect
+      await refresh();
+      // Small delay to ensure cookie is processed
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 100);
+    } catch (error: any) {
+      toast.error(error.message || "Error de conexión");
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const isLoading = loginMutation.isPending || registerMutation.isPending;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">

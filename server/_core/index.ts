@@ -4,17 +4,18 @@ import { createServer } from "http";
 import net from "net";
 import multer from "multer";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-// OAuth removed - using password auth
 import { appRouter } from "../routers";
 import { handleStripeWebhook } from "../stripe/webhookHandler";
 import { storagePut } from "../storage";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { nanoid } from "nanoid";
-import { jwtVerify } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { parse as parseCookieHeader } from "cookie";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
+import { getSessionCookieOptions } from "./cookies";
+import bcrypt from "bcryptjs";
 import * as db from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -112,8 +113,142 @@ async function startServer() {
     }
   });
   
-  // Password auth handled via tRPC auth router
-  // tRPC API
+  // ============================================
+  // Direct auth endpoints (bypass tRPC streaming)
+  // tRPC httpBatchLink with streaming sends headers before mutations can set cookies.
+  // These Express routes handle auth directly so Set-Cookie always works.
+  // ============================================
+  
+  function getJwtSecret() {
+    return new TextEncoder().encode(ENV.cookieSecret);
+  }
+  
+  async function createJwtToken(userId: number, name: string, durationMs: number = ONE_YEAR_MS): Promise<string> {
+    const expirationSeconds = Math.floor((Date.now() + durationMs) / 1000);
+    return new SignJWT({ userId, name })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime(expirationSeconds)
+      .sign(getJwtSecret());
+  }
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password, rememberMe = true } = req.body;
+      if (!email || !password) {
+        res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+        return;
+      }
+
+      const user = await db.getUserByEmail(email);
+      if (!user || !user.passwordHash) {
+        res.status(401).json({ error: 'Email o contraseña incorrectos' });
+        return;
+      }
+
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isValid) {
+        res.status(401).json({ error: 'Email o contraseña incorrectos' });
+        return;
+      }
+
+      // Update last signed in
+      await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
+
+      const sessionDuration = rememberMe ? ONE_YEAR_MS : (1000 * 60 * 60 * 24);
+      const token = await createJwtToken(user.id, user.name || '', sessionDuration);
+      const cookieOptions = getSessionCookieOptions(req);
+      
+      console.log(`[Auth] Login success: ${email}, cookie domain: ${JSON.stringify(cookieOptions)}`);
+      
+      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: sessionDuration });
+      res.json({
+        success: true,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      });
+    } catch (error: any) {
+      console.error('[Auth] Login error:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { name, email, password } = req.body;
+      if (!name || !email || !password) {
+        res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
+        return;
+      }
+      if (password.length < 6) {
+        res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+        return;
+      }
+
+      const existing = await db.getUserByEmail(email);
+      if (existing) {
+        res.status(409).json({ error: 'Ya existe una cuenta con este email' });
+        return;
+      }
+
+      const passwordHash = await bcrypt.hash(password, 12);
+      const userId = await db.createUserWithPassword({ name, email, passwordHash });
+      const user = await db.getUserById(userId);
+      if (!user) {
+        res.status(500).json({ error: 'Error al crear la cuenta' });
+        return;
+      }
+
+      const token = await createJwtToken(user.id, user.name || '');
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.json({
+        success: true,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      });
+    } catch (error: any) {
+      console.error('[Auth] Register error:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    const cookieOptions = getSessionCookieOptions(req);
+    res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    res.json({ success: true });
+  });
+
+  app.get('/api/auth/me', async (req, res) => {
+    try {
+      const cookieHeader = req.headers.cookie;
+      if (!cookieHeader) {
+        res.json({ user: null });
+        return;
+      }
+      const cookies = parseCookieHeader(cookieHeader);
+      const token = cookies[COOKIE_NAME];
+      if (!token) {
+        res.json({ user: null });
+        return;
+      }
+      const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
+      const userId = payload.userId as number;
+      if (!userId) {
+        res.json({ user: null });
+        return;
+      }
+      const user = await db.getUserById(userId);
+      if (!user) {
+        res.json({ user: null });
+        return;
+      }
+      res.json({
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, openId: user.openId },
+      });
+    } catch {
+      res.json({ user: null });
+    }
+  });
+
+  // tRPC API (still available for all other procedures)
   app.use(
     "/api/trpc",
     createExpressMiddleware({
