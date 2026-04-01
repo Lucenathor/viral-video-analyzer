@@ -335,3 +335,8 @@
 - [x] 135/136 tests pasan (1 fallo externo TikTok search API)
 - [x] IMPORTANTE: El usuario debe hacer Publish para que los cambios estén en producción
 - [x] Guardar checkpoint
+
+## Fix: Aplicar correcciones de Claude Code (sameSite + verificación post-login)
+- [x] Fix #1: Cambiar sameSite de "none" a "lax" en cookies.ts línea 64
+- [x] Fix #2: Verificar cookie post-login en Login.tsx antes de redirigir
+- [x] Guardar checkpoint para que el usuario publique y testee

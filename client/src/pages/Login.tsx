@@ -57,14 +57,20 @@ export default function Login() {
         return;
       }
 
-      toast.success(mode === "login" ? "¡Bienvenido!" : "¡Cuenta creada! Bienvenido.");
+      // Verify the cookie was actually saved by checking /api/auth/me
+      const meResponse = await fetch("/api/auth/me", { credentials: "include" });
+      const meData = await meResponse.json();
       
-      // Refresh auth state and redirect
-      await refresh();
-      // Small delay to ensure cookie is processed
-      setTimeout(() => {
+      if (meData.user) {
+        toast.success(mode === "login" ? "¡Bienvenido!" : "¡Cuenta creada! Bienvenido.");
+        await refresh();
         window.location.href = "/";
-      }, 100);
+      } else {
+        toast.error(
+          "No se pudo guardar la sesión. Esto puede ocurrir si tu navegador bloquea cookies. " +
+          "Prueba en modo incógnito o desactiva el bloqueo de cookies de terceros."
+        );
+      }
     } catch (error: any) {
       toast.error(error.message || "Error de conexión");
     } finally {

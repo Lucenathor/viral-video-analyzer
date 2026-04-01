@@ -61,7 +61,7 @@ export function getSessionCookieOptions(
     path: "/",
     // Use "lax" for same-site navigation (most common case)
     // This is much more reliable than "none" which requires secure + third-party cookie support
-    sameSite: secure ? "none" : "lax",
+    sameSite: "lax",
     secure,
     ...(domain ? { domain } : {}),
   };
