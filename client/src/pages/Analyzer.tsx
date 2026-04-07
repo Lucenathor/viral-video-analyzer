@@ -32,7 +32,7 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 // Direct upload via FormData to /api/upload-video (no base64 chunks)
 
 export default function Analyzer() {
-  const { user, loading: authLoading } = useAuth();
+  // Auth is optional - no login required
 
   const [viralUrl, setViralUrl] = useState("");
   const [userFile, setUserFile] = useState<File | null>(null);
@@ -292,32 +292,6 @@ export default function Analyzer() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-        <Card className="bg-[#12121a] border-gray-800 max-w-md w-full">
-          <CardContent className="p-8 text-center">
-            <GitCompareArrows className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Comparador de Videos</h2>
-            <p className="text-gray-400 mb-6">Inicia sesion para comparar tu video con un viral de referencia</p>
-            <Link href="/login">
-              <Button className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold w-full">
-                Iniciar Sesion
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">

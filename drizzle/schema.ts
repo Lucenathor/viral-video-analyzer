@@ -68,7 +68,7 @@ export type InsertVideo = typeof videos.$inferInsert;
 export const videoAnalyses = mysqlTable("video_analyses", {
   id: int("id").autoincrement().primaryKey(),
   videoId: int("videoId").references(() => videos.id).notNull(),
-  userId: int("userId").references(() => users.id).notNull(),
+  userId: int("userId").references(() => users.id),
   analysisType: mysqlEnum("analysisType", ["viral_analysis", "comparison", "expert_review"]).default("viral_analysis").notNull(),
   // Viral structure analysis
   hookAnalysis: text("hookAnalysis"), // First 3 seconds hook analysis
@@ -140,7 +140,7 @@ export type InsertTicketMessage = typeof ticketMessages.$inferInsert;
  */
 export const storyHistory = mysqlTable("story_history", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").references(() => users.id).notNull(),
+  userId: int("userId").references(() => users.id),
   sectorId: varchar("sectorId", { length: 100 }).notNull(),
   sectorCustom: varchar("sectorCustom", { length: 255 }),
   objective: varchar("objective", { length: 100 }).notNull(),
@@ -162,7 +162,7 @@ export type InsertStoryHistory = typeof storyHistory.$inferInsert;
  */
 export const calendarProgress = mysqlTable("calendar_progress", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").references(() => users.id).notNull(),
+  userId: int("userId").references(() => users.id),
   sectorId: varchar("sectorId", { length: 100 }).notNull(),
   videoId: varchar("videoId", { length: 100 }).notNull(),
   scheduledDate: timestamp("scheduledDate").notNull(),
@@ -181,7 +181,7 @@ export type InsertCalendarProgress = typeof calendarProgress.$inferInsert;
  */
 export const scheduledStories = mysqlTable("scheduled_stories", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").references(() => users.id).notNull(),
+  userId: int("userId").references(() => users.id),
   storyHistoryId: int("storyHistoryId").references(() => storyHistory.id).notNull(),
   scheduledDate: timestamp("scheduledDate").notNull(),
   isCompleted: boolean("isCompleted").default(false).notNull(),

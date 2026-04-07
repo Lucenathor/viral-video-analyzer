@@ -23,17 +23,11 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
-  const { data: analyses, isLoading: analysesLoading } = trpc.video.getUserAnalyses.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  const { data: analyses, isLoading: analysesLoading } = trpc.video.getUserAnalyses.useQuery();
   
-  const { data: videos, isLoading: videosLoading } = trpc.video.getUserVideos.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  const { data: videos, isLoading: videosLoading } = trpc.video.getUserVideos.useQuery();
   
   // Tickets are not stored in DB, just sent to owner
   const tickets: { id: number; status: string }[] = [];
@@ -76,43 +70,6 @@ export default function Dashboard() {
     );
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="pt-32 pb-20">
-          <div className="container">
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 glow-primary">
-                <LayoutDashboard className="w-10 h-10 text-white" />
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                Tu <span className="text-gradient">Dashboard</span>
-              </h1>
-              <p className="text-muted-foreground mb-8">
-                Inicia sesión para acceder a tu dashboard y ver el historial 
-                de tus análisis y tickets de soporte.
-              </p>
-              <a href="/login">
-                <Button size="lg" className="gradient-primary glow-primary gap-2">
-                  <Zap className="w-5 h-5" />
-                  Iniciar Sesión
-                </Button>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -185,7 +185,8 @@ export async function getVideoById(id: number) {
   return result[0];
 }
 
-export async function getUserVideos(userId: number) {
+export async function getVideosByUser(userId: number | null) {
+  if (!userId) return [];
   const db = await getDb();
   if (!db) return [];
   return db.select().from(videos).where(eq(videos.userId, userId)).orderBy(desc(videos.createdAt));
@@ -229,7 +230,8 @@ export async function getVideoAnalysisById(id: number) {
   return result[0];
 }
 
-export async function getUserAnalyses(userId: number) {
+export async function getUserAnalyses(userId: number | null) {
+  if (!userId) return [];
   const db = await getDb();
   if (!db) return [];
   return db.select().from(videoAnalyses)
@@ -313,7 +315,8 @@ export async function createStoryHistory(data: Omit<InsertStoryHistory, 'id' | '
   return result[0].insertId;
 }
 
-export async function getStoryHistory(userId: number, limit = 20, sectorId?: string) {
+export async function getStoryHistory(userId: number | null, limit = 20, sectorId?: string) {
+  if (!userId) return [];
   const db = await getDb();
   if (!db) return [];
   
@@ -330,7 +333,8 @@ export async function getStoryHistory(userId: number, limit = 20, sectorId?: str
     .limit(limit);
 }
 
-export async function getStoryById(id: number, userId: number) {
+export async function getStoryById(id: number, userId: number | null) {
+  if (!userId) return undefined;
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(storyHistory)
@@ -343,7 +347,8 @@ export async function getStoryById(id: number, userId: number) {
 // ==================== CALENDAR PROGRESS FUNCTIONS ====================
 import { calendarProgress, InsertCalendarProgress, CalendarProgress, scheduledStories, InsertScheduledStory, ScheduledStory } from "../drizzle/schema";
 
-export async function getCalendarProgress(userId: number, sectorId: string) {
+export async function getCalendarProgress(userId: number | null, sectorId: string) {
+  if (!userId) return [];
   const db = await getDb();
   if (!db) return [];
   return db.select().from(calendarProgress)
@@ -352,6 +357,7 @@ export async function getCalendarProgress(userId: number, sectorId: string) {
 }
 
 export async function upsertCalendarProgress(data: Omit<InsertCalendarProgress, 'id' | 'createdAt' | 'updatedAt'>) {
+  if (!data.userId) return 0;
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
@@ -382,7 +388,8 @@ export async function upsertCalendarProgress(data: Omit<InsertCalendarProgress, 
   }
 }
 
-export async function markVideoCompleted(userId: number, sectorId: string, videoId: string, completed: boolean) {
+export async function markVideoCompleted(userId: number | null, sectorId: string, videoId: string, completed: boolean) {
+  if (!userId) return;
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
@@ -421,7 +428,8 @@ export async function createScheduledStory(data: Omit<InsertScheduledStory, 'id'
   return result[0].insertId;
 }
 
-export async function getScheduledStories(userId: number) {
+export async function getScheduledStories(userId: number | null) {
+  if (!userId) return [];
   const db = await getDb();
   if (!db) return [];
   return db.select().from(scheduledStories)
@@ -429,7 +437,8 @@ export async function getScheduledStories(userId: number) {
     .orderBy(scheduledStories.scheduledDate);
 }
 
-export async function markScheduledStoryCompleted(id: number, userId: number, completed: boolean) {
+export async function markScheduledStoryCompleted(id: number, userId: number | null, completed: boolean) {
+  if (!userId) return;
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(scheduledStories)
@@ -486,7 +495,8 @@ export async function getSubscriptionByStripeCustomerId(stripeCustomerId: string
   return result[0];
 }
 
-export async function incrementSubscriptionUsage(userId: number, type: 'analysis' | 'stories') {
+export async function incrementSubscriptionUsage(userId: number | null, type: 'analysis' | 'stories') {
+  if (!userId) return;
   const db = await getDb();
   if (!db) return;
   

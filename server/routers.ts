@@ -63,21 +63,22 @@ export const appRouter = router({
   // Video router
   video: router({
     // Get upload URL for direct S3 upload (bypasses proxy to avoid 413 errors)
-    getUploadUrl: protectedProcedure
+    getUploadUrl: publicProcedure
       .input(z.object({
         fileName: z.string(),
         mimeType: z.string(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const fileKey = `videos/${ctx.user.id}/${nanoid()}-${input.fileName}`;
+        const userId = ctx.user?.id ?? 0;
+        const fileKey = `videos/${userId}/${nanoid()}-${input.fileName}`;
         const forgeUrl = process.env.BUILT_IN_FORGE_API_URL?.replace(/\/+$/, '') || '';
         const forgeKey = process.env.BUILT_IN_FORGE_API_KEY || '';
         const uploadUrl = `${forgeUrl}/v1/storage/upload?path=${encodeURIComponent(fileKey)}`;
-        return { fileKey, userId: ctx.user.id, uploadUrl, authToken: forgeKey };
+        return { fileKey, userId, uploadUrl, authToken: forgeKey };
       }),
 
     // Upload video chunk by chunk
-    uploadChunk: protectedProcedure
+    uploadChunk: publicProcedure
       .input(z.object({
         fileKey: z.string(),
         chunk: z.string(), // base64 chunk
@@ -101,7 +102,7 @@ export const appRouter = router({
       }),
 
     // Finalize upload and start FULL analysis with FFmpeg + Whisper + Gemini
-    finalizeUploadAndAnalyze: protectedProcedure
+    finalizeUploadAndAnalyze: publicProcedure
       .input(z.object({
         fileKey: z.string(),
         fileName: z.string(),
@@ -110,8 +111,9 @@ export const appRouter = router({
         analysisType: z.enum(["viral_analysis", "comparison", "expert_review"]),
       }))
       .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user?.id ?? null;
         console.log('[Analysis] ====== STARTING FULL VIDEO ANALYSIS ======');
-        console.log('[Analysis] User:', ctx.user.id, '| File:', input.fileName);
+        console.log('[Analysis] User:', userId, '| File:', input.fileName);
         
         // Get the video URL from storage
         const { url: videoUrl } = await storageGet(input.fileKey + '.chunk0');
@@ -119,7 +121,7 @@ export const appRouter = router({
         
         // Create video record
         const videoId = await db.createVideo({
-          userId: ctx.user.id,
+          userId: userId,
           title: input.fileName,
           videoUrl: videoUrl,
           videoKey: input.fileKey,
@@ -132,7 +134,7 @@ export const appRouter = router({
         // Create analysis record
         const analysisId = await db.createVideoAnalysis({
           videoId,
-          userId: ctx.user.id,
+          userId: userId,
           analysisType: input.analysisType,
           status: "processing",
         });
@@ -609,8 +611,10 @@ Responde siempre en español y en formato JSON válido.`
       }),
 
     // Get user's videos
-    getUserVideos: protectedProcedure.query(async ({ ctx }) => {
-      return db.getUserVideos(ctx.user.id);
+    getUserVideos: publicProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user?.id ?? null;
+      if (!userId) return [];
+      return db.getVideosByUser(userId);
     }),
 
     // Get library videos (for dashboard) - public for browsing
@@ -619,19 +623,21 @@ Responde siempre en español y en formato JSON válido.`
     }),
 
     // Get analysis by ID
-    getAnalysis: protectedProcedure
+    getAnalysis: publicProcedure
       .input(z.object({ analysisId: z.number() }))
       .query(async ({ input }) => {
         return db.getVideoAnalysisById(input.analysisId);
       }),
 
     // Get all analyses for a user
-    getUserAnalyses: protectedProcedure.query(async ({ ctx }) => {
-      return db.getUserAnalyses(ctx.user.id);
+    getUserAnalyses: publicProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user?.id ?? null;
+      if (!userId) return [];
+      return db.getUserAnalyses(userId);
     }),
 
     // Compare user video against a viral reference video
-    compareVideos: protectedProcedure
+    compareVideos: publicProcedure
       .input(z.object({
         // The viral reference analysis ID (already analyzed)
         viralAnalysisId: z.number(),
@@ -642,8 +648,9 @@ Responde siempre en español y en formato JSON válido.`
         fileSize: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user?.id ?? null;
         console.log('[Comparison] ====== STARTING VIDEO COMPARISON ======');
-        console.log('[Comparison] User:', ctx.user.id, '| Viral Analysis:', input.viralAnalysisId);
+        console.log('[Comparison] User:', userId, '| Viral Analysis:', input.viralAnalysisId);
         
         // 1. Get the viral reference analysis
         const viralAnalysis = await db.getVideoAnalysisById(input.viralAnalysisId);
@@ -654,7 +661,7 @@ Responde siempre en español y en formato JSON válido.`
         // 2. Create video record for user's video
         const { url: videoUrl } = await storageGet(input.fileKey + '.chunk0');
         const userVideoId = await db.createVideo({
-          userId: ctx.user.id,
+          userId: userId,
           title: input.fileName,
           videoUrl: videoUrl,
           videoKey: input.fileKey,
@@ -666,7 +673,7 @@ Responde siempre en español y en formato JSON válido.`
         // 3. Create comparison analysis record
         const comparisonId = await db.createVideoAnalysis({
           videoId: userVideoId,
-          userId: ctx.user.id,
+          userId: userId,
           analysisType: "comparison",
           comparisonVideoId: viralAnalysis.videoId,
           status: "processing",
@@ -1009,14 +1016,15 @@ REGLAS:
       }),
 
     // Compare two videos by URL - downloads both, analyzes viral, then compares
-    compareByUrl: protectedProcedure
+    compareByUrl: publicProcedure
       .input(z.object({
         viralUrl: z.string().url("URL del vídeo viral no válida"),
         userUrl: z.string().url("URL de tu vídeo no válida"),
       }))
       .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user?.id ?? null;
         console.log('[CompareByUrl] ====== STARTING URL-BASED COMPARISON ======');
-        console.log('[CompareByUrl] User:', ctx.user.id);
+        console.log('[CompareByUrl] User:', userId);
         console.log('[CompareByUrl] Viral URL:', input.viralUrl);
         console.log('[CompareByUrl] User URL:', input.userUrl);
         
@@ -1047,7 +1055,7 @@ REGLAS:
           
           // Create video records
           const viralVideoId = await db.createVideo({
-            userId: ctx.user.id,
+            userId: userId,
             title: 'Viral de referencia (URL)',
             videoUrl: input.viralUrl,
             videoKey: `url-viral-${nanoid()}`,
@@ -1057,7 +1065,7 @@ REGLAS:
           });
           
           const userVideoId = await db.createVideo({
-            userId: ctx.user.id,
+            userId: userId,
             title: 'Mi vídeo (URL)',
             videoUrl: input.userUrl,
             videoKey: `url-user-${nanoid()}`,
@@ -1151,7 +1159,7 @@ REGLAS:
           // Save viral analysis to DB
           const viralAnalysisId = await db.createVideoAnalysis({
             videoId: viralVideoId,
-            userId: ctx.user.id,
+            userId: userId,
             analysisType: 'viral_analysis',
             status: 'completed',
           });
@@ -1262,7 +1270,7 @@ ${viralAnalysisData.viralityFactors || 'No disponible'}
           // Create comparison analysis record
           const comparisonId = await db.createVideoAnalysis({
             videoId: userVideoId,
-            userId: ctx.user.id,
+            userId: userId,
             analysisType: 'comparison',
             comparisonVideoId: viralVideoId,
             status: 'processing',
@@ -1448,7 +1456,7 @@ REGLAS:
         }
       }),
     // Compare viral URL vs uploaded user video - V3: uses Gemini Direct API (no Forge proxy)
-    compareUrlVsUpload: protectedProcedure
+    compareUrlVsUpload: publicProcedure
       .input(z.object({
         viralUrl: z.string().url("URL del vídeo viral no válida"),
         userFileKey: z.string().min(1, "File key del vídeo del usuario requerido"),
@@ -1457,8 +1465,9 @@ REGLAS:
         userFileSize: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user?.id ?? null;
         plog('[CompareV3] ====== STARTING V3 COMPARISON (Gemini Direct API) ======');
-        plog('[CompareV3] User: ' + ctx.user.id);
+        plog('[CompareV3] User: ' + userId);
         plog('[CompareV3] Viral URL: ' + input.viralUrl);
         plog('[CompareV3] User file key: ' + input.userFileKey);
         
@@ -1493,7 +1502,7 @@ REGLAS:
           
           // Create video records in DB
           const viralVideoId = await db.createVideo({
-            userId: ctx.user.id,
+            userId: userId,
             title: 'Viral de referencia (URL)',
             videoUrl: input.viralUrl,
             videoKey: `url-viral-${nanoid()}`,
@@ -1503,7 +1512,7 @@ REGLAS:
           });
           
           const userVideoId = await db.createVideo({
-            userId: ctx.user.id,
+            userId: userId,
             title: input.userFileName,
             videoUrl: '',
             videoKey: input.userFileKey,
@@ -1528,7 +1537,7 @@ REGLAS:
           // Save viral analysis to DB
           const viralAnalysisId = await db.createVideoAnalysis({
             videoId: viralVideoId,
-            userId: ctx.user.id,
+            userId: userId,
             analysisType: 'viral_analysis',
             status: 'completed',
           });
@@ -1556,7 +1565,7 @@ REGLAS:
           
           const comparisonId = await db.createVideoAnalysis({
             videoId: userVideoId,
-            userId: ctx.user.id,
+            userId: userId,
             analysisType: 'comparison',
             status: 'processing',
             comparisonVideoId: viralVideoId,
@@ -1669,7 +1678,7 @@ REGLAS:
 
   // Bio Generator router - Generador profesional de biografías de Instagram
   bioGenerator: router({
-    generate: protectedProcedure
+    generate: publicProcedure
       .input(z.object({
         businessName: z.string().min(1, "Nombre del negocio requerido"),
         businessDescription: z.string().min(10, "Describe tu negocio en al menos 10 caracteres"),
@@ -1900,7 +1909,7 @@ El slot de urgencia debe ser TEMPORAL y con NÚMEROS CONCRETOS.`;
   // Stories Router - Lanzamientos en Caliente
   stories: router({
     // Generate story script with AI
-    generate: protectedProcedure
+    generate: publicProcedure
       .input(z.object({
         sectorId: z.string(),
         sectorCustom: z.string().optional(),
@@ -2056,7 +2065,7 @@ Devuelve SOLO el JSON.`;
           
           // Save to history
           const historyId = await db.createStoryHistory({
-            userId: ctx.user.id,
+            userId: ctx.user?.id ?? null,
             sectorId: input.sectorId,
             sectorCustom: input.sectorCustom,
             objective: input.objective,
@@ -2080,32 +2089,35 @@ Devuelve SOLO el JSON.`;
       }),
     
     // Get user's story history
-    getHistory: protectedProcedure
+    getHistory: publicProcedure
       .input(z.object({
         limit: z.number().default(20),
         sectorId: z.string().optional(),
       }))
       .query(async ({ ctx, input }) => {
-        return db.getStoryHistory(ctx.user.id, input.limit, input.sectorId);
+        const userId = ctx.user?.id ?? null;
+        return db.getStoryHistory(userId, input.limit, input.sectorId);
       }),
     
     // Get a specific story from history
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
-        return db.getStoryById(input.id, ctx.user.id);
+        const userId = ctx.user?.id ?? null;
+        return db.getStoryById(input.id, userId);
       }),
     
     // Add story to calendar
-    addToCalendar: protectedProcedure
+    addToCalendar: publicProcedure
       .input(z.object({
         storyHistoryId: z.number(),
         scheduledDate: z.string(), // ISO date string
       }))
       .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user?.id ?? null;
         const scheduledDate = new Date(input.scheduledDate);
         const id = await db.createScheduledStory({
-          userId: ctx.user.id,
+          userId: userId,
           storyHistoryId: input.storyHistoryId,
           scheduledDate,
           isCompleted: false,
@@ -2117,7 +2129,7 @@ Devuelve SOLO el JSON.`;
   // Calendar Progress Router
   calendar: router({
     // Get approved reels with calendar assignments for a sector
-    getApprovedReels: protectedProcedure
+    getApprovedReels: publicProcedure
       .input(z.object({
         sectorSlug: z.string(),
         month: z.number().min(0).max(11), // JS month (0-11)
@@ -2177,7 +2189,7 @@ Devuelve SOLO el JSON.`;
       }),
 
     // Get all approved reels for a sector (across all months) for stats
-    getApprovedReelsBySector: protectedProcedure
+    getApprovedReelsBySector: publicProcedure
       .input(z.object({ sectorSlug: z.string() }))
       .query(async ({ input }) => {
         return db.getApprovedReels(input.sectorSlug);
@@ -2185,7 +2197,7 @@ Devuelve SOLO el JSON.`;
 
     // Get user's subscription config for calendar
     // DEMO MODE: All restrictions removed for live demo
-    getSubscriptionConfig: protectedProcedure
+    getSubscriptionConfig: publicProcedure
       .query(async ({ ctx }) => {
         // Generate 24 months of access (12 past + 12 future)
         const now = new Date();
@@ -2209,38 +2221,42 @@ Devuelve SOLO el JSON.`;
       }),
     
     // Get progress for a sector
-    getProgress: protectedProcedure
+    getProgress: publicProcedure
       .input(z.object({ sectorId: z.string() }))
       .query(async ({ ctx, input }) => {
-        return db.getCalendarProgress(ctx.user.id, input.sectorId);
+        const userId = ctx.user?.id ?? null;
+        return db.getCalendarProgress(userId, input.sectorId);
       }),
     
     // Mark video as completed/uncompleted
-    toggleComplete: protectedProcedure
+    toggleComplete: publicProcedure
       .input(z.object({
         sectorId: z.string(),
         videoId: z.string(),
         completed: z.boolean(),
       }))
       .mutation(async ({ ctx, input }) => {
-        await db.markVideoCompleted(ctx.user.id, input.sectorId, input.videoId, input.completed);
+        const userId = ctx.user?.id ?? null;
+        await db.markVideoCompleted(userId, input.sectorId, input.videoId, input.completed);
         return { success: true };
       }),
     
     // Get scheduled stories
-    getScheduledStories: protectedProcedure
+    getScheduledStories: publicProcedure
       .query(async ({ ctx }) => {
-        return db.getScheduledStories(ctx.user.id);
+        const userId = ctx.user?.id ?? null;
+        return db.getScheduledStories(userId);
       }),
     
     // Mark scheduled story as completed
-    toggleScheduledStory: protectedProcedure
+    toggleScheduledStory: publicProcedure
       .input(z.object({
         id: z.number(),
         completed: z.boolean(),
       }))
       .mutation(async ({ ctx, input }) => {
-        await db.markScheduledStoryCompleted(input.id, ctx.user.id, input.completed);
+        const userId = ctx.user?.id ?? null;
+        await db.markScheduledStoryCompleted(input.id, userId, input.completed);
         return { success: true };
       }),
   }),

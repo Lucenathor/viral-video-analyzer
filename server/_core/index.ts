@@ -58,33 +58,24 @@ async function startServer() {
 
   app.post('/api/upload-video', upload.single('video'), async (req, res) => {
     try {
-      // Verify auth using same method as context.ts
-      const cookieHeader = req.headers.cookie;
-      console.log(`[Upload] Auth check - has cookie header: ${!!cookieHeader}, cookie names: ${cookieHeader ? Object.keys(parseCookieHeader(cookieHeader)).join(',') : 'none'}`);
-      if (!cookieHeader) {
-        console.log('[Upload] No cookie header in request');
-        res.status(401).json({ error: 'No autenticado - no se recibieron cookies. Intenta cerrar sesión y volver a iniciar sesión.' });
-        return;
-      }
-      const cookies = parseCookieHeader(cookieHeader);
-      const token = cookies[COOKIE_NAME];
-      if (!token) {
-        console.log(`[Upload] Cookie '${COOKIE_NAME}' not found. Available cookies: ${Object.keys(cookies).join(', ')}`);
-        res.status(401).json({ error: 'No autenticado - cookie de sesión no encontrada. Intenta cerrar sesión y volver a iniciar sesión.' });
-        return;
-      }
-      let userId: number;
+      // Auth is optional - try to get userId from cookie if available
+      let userId: number = 0;
       try {
-        const secretKey = new TextEncoder().encode(ENV.cookieSecret);
-        const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] });
-        userId = payload.userId as number;
-        if (!userId) throw new Error('No userId in token');
-        console.log(`[Upload] Auth OK - userId: ${userId}`);
-      } catch (jwtErr: any) {
-        console.log(`[Upload] JWT verification failed: ${jwtErr.message}`);
-        res.status(401).json({ error: 'Sesión expirada. Por favor, cierra sesión y vuelve a iniciar sesión.' });
-        return;
+        const cookieHeader = req.headers.cookie;
+        if (cookieHeader) {
+          const cookies = parseCookieHeader(cookieHeader);
+          const token = cookies[COOKIE_NAME];
+          if (token) {
+            const secretKey = new TextEncoder().encode(ENV.cookieSecret);
+            const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] });
+            userId = (payload.userId as number) || 0;
+          }
+        }
+      } catch {
+        // Auth failed, continue as anonymous
+        userId = 0;
       }
+      console.log(`[Upload] userId: ${userId} (0 = anonymous)`);
 
       const file = req.file;
       if (!file) {

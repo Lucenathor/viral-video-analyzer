@@ -71,6 +71,13 @@
       "when": 1774427904068,
       "tag": "0009_burly_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1775572880504,
+      "tag": "0010_flowery_wiccan",
+      "breakpoints": true
     }
   ]
 }

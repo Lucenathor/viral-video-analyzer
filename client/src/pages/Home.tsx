@@ -85,7 +85,6 @@ const sectors = [
 ];
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
@@ -129,21 +128,12 @@ export default function Home() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-              {isAuthenticated ? (
-                <Link href="/analyzer">
-                  <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-8 h-14 rounded-xl">
-                    <Play className="w-5 h-5" />
-                    Empezar a Analizar
-                  </Button>
-                </Link>
-              ) : (
-                <a href="/login">
-                  <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-8 h-14 rounded-xl">
-                    <Zap className="w-5 h-5" />
-                    Comenzar Gratis
-                  </Button>
-                </a>
-              )}
+              <Link href="/analyzer">
+                <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-8 h-14 rounded-xl">
+                  <Play className="w-5 h-5" />
+                  Empezar a Analizar
+                </Button>
+              </Link>
               <Link href="/library">
                 <Button size="lg" variant="outline" className="gap-2 text-lg px-8 h-14 rounded-xl border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all">
                   <Library className="w-5 h-5" />
@@ -419,21 +409,12 @@ export default function Home() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              {isAuthenticated ? (
-                <Link href="/library">
-                  <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-10 h-14 rounded-xl">
-                    <Library className="w-5 h-5" />
-                    Explorar Biblioteca
-                  </Button>
-                </Link>
-              ) : (
-                <a href="/login">
-                  <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-10 h-14 rounded-xl">
-                    <Zap className="w-5 h-5" />
-                    Comenzar Gratis
-                  </Button>
-                </a>
-              )}
+              <Link href="/library">
+                <Button size="lg" className="btn-premium gradient-primary text-white gap-2 text-lg px-10 h-14 rounded-xl">
+                  <Library className="w-5 h-5" />
+                  Explorar Biblioteca
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

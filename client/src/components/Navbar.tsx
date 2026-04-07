@@ -114,20 +114,20 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Auth Section */}
+          {/* Auth Section - always show Dashboard link */}
           <div className="hidden lg:flex items-center gap-3">
+            <Link href="/dashboard">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="gap-1.5 hover:bg-primary/10 hover:text-primary transition-all duration-300 text-xs"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                Dashboard
+              </Button>
+            </Link>
             {isAuthenticated ? (
               <>
-                <Link href="/dashboard">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="gap-1.5 hover:bg-primary/10 hover:text-primary transition-all duration-300 text-xs"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    Dashboard
-                  </Button>
-                </Link>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-primary/20 hover:border-primary/40 transition-all duration-300">
                   <div className="w-7 h-7 rounded-full gradient-accent flex items-center justify-center text-xs font-semibold text-white shadow-lg">
                     {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -150,13 +150,7 @@ export default function Navbar() {
                   <LogOut className="w-4 h-4" />
                 </Button>
               </>
-            ) : (
-              <Link href="/login">
-                <Button className="btn-premium gradient-primary text-white border-0 shadow-lg shadow-primary/25">
-                  Iniciar Sesión
-                </Button>
-              </Link>
-            )}
+            ) : null}
           </div>
 
           {/* Mobile Menu Button */}
@@ -229,20 +223,18 @@ export default function Navbar() {
                 </>
               )}
               
+              <Link href="/dashboard">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
+              </Link>
               {isAuthenticated && (
-                <Link href="/dashboard">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-              )}
-              <div className="pt-2 border-t border-primary/10 mt-2">
-                {isAuthenticated ? (
+                <div className="pt-2 border-t border-primary/10 mt-2">
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10"
@@ -254,14 +246,8 @@ export default function Navbar() {
                     <LogOut className="w-4 h-4" />
                     Cerrar Sesión
                   </Button>
-                ) : (
-                  <Link href="/login">
-                    <Button className="w-full gradient-primary text-white">
-                      Iniciar Sesión
-                    </Button>
-                  </Link>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

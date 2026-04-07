@@ -20,6 +20,9 @@ vi.mock("./db", () => ({
   getUserVideos: vi.fn().mockResolvedValue([
     { id: 1, title: "Mi video", videoUrl: "https://example.com/myvideo.mp4", videoType: "viral_reference", createdAt: new Date() },
   ]),
+  getVideosByUser: vi.fn().mockResolvedValue([
+    { id: 1, title: "Mi video", videoUrl: "https://example.com/myvideo.mp4", videoType: "viral_reference", createdAt: new Date() },
+  ]),
   getUserAnalyses: vi.fn().mockResolvedValue([
     { id: 1, analysisType: "viral_analysis", status: "completed", overallScore: 85, hookScore: 90, pacingScore: 80, engagementScore: 85, createdAt: new Date() },
   ]),
@@ -152,23 +155,30 @@ describe("video router", () => {
     expect(videos[0]).toHaveProperty("title", "Video viral");
   });
 
-  it("rejects unauthenticated access to user videos", async () => {
+  it("allows unauthenticated access to user videos (returns empty)", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.video.getUserVideos()).rejects.toThrow();
+    const result = await caller.video.getUserVideos();
+    expect(Array.isArray(result)).toBe(true);
   });
 });
 
 describe("bioGenerator router", () => {
-  it("rejects unauthenticated bio generation", async () => {
+  it("allows unauthenticated bio generation (no auth error)", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.bioGenerator.generate({
-      businessName: "Test Business",
-      businessDescription: "A test business description for testing",
-      sector: "Marketing Digital",
-    })).rejects.toThrow();
-  });
+    try {
+      await caller.bioGenerator.generate({
+        businessName: "Test Business",
+        businessDescription: "A test business description for testing",
+        sector: "Marketing Digital",
+      });
+    } catch (error: any) {
+      // Should NOT be an UNAUTHORIZED error - other errors (LLM timeout, etc.) are OK
+      expect(error.code).not.toBe("UNAUTHORIZED");
+      expect(error.code).not.toBe("FORBIDDEN");
+    }
+  }, 30000);
 });

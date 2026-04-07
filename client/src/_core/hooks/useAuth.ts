@@ -134,7 +134,7 @@ export function useAuth(options?: UseAuthOptions) {
     user,
     loading,
     error,
-    isAuthenticated: Boolean(user),
+    isAuthenticated: Boolean(user && user.id),
   }), [user, loading, error]);
 
   // Redirect if not authenticated

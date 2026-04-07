@@ -340,3 +340,34 @@
 - [x] Fix #1: Cambiar sameSite de "none" a "lax" en cookies.ts línea 64
 - [x] Fix #2: Verificar cookie post-login en Login.tsx antes de redirigir
 - [x] Guardar checkpoint para que el usuario publique y testee
+
+## Bug: Sesión aparece iniciada en modo incógnito sin login - ENCONTRADO
+- [x] Investigar: /api/auth/me devuelve {"user":null} correctamente sin cookie
+- [x] Causa raíz: useAuth.ts línea 43 `data.user ?? data ?? null` → cuando data.user=null, data={"user":null} es truthy → usuario aparece autenticado con objeto basura
+- [x] Causa secundaria: localStorage guardaba el objeto basura, persistía entre recargas
+- [x] Fix: validar que data.user sea un objeto con id antes de aceptarlo
+- [x] Fix: isAuthenticated ahora verifica Boolean(user && user.id)
+- [x] Fix: localStorage se limpia cuando user es null
+- [ ] PENDIENTE: guardar checkpoint y publicar cuando el usuario lo indique
+
+## Cambio: Quitar obligación de login para todas las funcionalidades
+- [x] Identificar todos los endpoints protegidos (protectedProcedure) en routers.ts (22 en routers.ts + 5 en sub-routers)
+- [ ] Cambiar a publicProcedure los endpoints de: biografía, comparador, análisis
+- [ ] Quitar redirecciones de auth en el frontend (Analyzer.tsx, etc.)
+- [ ] Quitar auth del endpoint /api/upload-video
+- [ ] Verificar que todo funciona sin login
+- [ ] Guardar checkpoint
+
+## Quitar Login Obligatorio - Acceso Sin Autenticación
+- [x] Identificar todos los endpoints protegidos (protectedProcedure) en routers.ts (22 en routers.ts + 5 en sub-routers)
+- [x] Convertir todos los protectedProcedure a publicProcedure en routers.ts
+- [x] Hacer userId nullable en schema (videoAnalyses, storyHistory, calendarProgress, scheduledStories)
+- [x] Actualizar funciones de db.ts para aceptar userId nullable
+- [x] Quitar auth del endpoint /api/upload-video (Express route)
+- [x] Quitar auth gate de BioGenerator.tsx
+- [x] Quitar auth gate de Analyzer.tsx
+- [x] Quitar auth gate de Dashboard.tsx
+- [x] Actualizar Home.tsx para mostrar links directos sin condicional de auth
+- [x] Actualizar Navbar.tsx para mostrar Dashboard siempre sin login
+- [x] Actualizar tests (video.test.ts, no-auth.test.ts) para reflejar acceso sin auth
+- [x] Verificar que todos los tests pasan (140/141, 1 fallo es TikTok API externa)

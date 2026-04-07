@@ -78,7 +78,8 @@ type BioResult = {
 };
 
 export default function BioGenerator() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  // Auth is optional - no login required
+  const { user } = useAuth();
   const [businessName, setBusinessName] = useState("");
   const [businessDescription, setBusinessDescription] = useState("");
   const [sector, setSector] = useState("");
@@ -142,30 +143,6 @@ export default function BioGenerator() {
     consultoria: { label: "Consultoría Gratis", color: "bg-purple-500/20 text-purple-400 border-purple-500/30", icon: "💬" },
   };
 
-  // Not authenticated
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container pt-24 pb-12">
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <Instagram className="w-16 h-16 text-pink-400 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Generador de Bios de Instagram</h2>
-            <p className="text-muted-foreground mb-8 max-w-md">
-              Crea biografías profesionales que convierten seguidores en clientes.
-              Inicia sesión para empezar.
-            </p>
-            <Link href="/login">
-              <Button size="lg" className="gradient-primary glow-primary gap-2">
-                <Zap className="w-5 h-5" />
-                Iniciar Sesión
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
